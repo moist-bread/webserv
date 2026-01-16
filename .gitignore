@@ -1,0 +1,9 @@
+*/.vscode
+.vscode
+*/obj
+*.out
+*.o
+*.a
+*.json
+*.env
+webserv
