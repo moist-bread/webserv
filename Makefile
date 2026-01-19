@@ -11,7 +11,8 @@ SRC_DIR	=	src
 OBJ_DIR	=	obj
 
 # =====>┊( SRC/OBJS )┊
-SOURCE	=	main.cpp Class.cpp \
+SOURCE	=	main.cpp Class.cpp  \
+			$(addprefix sockets/, SocketController.cpp ListeningSocket.cpp ConnectingSocket.cpp BindingSocket.cpp) \
 #			$(addprefix parse/, file.cpp) \
 #			$(addprefix backend/, file.cpp) \
 #			$(addprefix api/, file.cpp)
