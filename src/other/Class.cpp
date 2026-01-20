@@ -1,4 +1,4 @@
-#include "../inc/Class.hpp"
+#include "../../inc/Class.hpp"
 
 Class::Class(void)
 {

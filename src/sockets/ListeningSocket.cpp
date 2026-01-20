@@ -1,4 +1,4 @@
-#include "../inc/sockets/ListeningSocket.hpp"
+#include "../../inc/Network.hpp"
 
 ListeningSocket::ListeningSocket(int domain,int type,int protocol,int port,u_long ip,int backlog) : BindingSocket(domain,type,protocol,port,ip)  
 {
@@ -24,7 +24,7 @@ ListeningSocket::~ListeningSocket(void)
 
 void ListeningSocket::start_listening()
 {
-	this->listening = listen(this->_connection,this->_backlog);
+	this->listening = listen(this->_sock,this->_backlog);
 }
 
 ListeningSocket &ListeningSocket::operator=(ListeningSocket const &source)

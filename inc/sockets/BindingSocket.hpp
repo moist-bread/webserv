@@ -1,7 +1,11 @@
-#include "SocketController.hpp"
+#pragma once
+#include "../Network.hpp"
+
 
 class BindingSocket : public SocketController
 {
+	private:
+	int _binding;
 public:
 	BindingSocket(int domain,int type,int protocol,int port,u_long ip);
 	BindingSocket(BindingSocket const &source);	// copy constructor

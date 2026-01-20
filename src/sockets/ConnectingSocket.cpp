@@ -1,4 +1,4 @@
-#include "../inc/sockets/ConnectingSocket.hpp"
+#include "../../inc/Network.hpp"
 
 
 
@@ -7,8 +7,8 @@ ConnectingSocket::ConnectingSocket(int domain,int type,int protocol,int port,u_l
 	std::cout << GRN "the ConnectingSocket ";
 	std::cout << UCYN "has been created" DEF << std::endl;
     
-	this->_connection = connect_to_network(getSocketfd(),getStructAdress());
-	test_connection(_connection);
+	this->_connectSocket = connect_to_network(getSocketfd(),getStructAdress());
+	test_connection(_connectSocket);
 }
 
 ConnectingSocket::ConnectingSocket(ConnectingSocket const &source) : SocketController(source)

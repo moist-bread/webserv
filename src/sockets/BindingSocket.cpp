@@ -1,4 +1,4 @@
-#include "../inc/sockets/BindingSocket.hpp"
+#include "../../inc/Network.hpp"
 
 
 BindingSocket::BindingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
@@ -6,8 +6,8 @@ BindingSocket::BindingSocket(int domain,int type,int protocol,int port,u_long ip
 	std::cout << GRN "the BindingSocket ";
 	std::cout << UCYN "has been created" DEF << std::endl;
     
-	this->_connection = connect_to_network(getSocketfd(),getStructAdress());
-	test_connection(_connection);
+	this->_binding = connect_to_network(getSocketfd(),getStructAdress());
+	test_connection(_binding);
 }
 
 BindingSocket::BindingSocket(BindingSocket const &source) : SocketController(source)
@@ -41,6 +41,7 @@ std::ostream &operator<<(std::ostream &out, BindingSocket const &source)
 
 BindingSocket::~BindingSocket(void)
 {
+	//close(this->_connection);
 	std::cout << GRN "the BindingSocket ";
 	std::cout << URED "has been deleted" DEF << std::endl;
 }

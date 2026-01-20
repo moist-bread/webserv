@@ -1,13 +1,14 @@
 #pragma once
-#include "BindingSocket.hpp"
+#include "../Network.hpp"
 
 class ListeningSocket : public BindingSocket
 {
-	private:
+	protected:
 		int _backlog;
+	private:
 		int listening;
 public:
-	ListeningSocket(int domain,int type,int protocol,int port,u_long ip,int backlog); 				// default constructor
+	ListeningSocket(int domain, int type,int protocol,int port,u_long ip,int backlog); 				// default constructor
 	ListeningSocket(ListeningSocket const &source);	// copy constructor
 	~ListeningSocket(void);				// destructor
 

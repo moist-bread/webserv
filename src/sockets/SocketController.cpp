@@ -1,4 +1,4 @@
-#include "../inc/sockets/SocketController.hpp"
+#include "../../inc/Network.hpp"
 /*
     [X]Criar uma socket
     [X] fazer bind para obter o socket address(IPV4 + PORT)
@@ -84,9 +84,6 @@ int SocketController::getSocketfd(void) const{
     return this->_sock;
 }
 
-int SocketController::getConnection(void) const{
-    return this->_connection;
-}
 
  struct sockaddr_in SocketController::getStructAdress(void)const
  {

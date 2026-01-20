@@ -1,5 +1,5 @@
 #include "../inc/Class.hpp"
-#include "../inc/sockets/SocketController.hpp"
+#include "../inc/Network.hpp"
 
 int main(int ac, char **av)
 {
