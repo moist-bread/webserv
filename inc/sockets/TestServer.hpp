@@ -4,7 +4,7 @@
 class TestServer : public ASimpleServer
 {
 private:
-    char _buffer[30000] = {0};
+    char _buffer[30000];
     int _newSocket;
 
     void accepter();

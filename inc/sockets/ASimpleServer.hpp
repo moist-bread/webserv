@@ -1,5 +1,5 @@
 #pragma once
-#include "../Network.hpp"
+#include "ListeningSocket.hpp"
 
 class ASimpleServer : public ListeningSocket
 {
@@ -10,6 +10,7 @@ private:
     virtual void responder() = 0;
 public:
 	ASimpleServer(int domain,int type,int protocol,int port,u_long ip,int backlog);
+	ASimpleServer(ASimpleServer const &source);	// copy constructor
 	virtual ~ASimpleServer(void);				// destructor
 
     virtual void launch() = 0;

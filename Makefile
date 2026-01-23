@@ -18,11 +18,11 @@ MAIN_SOCK			=	main_sock.cpp
 MAIN_PARSE			=	main_parse.cpp
 
 SOCK_FILES_C	=	SocketController.cpp ListeningSocket.cpp ConnectingSocket.cpp \
-					BindingSocket.cpp
+					BindingSocket.cpp ASimpleServer.cpp TestServer.cpp
 
-PARSE_FILES_C	= 	\
+PARSE_FILES_C	=
 
-OTHER_FILES_C	= 	Class.cpp \
+OTHER_FILES_C	=	Class.cpp
 
 OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))

@@ -1,5 +1,5 @@
 #pragma once
-#include "../Network.hpp"
+#include "BindingSocket.hpp"
 
 class ListeningSocket : public BindingSocket
 {

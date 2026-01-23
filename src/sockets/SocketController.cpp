@@ -1,4 +1,8 @@
-#include "../../inc/Network.hpp"
+#include "../../inc/sockets/SocketController.hpp"
+#include "../../inc/ansi_color_codes.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 /*
     [X]Criar uma socket
     [X] fazer bind para obter o socket address(IPV4 + PORT)

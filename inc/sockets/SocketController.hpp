@@ -1,5 +1,7 @@
 #pragma once
-#include "../Network.hpp"
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <iostream>
 
 class SocketController
 {

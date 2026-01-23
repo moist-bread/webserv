@@ -1,4 +1,5 @@
-#include "../../inc/Network.hpp"
+#include "../../inc/sockets/ListeningSocket.hpp"
+#include "../../inc/ansi_color_codes.h"
 
 ListeningSocket::ListeningSocket(int domain,int type,int protocol,int port,u_long ip,int backlog) : BindingSocket(domain,type,protocol,port,ip)  
 {

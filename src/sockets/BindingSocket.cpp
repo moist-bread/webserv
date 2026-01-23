@@ -1,4 +1,5 @@
-#include "../../inc/Network.hpp"
+#include "../../inc/sockets/BindingSocket.hpp"
+#include "../../inc/ansi_color_codes.h"
 
 
 BindingSocket::BindingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
@@ -41,7 +42,6 @@ std::ostream &operator<<(std::ostream &out, BindingSocket const &source)
 
 BindingSocket::~BindingSocket(void)
 {
-	//close(this->_connection);
 	std::cout << GRN "the BindingSocket ";
 	std::cout << URED "has been deleted" DEF << std::endl;
 }

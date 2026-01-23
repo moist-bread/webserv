@@ -1,6 +1,5 @@
 #pragma once
-#include "../Network.hpp"
-
+#include "SocketController.hpp"
 
 class BindingSocket : public SocketController
 {

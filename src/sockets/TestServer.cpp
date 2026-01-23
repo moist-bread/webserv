@@ -1,10 +1,14 @@
-#include "TestServer.hpp"
+#include "../../inc/sockets/TestServer.hpp"
+#include "../../inc/ansi_color_codes.h"
+#include <cstring>
 
 
-TestServer::TestServer(void) : ASimpleServer()
+TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,8080,INADDR_ANY,10)
 {
+	std::memset(_buffer, 0, sizeof(_buffer));
 	std::cout << GRN "the TestServer ";
 	std::cout << UCYN "has been created" DEF << std::endl;
+	launch();
 }
 void TestServer::accepter()
 {
@@ -20,14 +24,22 @@ void TestServer::handler()
 
 void TestServer::responder()
 {
-    char *hello = "Hello from server";
-    write(this->_newSocket,hello,strlen(hello));
+    const char *hello = "Hello from server";
+    write(this->_newSocket,hello,17);
     close(_newSocket);
 }
 
 void TestServer::launch()
 {
-    
+    while (true)
+	{
+		std::cout << "=== WAITING ===" << std::endl;
+		accepter();
+		handler();
+		responder();
+		std::cout << "== DONE ===" << std::endl;
+	}
+	
 }
 
 TestServer::TestServer(TestServer const &source) : ASimpleServer(source)
