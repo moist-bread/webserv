@@ -2,11 +2,12 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <iostream>
+#include "../../inc/sockets/FileDescriptor.hpp"
 
 class SocketController
 {
 protected:
-    int _sock;
+    FileDescriptor _sock;
     struct sockaddr_in _address;
 public:
     SocketController(int domain,int type,int protocol,int port,u_long ip);

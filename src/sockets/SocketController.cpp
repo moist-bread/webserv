@@ -99,6 +99,4 @@ SocketController::~SocketController(void)
 {
 	std::cout << GRN "the SocketController ";
 	std::cout << URED "has been deleted" DEF << std::endl;
-
-    close(this->_sock);
 }
