@@ -1,7 +1,4 @@
 #include "../../inc/sockets/TestServer.hpp"
-#include "../../inc/ansi_color_codes.h"
-#include <cstring>
-
 
 TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,8080,INADDR_ANY,10)
 {
@@ -10,6 +7,17 @@ TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,8080,INADDR_A
 	std::cout << UCYN "has been created" DEF << std::endl;
 	launch();
 }
+//Vamos ignorar o control + c yupiii
+void signalHandler()
+{
+	struct sigaction sa;
+	sa.sa_handler = SIG_IGN;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGINT, &sa, NULL);
+	
+}
+
 void TestServer::accepter()
 {
     int addrlen = sizeof(this->_address);
@@ -29,8 +37,29 @@ void TestServer::responder()
     close(_newSocket);
 }
 
+void TestServer::SetNonblocking(int fd)
+{
+
+	//Vamos verificar se tem alguma flag de erro no fd da socket
+	int flags = fcntl(fd,F_GETFL,0);
+	if(flags == -1)
+	{
+		perror("fnctl F_GETFL");
+		return;
+	}
+	//Fixe esta tudo bem vamos passar para NONBLOCKING
+	// | O_NONBLOCK adiciona nova flag sem remover outras
+	if(fcntl(fd,F_SETFL,flags | O_NONBLOCK) == -1)
+	{
+		perror("Something went wrong wgile passing to NONBLOCKING");
+	}
+}
+
 void TestServer::launch()
 {
+	SetNonblocking(this->_sock);
+	//Hmmmm meio que sem o control + c nao tenho maneira de parar o loop 
+	//signalHandler();
     while (true)
 	{
 		std::cout << "=== WAITING ===" << std::endl;

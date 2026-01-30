@@ -12,13 +12,6 @@ FileDescriptor::FileDescriptor(int fd) : _fd(fd)
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-FileDescriptor::FileDescriptor(FileDescriptor const &source)
-{
-	*this = source;
-	std::cout << GRN "the FileDescriptor ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
-
 FileDescriptor::~FileDescriptor(void)
 {
     if(this->_fd >= 0)
@@ -28,14 +21,6 @@ FileDescriptor::~FileDescriptor(void)
     }
 	std::cout << GRN "the FileDescriptor ";
 	std::cout << URED "has been deleted" DEF << std::endl;
-}
-
-FileDescriptor &FileDescriptor::operator=(FileDescriptor const &source)
-{
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
-	if (this != &source)
-	    (void)source;
-	return (*this);
 }
 
 std::ostream &operator<<(std::ostream &out, FileDescriptor const &source)

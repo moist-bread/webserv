@@ -1,12 +1,36 @@
 #pragma once
 #include "../Network.hpp"
 
+/*
+
+1)
+    [X] Importar biblotecas
+    [X] criar vetor fds em
+    [X] criar funcao para nao bloquear o servidor
+
+
+    Tenho de fazer  Nonblocking Sockets
+
+    Sockets normais vao congelar quando um cliente demora a enviar dados e isso faz com que a socket para de processar ficando assim a dormir
+    also o subject diz que temos de ter Nonblocking 
+
+2)Loop principal
+    [X] Chamar funcao de anti bloqueio dentro do launch
+    [] Pupular a estrutura do poll
+
+
+*/
+
+
 class TestServer : public ASimpleServer
 {
 private:
     char _buffer[30000];
     int _newSocket;
 
+    std::vector<FileDescriptor> fds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
+
+    void  SetNonblocking(int fd);
     void accepter();
     void handler();
     void responder();
@@ -21,3 +45,4 @@ public:
 };
 
 std::ostream &operator<<(std::ostream &out, TestServer const &source);
+void signalHandler();

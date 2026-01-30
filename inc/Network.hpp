@@ -8,7 +8,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <cstring>
+#include <vector>
+#include <cstring>
+#include "fcntl.h"
+#include "poll.h"
+#include "../inc/ansi_color_codes.h"
 #include "sockets/SocketController.hpp"
 #include "sockets/ConnectingSocket.hpp"
 #include "sockets/BindingSocket.hpp"

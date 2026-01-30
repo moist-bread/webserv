@@ -34,6 +34,7 @@
 
 
 SocketController::SocketController(int domain,int type,int protocol,int port,u_long ip)
+	: _sock(socket(domain,type,protocol))
 {
 	std::cout << GRN "the SocketController ";
 	std::cout << UCYN "has been created" DEF << std::endl;
@@ -46,8 +47,6 @@ SocketController::SocketController(int domain,int type,int protocol,int port,u_l
    this->_address.sin_port = htons(port);
    //IPV4 da maquina
    this->_address.sin_addr.s_addr = htonl(ip);
-    //Vou criar a socket
-    this->_sock = socket(domain,type,protocol);
     test_connection(_sock);
 }
 

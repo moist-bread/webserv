@@ -12,16 +12,17 @@ class FileDescriptor
 {
 private:
     int _fd;
+	// Desabilitar cópia (C++98: declarar private sem implementação)
+	FileDescriptor(FileDescriptor const &source);
+	FileDescriptor &operator=(FileDescriptor const &source);
 public:
-	FileDescriptor(int fd); 				// default constructor (com valor default)
-	FileDescriptor(void); 				// default constructor (com valor default)
-	FileDescriptor(FileDescriptor const &source);	// copy constructor
-	~FileDescriptor(void);				// destructor
+	FileDescriptor(int fd);
+	FileDescriptor(void);
+	~FileDescriptor(void);
 
     int getFd() const;
     void setFd(int fd);
-	operator int() const;  // operador de conversão para int
-	FileDescriptor &operator=(FileDescriptor const &source); // copy assignment operator overload
+	operator int() const;
 };
 
 std::ostream &operator<<(std::ostream &out, FileDescriptor const &source);
