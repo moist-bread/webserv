@@ -16,7 +16,7 @@
 
 2)Loop principal
     [X] Chamar funcao de anti bloqueio dentro do launch
-    [] Pupular a estrutura do poll
+    [X] Pupular a estrutura do poll
 
 
 */
@@ -25,22 +25,22 @@
 class TestServer : public ASimpleServer
 {
 private:
-    char _buffer[30000];
+    std::string _buffer;
     int _newSocket;
 
-    std::vector<FileDescriptor> fds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
-
+    std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
     void  SetNonblocking(int fd);
     void accepter();
     void handler();
-    void responder();
+    void responder(int clientFd);
 public:
 	TestServer(void); 				// default constructor
 	TestServer(TestServer const &source);	// copy constructor
 	~TestServer(void);				// destructor
 
     void launch();
-
+    
+    void PopulatePollInfo(int fd);
 	TestServer &operator=(TestServer const &source); // copy assignment operator overload
 };
 

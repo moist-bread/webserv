@@ -1,12 +1,12 @@
 #include "../../inc/sockets/TestServer.hpp"
 
-TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,8080,INADDR_ANY,10)
+TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,PORT,INADDR_ANY,10)
 {
-	std::memset(_buffer, 0, sizeof(_buffer));
 	std::cout << GRN "the TestServer ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 	launch();
 }
+
 //Vamos ignorar o control + c yupiii
 void signalHandler()
 {
@@ -22,7 +22,6 @@ void TestServer::accepter()
 {
     int addrlen = sizeof(this->_address);
     this->_newSocket = accept(this->_sock,(struct sockaddr*)&this->_address,(socklen_t *)&addrlen);
-    read(this->_newSocket,this->_buffer,30000);
 }
 
 void TestServer::handler()
@@ -30,11 +29,11 @@ void TestServer::handler()
     std::cout << _buffer << std::endl;
 }
 
-void TestServer::responder()
+void TestServer::responder(int clientFd)
 {
-    const char *hello = "Hello from server";
-    write(this->_newSocket,hello,17);
-    close(_newSocket);
+    const char *hello = "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nHello from server";
+    write(clientFd, hello, strlen(hello));
+    close(clientFd);
 }
 
 void TestServer::SetNonblocking(int fd)
@@ -55,22 +54,83 @@ void TestServer::SetNonblocking(int fd)
 	}
 }
 
+void TestServer::PopulatePollInfo(int fd)
+{
+	//Vamos passar a socket para nonblock para ficar sempre a escuta
+	SetNonblocking(fd);
+
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+
+	_pollfds.push_back(pfd);
+}
+
 void TestServer::launch()
 {
-	SetNonblocking(this->_sock);
+
+	PopulatePollInfo(this->_sock);
+
 	//Hmmmm meio que sem o control + c nao tenho maneira de parar o loop 
 	//signalHandler();
     while (true)
 	{
-		std::cout << "=== WAITING ===" << std::endl;
-		accepter();
-		handler();
-		responder();
+	//std::cout << "=== WAITING ===" << std::endl;
+	int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
+	if(0 > pollCount)
+	{
+		std::cout << "Timeout..." << std::endl;
+	}
+
+	for (size_t i = 0; i < _pollfds.size(); i++)
+	{
+		//Sou a socket principal e estou a receber uma nova ligacao
+		if(_pollfds[i].fd == this->_sock)
+		{
+			//OPA pera la que temos uma socket que esta em modo input
+			if(_pollfds[i].revents & POLLIN)
+			{
+				//Vamos aceita-la e coloca la no vector
+				accepter();
+				PopulatePollInfo(this->_newSocket);
+			}
+		}else
+		{
+			//Sou uma socket existente cliente
+
+			//Se tiver algum cliente em modo input altura de agir
+			if(_pollfds[i].revents & POLLIN)
+			{
+				char tmp[1024];
+				int ret = recv(_pollfds[i].fd,tmp,30000,0);
+				if(0 > ret)
+				{
+					std::cout << "Comeback Later something went wrong" << std::endl;
+				}else if(0 == ret)
+				{
+					std::cout << "Timeout...please try again" << std::endl;
+				}else if(ret > 0){
+					//Vamos guardar no buffer
+					this->_buffer.append(tmp, ret);
+					handler();
+					responder(_pollfds[i].fd);
+					// Limpar buffer e remover cliente
+					this->_buffer.clear();
+					_pollfds.erase(_pollfds.begin() + i);
+					i--;
+				}
+
+			}
+		}
+
+	}		
 		std::cout << "== DONE ===" << std::endl;
 	}
 	
 }
 
+ 
 TestServer::TestServer(TestServer const &source) : ASimpleServer(source)
 {
 	*this = source;

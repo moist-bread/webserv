@@ -21,3 +21,5 @@
 #include "sockets/ListeningSocket.hpp"
 #include "sockets/ASimpleServer.hpp"
 #include "ansi_color_codes.h"
+
+#define PORT 8080
