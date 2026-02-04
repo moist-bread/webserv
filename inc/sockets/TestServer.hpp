@@ -21,7 +21,6 @@
 
 */
 
-
 class TestServer : public ASimpleServer
 {
 private:
@@ -44,5 +43,12 @@ public:
 	TestServer &operator=(TestServer const &source); // copy assignment operator overload
 };
 
+enum ConnectionStatus {
+    IO_ERROR,
+    IO_CLOSED,
+    IO_DATA_READY
+};
+
 std::ostream &operator<<(std::ostream &out, TestServer const &source);
 void signalHandler();
+ConnectionStatus getStatus(int ret);

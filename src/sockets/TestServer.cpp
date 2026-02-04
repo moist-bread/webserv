@@ -67,6 +67,15 @@ void TestServer::PopulatePollInfo(int fd)
 	_pollfds.push_back(pfd);
 }
 
+ConnectionStatus getStatus(int ret)
+{
+    if(0 > ret)
+        return IO_ERROR;
+    if(0 == ret)
+        return IO_CLOSED;
+    return IO_DATA_READY;
+}
+
 void TestServer::launch()
 {
 
@@ -98,19 +107,21 @@ void TestServer::launch()
 		}else
 		{
 			//Sou uma socket existente cliente
-
 			//Se tiver algum cliente em modo input altura de agir
 			if(_pollfds[i].revents & POLLIN)
 			{
 				char tmp[1024];
 				int ret = recv(_pollfds[i].fd,tmp,30000,0);
-				if(0 > ret)
+
+				switch (getStatus(ret))
 				{
+				case IO_ERROR:
 					std::cout << "Comeback Later something went wrong" << std::endl;
-				}else if(0 == ret)
-				{
+				break;
+				case IO_CLOSED:
 					std::cout << "Timeout...please try again" << std::endl;
-				}else if(ret > 0){
+				break;
+				case IO_DATA_READY:
 					//Vamos guardar no buffer
 					this->_buffer.append(tmp, ret);
 					handler();
@@ -119,8 +130,8 @@ void TestServer::launch()
 					this->_buffer.clear();
 					_pollfds.erase(_pollfds.begin() + i);
 					i--;
+				break;
 				}
-
 			}
 		}
 
