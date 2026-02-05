@@ -111,16 +111,22 @@ void TestServer::launch()
 			if(_pollfds[i].revents & POLLIN)
 			{
 				char tmp[1024];
-				int ret = recv(_pollfds[i].fd,tmp,30000,0);
+				int ret = recv(_pollfds[i].fd,tmp,sizeof(tmp),0);
 
 				switch (getStatus(ret))
 				{
 				case IO_ERROR:
 					std::cout << "Comeback Later something went wrong" << std::endl;
-				break;
+					close(_pollfds[i].fd);
+					_pollfds.erase(_pollfds.begin() + i);
+					i--;
+					break;
 				case IO_CLOSED:
 					std::cout << "Timeout...please try again" << std::endl;
-				break;
+					close(_pollfds[i].fd);
+					_pollfds.erase(_pollfds.begin() + i);
+					i--;
+					break;
 				case IO_DATA_READY:
 					//Vamos guardar no buffer
 					this->_buffer.append(tmp, ret);
@@ -130,7 +136,7 @@ void TestServer::launch()
 					this->_buffer.clear();
 					_pollfds.erase(_pollfds.begin() + i);
 					i--;
-				break;
+					break;
 				}
 			}
 		}
