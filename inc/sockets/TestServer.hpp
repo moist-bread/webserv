@@ -1,6 +1,5 @@
 #pragma once
 #include "../Network.hpp"
-
 /*
 
 1)
@@ -26,6 +25,8 @@ class TestServer : public ASimpleServer
 private:
     std::string _buffer;
     int _newSocket;
+    
+    std::map<int,Client>_clients;
 
     std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
     void  SetNonblocking(int fd);

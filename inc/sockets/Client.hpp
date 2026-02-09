@@ -9,14 +9,11 @@ private:
     std::string _WriteBuffer;
     int _Status;
 public:
-    Client(/* args */);
-    ~Client();
+	Client(void); 				// default constructor
+	Client(Client const &source);	// copy constructor
+	~Client(void);				// destructor
+
+	Client &operator=(Client const &source); // copy assignment operator overload
 };
 
-Client::Client(/* args */)
-{
-}
-
-Client::~Client()
-{
-}
+std::ostream &operator<<(std::ostream &out, Client const &source);

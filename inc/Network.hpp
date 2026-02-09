@@ -20,6 +20,7 @@
 #include "sockets/BindingSocket.hpp"
 #include "sockets/ListeningSocket.hpp"
 #include "sockets/ASimpleServer.hpp"
+#include "sockets/Client.hpp"
 #include "ansi_color_codes.h"
-
+#include <map>
 #define PORT 8080
