@@ -6,7 +6,7 @@ class ASimpleServer : public ListeningSocket
 private:
     ListeningSocket *_socket;
     virtual void accepter() = 0;
-    virtual void handler() = 0;
+    virtual void handler(std::string buffer) = 0;
     virtual void responder(int clientFd) = 0;
 public:
 	ASimpleServer(int domain,int type,int protocol,int port,u_long ip,int backlog);

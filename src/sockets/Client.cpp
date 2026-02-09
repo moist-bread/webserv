@@ -1,11 +1,33 @@
 #include "../../inc/sockets/Client.hpp"
 
 
-Client::Client(void)
+Client::Client(void) 
 {
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
+
+Client::Client(int fd) : _ClientFd(fd)
+{
+	std::cout << GRN "the Client ";
+	std::cout << UCYN "has been created" DEF << std::endl;
+}
+
+void Client::feed(const char* data, int size)
+{
+    _requestBuffer.append(data, size);
+}
+
+std::string Client::GetRequestBuffer() const
+{
+	return _requestBuffer;
+}
+
+std::string Client::GetWriteBuffer() const
+{
+	return _respondBuffer;
+}
+
 
 Client::Client(Client const &source)
 {
@@ -24,7 +46,7 @@ Client &Client::operator=(Client const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
-		(void)source;
+		this->_ClientFd = source._ClientFd;
 	return (*this);
 }
 

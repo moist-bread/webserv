@@ -21,19 +21,29 @@ void signalHandler()
 void TestServer::accepter()
 {
     int addrlen = sizeof(this->_address);
-    this->_newSocket = accept(this->_sock,(struct sockaddr*)&this->_address,(socklen_t *)&addrlen);
+
+	//Aceita nova conexao
+    int newFd = accept(this->_sock,(struct sockaddr*)&this->_address,(socklen_t *)&addrlen);
+
+	//
+	PopulatePollInfo(newFd);
+
+	Client newClient(newFd);
+
+	_clients.insert(std::make_pair(newFd,newClient));
+
+	std::cout << "Cliente criado na socket " << newFd<< std::endl;
 }
 
-void TestServer::handler()
+void TestServer::handler(std::string buffer)
 {
-    std::cout << _buffer << std::endl;
+    std::cout << buffer << std::endl;
 }
 
 void TestServer::responder(int clientFd)
 {
     const char *hello = "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nHello from server";
     write(clientFd, hello, strlen(hello));
-    close(clientFd);
 }
 
 void TestServer::SetNonblocking(int fd)
@@ -94,15 +104,15 @@ void TestServer::launch()
 
 	for (size_t i = 0; i < _pollfds.size(); i++)
 	{
+		int fd = _pollfds[i].fd;
 		//Sou a socket principal e estou a receber uma nova ligacao
-		if(_pollfds[i].fd == this->_sock)
+		if(fd == this->_sock)
 		{
 			//OPA pera la que temos uma socket que esta em modo input
 			if(_pollfds[i].revents & POLLIN)
 			{
 				//Vamos aceita-la e coloca la no vector
 				accepter();
-				PopulatePollInfo(this->_newSocket);
 			}
 		}else
 		{
@@ -117,25 +127,35 @@ void TestServer::launch()
 				{
 				case IO_ERROR:
 					std::cout << "Comeback Later something went wrong" << std::endl;
-					close(_pollfds[i].fd);
-					_pollfds.erase(_pollfds.begin() + i);
-					i--;
+					removeClient(fd, i);
 					break;
 				case IO_CLOSED:
 					std::cout << "Timeout...please try again" << std::endl;
-					close(_pollfds[i].fd);
-					_pollfds.erase(_pollfds.begin() + i);
-					i--;
+					removeClient(fd, i);
 					break;
 				case IO_DATA_READY:
-					//Vamos guardar no buffer
-					this->_buffer.append(tmp, ret);
-					handler();
-					responder(_pollfds[i].fd);
-					// Limpar buffer e remover cliente
-					this->_buffer.clear();
-					_pollfds.erase(_pollfds.begin() + i);
-					i--;
+					//Vamos guardar no buffer			
+					_clients[fd].feed(tmp,ret);
+
+
+					std::cout << "O cliente " << fd << " tem " 
+							  << _clients[fd].GetRequestBuffer().size() << " bytes acumulados." << std::endl;
+
+
+
+					//Printar output
+
+					 handler(_clients[fd].GetRequestBuffer());
+					std::cout << _clients[fd].GetRequestBuffer() << std::endl;
+					responder(fd);
+
+
+					//Verificar se o request acabou
+
+					break;
+
+					case IO_DATA_OUT:
+					std::cout << "wawawaw" << std::endl;
 					break;
 				}
 			}
@@ -175,4 +195,12 @@ std::ostream &operator<<(std::ostream &out, TestServer const &source)
 	out << BLU "TestServer";
 	out << DEF << std::endl;
 	return (out);
+}
+
+void TestServer::removeClient(int fd, size_t& index)
+{
+    _clients.erase(fd);
+    close(fd);
+    _pollfds.erase(_pollfds.begin() + index);
+    index--;
 }

@@ -23,20 +23,20 @@
 class TestServer : public ASimpleServer
 {
 private:
-    std::string _buffer;
-    int _newSocket;
-    
+
     std::map<int,Client>_clients;
 
     std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
     void  SetNonblocking(int fd);
     void accepter();
-    void handler();
+    void handler(std::string buffer);
     void responder(int clientFd);
 public:
 	TestServer(void); 				// default constructor
 	TestServer(TestServer const &source);	// copy constructor
 	~TestServer(void);				// destructor
+
+    void removeClient(int fd, size_t& index);
 
     void launch();
     
@@ -47,7 +47,8 @@ public:
 enum ConnectionStatus {
     IO_ERROR,
     IO_CLOSED,
-    IO_DATA_READY
+    IO_DATA_READY,
+    IO_DATA_OUT
 };
 
 std::ostream &operator<<(std::ostream &out, TestServer const &source);
