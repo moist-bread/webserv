@@ -28,6 +28,17 @@ std::string Client::GetWriteBuffer() const
 	return _respondBuffer;
 }
 
+bool Client::IsRequestDone()
+{
+	//Parse dos headers normais
+	if(_requestBuffer.find("\r\n\r\n") != std::string::npos)
+	{
+		//Eventualmente vou ter de voltar aqui para ver de outros headers de outros eventos
+		std::cout << "End of request from client ..." << std::endl;
+		return true;
+	}
+	return false;
+}
 
 Client::Client(Client const &source)
 {
@@ -57,3 +68,4 @@ std::ostream &operator<<(std::ostream &out, Client const &source)
 	out << DEF << std::endl;
 	return (out);
 }
+

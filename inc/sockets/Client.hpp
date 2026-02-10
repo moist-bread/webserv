@@ -19,7 +19,7 @@ public:
     //Getters
     std::string GetRequestBuffer() const;
     std::string GetWriteBuffer() const;
-
+    bool IsRequestDone();
 	Client &operator=(Client const &source); // copy assignment operator overload
 };
 

@@ -95,6 +95,7 @@ void TestServer::launch()
 	//signalHandler();
     while (true)
 	{
+
 	//std::cout << "=== WAITING ===" << std::endl;
 	int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
 	if(0 > pollCount)
@@ -116,6 +117,11 @@ void TestServer::launch()
 			}
 		}else
 		{
+
+			/*
+				Cliente esta a enviar um request
+			*/
+
 			//Sou uma socket existente cliente
 			//Se tiver algum cliente em modo input altura de agir
 			if(_pollfds[i].revents & POLLIN)
@@ -144,7 +150,6 @@ void TestServer::launch()
 
 
 					//Printar output
-
 					 handler(_clients[fd].GetRequestBuffer());
 					std::cout << _clients[fd].GetRequestBuffer() << std::endl;
 					responder(fd);
@@ -152,9 +157,17 @@ void TestServer::launch()
 
 					//Verificar se o request acabou
 
+					if(_clients[fd].IsRequestDone())
+					{
+						std::cout << "Yupii" << std::endl;
+					}
+
 					break;
 
 					case IO_DATA_OUT:
+					/*
+						Sou o servidor e vou enviar uma resposta
+					*/
 					std::cout << "wawawaw" << std::endl;
 					break;
 				}
