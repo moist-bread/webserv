@@ -28,6 +28,12 @@ std::string Client::GetWriteBuffer() const
 	return _respondBuffer;
 }
 
+void Client::ClearRequestBuffer()
+{
+	this->_requestBuffer.clear();
+}
+
+
 bool Client::IsRequestDone()
 {
 	//Parse dos headers normais

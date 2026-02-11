@@ -96,89 +96,63 @@ void TestServer::launch()
     while (true)
 	{
 
-	//std::cout << "=== WAITING ===" << std::endl;
-	int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
-	if(0 > pollCount)
-	{
-		std::cout << "Timeout..." << std::endl;
-	}
-
-	for (size_t i = 0; i < _pollfds.size(); i++)
-	{
-		int fd = _pollfds[i].fd;
-		//Sou a socket principal e estou a receber uma nova ligacao
-		if(fd == this->_sock)
+		//std::cout << "=== WAITING ===" << std::endl;
+		int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
+		if(0 > pollCount)
 		{
-			//OPA pera la que temos uma socket que esta em modo input
-			if(_pollfds[i].revents & POLLIN)
-			{
-				//Vamos aceita-la e coloca la no vector
-				accepter();
-			}
-		}else
-		{
-
-			/*
-				Cliente esta a enviar um request
-			*/
-
-			//Sou uma socket existente cliente
-			//Se tiver algum cliente em modo input altura de agir
-			if(_pollfds[i].revents & POLLIN)
-			{
-				char tmp[1024];
-				int ret = recv(_pollfds[i].fd,tmp,sizeof(tmp),0);
-
-				switch (getStatus(ret))
-				{
-				case IO_ERROR:
-					std::cout << "Comeback Later something went wrong" << std::endl;
-					removeClient(fd, i);
-					break;
-				case IO_CLOSED:
-					std::cout << "Timeout...please try again" << std::endl;
-					removeClient(fd, i);
-					break;
-				case IO_DATA_READY:
-					//Vamos guardar no buffer			
-					_clients[fd].feed(tmp,ret);
-
-
-					std::cout << "O cliente " << fd << " tem " 
-							  << _clients[fd].GetRequestBuffer().size() << " bytes acumulados." << std::endl;
-
-
-
-					//Printar output
-					 handler(_clients[fd].GetRequestBuffer());
-					std::cout << _clients[fd].GetRequestBuffer() << std::endl;
-					responder(fd);
-
-
-					//Verificar se o request acabou
-
-					if(_clients[fd].IsRequestDone())
-					{
-						std::cout << "Yupii" << std::endl;
-					}
-
-					break;
-
-					case IO_DATA_OUT:
-					/*
-						Sou o servidor e vou enviar uma resposta
-					*/
-					std::cout << "wawawaw" << std::endl;
-					break;
-				}
-			}
+			std::cout << "Timeout..." << std::endl;
 		}
 
+		for (size_t i = 0; i < _pollfds.size(); i++)
+		{
+    	int fd = _pollfds[i].fd;
+
+		// --- CASO 1: NOVA CONEXÃO ---
+		if(fd == this->_sock && (_pollfds[i].revents & POLLIN))
+		{
+			accepter();
+			continue; // Vai para o próximo fd
+		}
+
+    	// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
+		if(_pollfds[i].revents & POLLIN)
+		{
+			char tmp[1024];
+			int ret = recv(fd, tmp, sizeof(tmp), 0);
+			
+			ConnectionStatus status = getStatus(ret);
+			if (status == IO_ERROR || status == IO_CLOSED) {
+				removeClient(fd, i);
+				continue;
+			}
+
+			_clients[fd].feed(tmp, ret);
+
+			if(_clients[fd].IsRequestDone())
+			{
+				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+				_pollfds[i].events = POLLOUT;
+			}
+    	}
+
+		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
+		if(_pollfds[i].revents & POLLOUT)
+		{
+			
+			responder(fd);
+			
+			// Volta para modo input
+			_pollfds[i].events = POLLIN;
+
+
+			_clients[fd].ClearRequestBuffer(); // Limpa o buffer para o próximo request
+		}
+	}
 	}		
 		std::cout << "== DONE ===" << std::endl;
 	}
 	
-}
+
 
  
 TestServer::TestServer(TestServer const &source) : ASimpleServer(source)
