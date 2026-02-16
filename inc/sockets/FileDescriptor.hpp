@@ -12,7 +12,6 @@ class FileDescriptor
 {
 private:
     int _fd;
-	// Desabilitar cópia (C++98: declarar private sem implementação)
 	FileDescriptor(FileDescriptor const &source);
 	FileDescriptor &operator=(FileDescriptor const &source);
 public:

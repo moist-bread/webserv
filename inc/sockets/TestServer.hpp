@@ -40,6 +40,9 @@ public:
 
     void launch();
     
+    //Opens a file 
+    void OpenFile();
+
     void PopulatePollInfo(int fd);
 	TestServer &operator=(TestServer const &source); // copy assignment operator overload
 };

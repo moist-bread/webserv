@@ -14,13 +14,20 @@ public:
 	Client(Client const &source);	// copy constructor
 	~Client(void);				// destructor
 
+    //Appending 
     void feed(const char* data, int size);
 
     //Getters
     std::string GetRequestBuffer() const;
     std::string GetWriteBuffer() const;
+
+    //Clean up
     void ClearRequestBuffer();
-    bool IsRequestDone();
+    void ClearRespondBuffer();
+
+    //bool
+    bool requestFullyReceived();
+
 	Client &operator=(Client const &source); // copy assignment operator overload
 };
 

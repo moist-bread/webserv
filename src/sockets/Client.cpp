@@ -33,8 +33,12 @@ void Client::ClearRequestBuffer()
 	this->_requestBuffer.clear();
 }
 
+void Client::ClearRespondBuffer()
+{
+	this->_respondBuffer.clear();
+}
 
-bool Client::IsRequestDone()
+bool Client::requestFullyReceived()
 {
 	//Parse dos headers normais
 	if(_requestBuffer.find("\r\n\r\n") != std::string::npos)

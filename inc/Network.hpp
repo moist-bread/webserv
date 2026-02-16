@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <cstring>
 #include <vector>
+#include <fstream>
 #include <cstring>
 #include "fcntl.h"
 #include "poll.h"

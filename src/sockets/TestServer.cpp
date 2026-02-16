@@ -86,6 +86,24 @@ ConnectionStatus getStatus(int ret)
     return IO_DATA_READY;
 }
 
+void TestServer::OpenFile()
+{
+
+	//Abre ficheiro
+	std::fstream file("index.html",std::ios::in);
+	if(!file)
+	{
+		perror("File does not exist");
+	}
+	std::string str;
+
+
+	file >> str;
+
+    std::cout << "Read String: " << str;
+
+}
+
 void TestServer::launch()
 {
 
@@ -126,10 +144,17 @@ void TestServer::launch()
 				continue;
 			}
 
+			//Passa a informaçao para o buffer do cliente
 			_clients[fd].feed(tmp, ret);
+			std::cout << _clients[fd].GetRequestBuffer() << std::endl;
 
-			if(_clients[fd].IsRequestDone())
+			if(_clients[fd].requestFullyReceived())
 			{
+
+				//Vou ler o ficheiro 
+
+				OpenFile();
+
 				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 				_pollfds[i].events = POLLOUT;
 			}
