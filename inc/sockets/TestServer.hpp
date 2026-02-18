@@ -41,7 +41,7 @@ public:
     void launch();
     
     //Opens a file 
-    void OpenFile();
+    std::string OpenFile(const std::string& path);
 
     void PopulatePollInfo(int fd);
 	TestServer &operator=(TestServer const &source); // copy assignment operator overload

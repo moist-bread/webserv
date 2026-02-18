@@ -86,22 +86,26 @@ ConnectionStatus getStatus(int ret)
     return IO_DATA_READY;
 }
 
-void TestServer::OpenFile()
+std::string TestServer::OpenFile(const std::string& path)
 {
 
 	//Abre ficheiro
-	std::fstream file("index.html",std::ios::in);
-	if(!file)
+	std::ifstream file(path.c_str());
+	if(!file.is_open())
 	{
 		perror("File does not exist");
 	}
-	std::string str;
 
+	std::string ContentOfFile;
 
-	file >> str;
+	std::cout << "Correr ate agora" << std::endl;
+	std::stringstream buffer;
+	
+	//Copia o conteudo todo do ficheiro para dentro de um buffer
+	buffer << file.rdbuf();
 
-    std::cout << "Read String: " << str;
-
+	//Vamos returnar o conteudo do buffer aka ficheiro yipeeee
+	return buffer.str();
 }
 
 void TestServer::launch()
@@ -152,8 +156,15 @@ void TestServer::launch()
 			{
 
 				//Vou ler o ficheiro 
+				std::string content;
+				content = OpenFile("src/sockets/index.html");
 
-				OpenFile();
+				if(content.empty())
+				{
+					std::cout << "File is empty maybe use another file" << std::endl;
+				}
+				
+				std::cout << content << std::endl;
 
 				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 				_pollfds[i].events = POLLOUT;

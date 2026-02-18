@@ -12,6 +12,7 @@
 #include <cstring>
 #include <vector>
 #include <fstream>
+#include <sstream>
 #include <cstring>
 #include "fcntl.h"
 #include "poll.h"
