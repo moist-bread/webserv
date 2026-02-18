@@ -21,6 +21,8 @@ public:
     std::string GetRequestBuffer() const;
     std::string GetWriteBuffer() const;
 
+    ///Setter
+    void SetRespondBuffer(const std::string& str);
     //Clean up
     void ClearRequestBuffer();
     void ClearRespondBuffer();

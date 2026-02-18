@@ -40,10 +40,9 @@ void TestServer::handler(std::string buffer)
     std::cout << buffer << std::endl;
 }
 
-void TestServer::responder(int clientFd)
+void TestServer::responder(int clientFd,const std::string& data)
 {
-    const char *hello = "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nHello from server";
-    write(clientFd, hello, strlen(hello));
+    write(clientFd, data.c_str(), data.size());
 }
 
 void TestServer::SetNonblocking(int fd)
@@ -137,7 +136,7 @@ void TestServer::launch()
 		}
 
     	// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
-		if(_pollfds[i].revents & POLLIN)
+		else if(_pollfds[i].revents & POLLIN)
 		{
 			char tmp[1024];
 			int ret = recv(fd, tmp, sizeof(tmp), 0);
@@ -159,6 +158,8 @@ void TestServer::launch()
 				std::string content;
 				content = OpenFile("src/sockets/index.html");
 
+
+				//Erro 404
 				if(content.empty())
 				{
 					std::cout << "File is empty maybe use another file" << std::endl;
@@ -166,22 +167,37 @@ void TestServer::launch()
 				
 				std::cout << content << std::endl;
 
+				//Vou criar uma resposta para enviar :)
+
+				std::string body = content;
+
+				std::stringstream ss;
+				ss << "HTTP/1.1 200 OK\r\n";
+				ss << "Content-Length: " << body.size() << "\r\n";
+				ss << "\r\n";
+				ss << body;
+
+				std::string response = ss.str();
+
+				_clients[fd].SetRespondBuffer(response);
+
 				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 				_pollfds[i].events = POLLOUT;
 			}
     	}
 
 		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-		if(_pollfds[i].revents & POLLOUT)
+		else if(_pollfds[i].revents & POLLOUT)
 		{
 			
-			responder(fd);
+			responder(fd,_clients[fd].GetWriteBuffer());
 			
 			// Volta para modo input
 			_pollfds[i].events = POLLIN;
 
 
 			_clients[fd].ClearRequestBuffer(); // Limpa o buffer para o próximo request
+			_clients[fd].ClearRespondBuffer();
 		}
 	}
 	}		

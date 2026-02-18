@@ -38,6 +38,11 @@ void Client::ClearRespondBuffer()
 	this->_respondBuffer.clear();
 }
 
+void Client::SetRespondBuffer(const std::string& str)
+{
+	this->_respondBuffer = str;
+}
+
 bool Client::requestFullyReceived()
 {
 	//Parse dos headers normais

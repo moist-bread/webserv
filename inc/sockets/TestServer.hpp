@@ -30,7 +30,7 @@ private:
     void  SetNonblocking(int fd);
     void accepter();
     void handler(std::string buffer);
-    void responder(int clientFd);
+    void responder(int clientFd,const std::string& data);
 public:
 	TestServer(void); 				// default constructor
 	TestServer(TestServer const &source);	// copy constructor
