@@ -1,24 +1,13 @@
-#include "../../inc/sockets/TestServer.hpp"
+#include "../../inc/sockets/Server.hpp"
 
-TestServer::TestServer(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,PORT,INADDR_ANY,10)
+Server::Server(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,PORT,INADDR_ANY,10)
 {
-	std::cout << GRN "the TestServer ";
+	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 	launch();
 }
 
-//Vamos ignorar o control + c yupiii
-void signalHandler()
-{
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGINT, &sa, NULL);
-	
-}
-
-void TestServer::accepter()
+void Server::accepter()
 {
     int addrlen = sizeof(this->_address);
 
@@ -35,17 +24,17 @@ void TestServer::accepter()
 	std::cout << "Cliente criado na socket " << newFd<< std::endl;
 }
 
-void TestServer::handler(std::string buffer)
+void Server::handler(std::string buffer)
 {
     std::cout << buffer << std::endl;
 }
 
-void TestServer::responder(int clientFd,const std::string& data)
+void Server::responder(int clientFd,const std::string& data)
 {
     write(clientFd, data.c_str(), data.size());
 }
 
-void TestServer::SetNonblocking(int fd)
+void Server::SetNonblocking(int fd)
 {
 
 	//Vamos verificar se tem alguma flag de erro no fd da socket
@@ -63,7 +52,7 @@ void TestServer::SetNonblocking(int fd)
 	}
 }
 
-void TestServer::PopulatePollInfo(int fd)
+void Server::PopulatePollInfo(int fd)
 {
 	//Vamos passar a socket para nonblock para ficar sempre a escuta
 	SetNonblocking(fd);
@@ -85,7 +74,7 @@ ConnectionStatus getStatus(int ret)
     return IO_DATA_READY;
 }
 
-std::string TestServer::OpenFile(const std::string& path)
+std::string Server::OpenFile(const std::string& path)
 {
 
 	//Abre ficheiro
@@ -107,13 +96,11 @@ std::string TestServer::OpenFile(const std::string& path)
 	return buffer.str();
 }
 
-void TestServer::launch()
+void Server::launch()
 {
 
 	PopulatePollInfo(this->_sock);
 
-	//Hmmmm meio que sem o control + c nao tenho maneira de parar o loop 
-	//signalHandler();
     while (true)
 	{
 
@@ -158,7 +145,6 @@ void TestServer::launch()
 				std::string content;
 				content = OpenFile("src/sockets/index.html");
 
-
 				//Erro 404
 				if(content.empty())
 				{
@@ -196,31 +182,30 @@ void TestServer::launch()
 			_pollfds[i].events = POLLIN;
 
 
-			_clients[fd].ClearRequestBuffer(); // Limpa o buffer para o próximo request
+			//Cleaning
+			_clients[fd].ClearRequestBuffer(); 
 			_clients[fd].ClearRespondBuffer();
 		}
 	}
 	}		
 		std::cout << "== DONE ===" << std::endl;
-	}
+}
 	
 
-
- 
-TestServer::TestServer(TestServer const &source) : ASimpleServer(source)
+Server::Server(Server const &source) : ASimpleServer(source)
 {
 	*this = source;
-	std::cout << GRN "the TestServer ";
+	std::cout << GRN "the Server ";
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
 
-TestServer::~TestServer(void)
+Server::~Server(void)
 {
-	std::cout << GRN "the TestServer ";
+	std::cout << GRN "the Server ";
 	std::cout << URED "has been deleted" DEF << std::endl;
 }
 
-TestServer &TestServer::operator=(TestServer const &source)
+Server &Server::operator=(Server const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
@@ -228,15 +213,15 @@ TestServer &TestServer::operator=(TestServer const &source)
 	return (*this);
 }
 
-std::ostream &operator<<(std::ostream &out, TestServer const &source)
+std::ostream &operator<<(std::ostream &out, Server const &source)
 {
 	(void)source;
-	out << BLU "TestServer";
+	out << BLU "Server";
 	out << DEF << std::endl;
 	return (out);
 }
 
-void TestServer::removeClient(int fd, size_t& index)
+void Server::removeClient(int fd, size_t& index)
 {
     _clients.erase(fd);
     close(fd);

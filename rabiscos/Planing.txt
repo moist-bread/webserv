@@ -1,9 +1,0 @@
-                        Objetivos
-
-30/01/2026
-OBRIGATORIO
-    []Fazer o server ficar nonBlocking
-    []Aceitar mais conexoes(atualmente so aceita uma)
-
-Bonus
-[]Ignorar sinais

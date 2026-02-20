@@ -18,7 +18,7 @@ MAIN_SOCK			=	main_sock.cpp
 MAIN_PARSE			=	main_parse.cpp
 
 SOCK_FILES_C	=	SocketController.cpp ListeningSocket.cpp ConnectingSocket.cpp \
-					BindingSocket.cpp ASimpleServer.cpp TestServer.cpp FileDescriptor.cpp Client.cpp
+					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
 
 PARSE_FILES_C	=
 

@@ -17,24 +17,26 @@
     [X] Chamar funcao de anti bloqueio dentro do launch
     [X] Pupular a estrutura do poll
 
-
 */
 
-class TestServer : public ASimpleServer
+class Server : public ASimpleServer
 {
 private:
 
-    std::map<int,Client>_clients;
 
+    std::map<int,Client>_clients;
     std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
+
+    std::vector<int> _serverSockets;//Fds de todas as portas abertas
+
     void  SetNonblocking(int fd);
     void accepter();
     void handler(std::string buffer);
     void responder(int clientFd,const std::string& data);
 public:
-	TestServer(void); 				// default constructor
-	TestServer(TestServer const &source);	// copy constructor
-	~TestServer(void);				// destructor
+	Server(void); 				// default constructor
+	Server(Server const &source);	// copy constructor
+	~Server(void);				// destructor
 
     void removeClient(int fd, size_t& index);
 
@@ -44,7 +46,7 @@ public:
     std::string OpenFile(const std::string& path);
 
     void PopulatePollInfo(int fd);
-	TestServer &operator=(TestServer const &source); // copy assignment operator overload
+	Server &operator=(Server const &source); // copy assignment operator overload
 };
 
 enum ConnectionStatus {
@@ -54,6 +56,5 @@ enum ConnectionStatus {
     IO_DATA_OUT
 };
 
-std::ostream &operator<<(std::ostream &out, TestServer const &source);
-void signalHandler();
+std::ostream &operator<<(std::ostream &out, Server const &source);
 ConnectionStatus getStatus(int ret);
