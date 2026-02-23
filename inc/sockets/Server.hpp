@@ -27,23 +27,33 @@ private:
     std::map<int,Client>_clients;
     std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
 
-    std::vector<int> _serverSockets;//Fds de todas as portas abertas
+    std::vector<int> _serverPorts;//Fds de todas as portas abertas
+    std::vector<ListeningSocket*> _extraListeners;
+    std::vector<int> _listeningFds;
 
     void  SetNonblocking(int fd);
-    void accepter();
+    void accepter(int listenFd);
     void handler(std::string buffer);
-    void responder(int clientFd,const std::string& data);
+    int responder(int clientFd,const std::string& data);
 public:
+
 	Server(void); 				// default constructor
 	Server(Server const &source);	// copy constructor
 	~Server(void);				// destructor
+
 
     void removeClient(int fd, size_t& index);
 
     void launch();
     
+    //Setup Servers Ports
+    void SetupPorts();
+
     //Opens a file 
     std::string OpenFile(const std::string& path);
+
+    //
+    bool isServerSocket(int fd);
 
     void PopulatePollInfo(int fd);
 	Server &operator=(Server const &source); // copy assignment operator overload

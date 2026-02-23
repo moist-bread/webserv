@@ -1,18 +1,68 @@
 #include "../../inc/sockets/Server.hpp"
 
-Server::Server(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,PORT,INADDR_ANY,10)
+static int getPrimaryPort()
+{
+	static const int ports[] = {8080,9090,9094};
+	return ports[0];
+}
+
+Server::Server(void) : ASimpleServer(AF_INET,SOCK_STREAM,0,getPrimaryPort(),INADDR_ANY,10)
 {
 	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
+
+	SetupPorts();
 	launch();
 }
 
-void Server::accepter()
+void Server::SetupPorts()
 {
-    int addrlen = sizeof(this->_address);
+	//Portas hardcoded para testar
+	static const int ports[] = {8080,9090,9094};
+	const int arraySize = sizeof(ports) / sizeof(ports[0]);
+
+	_serverPorts.clear();
+	_extraListeners.clear();
+	_listeningFds.clear();
+
+	std::cout << "Showing off my ports" << std::endl;
+	for (int i = 0; i < arraySize; i++)
+	{
+		_serverPorts.push_back(ports[i]);
+		std::cout << "Index: " <<  i << " Port Number: " << ports[i] << std::endl;
+	}
+
+	for (int i = 0; i < arraySize; i++)
+	{
+		//Sou a primeira socket aka first Listener
+		if (i == 0)
+		{
+			_listeningFds.push_back(this->_sock);
+			PopulatePollInfo(this->_sock);
+			continue;
+		}
+
+		ListeningSocket *listener = new ListeningSocket(AF_INET, SOCK_STREAM, 0, ports[i], INADDR_ANY, 10);
+		_extraListeners.push_back(listener);
+		int fd = listener->getSocketfd();
+		_listeningFds.push_back(fd);
+		PopulatePollInfo(fd);
+	}
+	
+}
+
+void Server::accepter(int listenFd)
+{
+	struct sockaddr_in clientAddr;
+	int addrlen = sizeof(clientAddr);
 
 	//Aceita nova conexao
-    int newFd = accept(this->_sock,(struct sockaddr*)&this->_address,(socklen_t *)&addrlen);
+	int newFd = accept(listenFd,(struct sockaddr*)&clientAddr,(socklen_t *)&addrlen);
+	if (newFd < 0)
+	{
+		perror("accept");
+		return;
+	}
 
 	//
 	PopulatePollInfo(newFd);
@@ -20,7 +70,6 @@ void Server::accepter()
 	Client newClient(newFd);
 
 	_clients.insert(std::make_pair(newFd,newClient));
-
 	std::cout << "Cliente criado na socket " << newFd<< std::endl;
 }
 
@@ -29,9 +78,9 @@ void Server::handler(std::string buffer)
     std::cout << buffer << std::endl;
 }
 
-void Server::responder(int clientFd,const std::string& data)
+int Server::responder(int clientFd,const std::string& data)
 {
-    write(clientFd, data.c_str(), data.size());
+    return write(clientFd, data.c_str(), data.size());
 }
 
 void Server::SetNonblocking(int fd)
@@ -96,15 +145,22 @@ std::string Server::OpenFile(const std::string& path)
 	return buffer.str();
 }
 
+bool Server::isServerSocket(int fd)
+{
+	for (size_t j = 0; j < _listeningFds.size(); j++)
+	{
+		if (_listeningFds[j] == fd)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void Server::launch()
 {
-
-	PopulatePollInfo(this->_sock);
-
     while (true)
 	{
-
-		//std::cout << "=== WAITING ===" << std::endl;
 		int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
 		if(0 > pollCount)
 		{
@@ -113,33 +169,35 @@ void Server::launch()
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
-    	int fd = _pollfds[i].fd;
+    		int fd = _pollfds[i].fd;
 
-		// --- CASO 1: NOVA CONEXÃO ---
-		if(fd == this->_sock && (_pollfds[i].revents & POLLIN))
-		{
-			accepter();
-			continue; // Vai para o próximo fd
-		}
-
-    	// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
-		else if(_pollfds[i].revents & POLLIN)
-		{
-			char tmp[1024];
-			int ret = recv(fd, tmp, sizeof(tmp), 0);
+			// --- CASO 1: NOVA CONEXÃO ---
 			
-			ConnectionStatus status = getStatus(ret);
-			if (status == IO_ERROR || status == IO_CLOSED) {
-				removeClient(fd, i);
-				continue;
+
+			if(isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
+			{
+				accepter(fd);
+				continue; // Vai para o próximo fd
 			}
 
-			//Passa a informaçao para o buffer do cliente
-			_clients[fd].feed(tmp, ret);
-			std::cout << _clients[fd].GetRequestBuffer() << std::endl;
-
-			if(_clients[fd].requestFullyReceived())
+			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
+			else if(_pollfds[i].revents & POLLIN)
 			{
+				char tmp[1024];
+				int ret = recv(fd, tmp, sizeof(tmp), 0);
+				
+				ConnectionStatus status = getStatus(ret);
+				if (status == IO_ERROR || status == IO_CLOSED) {
+					removeClient(fd, i);
+					continue;
+				}
+
+				//Passa a informaçao para o buffer do cliente
+				_clients[fd].feed(tmp, ret);
+				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
+
+				if(_clients[fd].requestFullyReceived())
+				{
 
 				//Vou ler o ficheiro 
 				std::string content;
@@ -175,16 +233,32 @@ void Server::launch()
 		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
 		else if(_pollfds[i].revents & POLLOUT)
 		{
-			
-			responder(fd,_clients[fd].GetWriteBuffer());
-			
-			// Volta para modo input
-			_pollfds[i].events = POLLIN;
 
+			int bytesWritten;
+			
+			bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+			
+			//Vou apagar o que ja li do buffer pois ja nao e preciso
+			//Para isso vou pegar a posicao inicial e ate a parte que li
+			
+			//Tenho de limpar os dados que o buffer ja leu
+			
+			if(bytesWritten > 0)
+			{
+				_clients[fd].EraseParte(0,bytesWritten);
 
-			//Cleaning
-			_clients[fd].ClearRequestBuffer(); 
-			_clients[fd].ClearRespondBuffer();
+				//Buffer vazio, vamos voltar a escutar para input
+				if(_clients[fd].GetWriteBuffer().empty())
+				{
+					_pollfds[i].events = POLLIN;
+					//Cleaning
+					_clients[fd].ClearRequestBuffer(); 
+				}
+			}
+			else if(0 > bytesWritten)
+			{
+				removeClient(fd,i);
+			}
 		}
 	}
 	}		
@@ -203,6 +277,10 @@ Server::~Server(void)
 {
 	std::cout << GRN "the Server ";
 	std::cout << URED "has been deleted" DEF << std::endl;
+	for (size_t i = 0; i < _extraListeners.size(); i++)
+	{
+		delete _extraListeners[i];
+	}
 }
 
 Server &Server::operator=(Server const &source)

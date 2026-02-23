@@ -43,6 +43,15 @@ void Client::SetRespondBuffer(const std::string& str)
 	this->_respondBuffer = str;
 }
 
+void Client::EraseParte(int start,int idx)
+{
+	if(start >= 0 && start + idx <= (int)_respondBuffer.size())
+	{
+		this->_respondBuffer.erase(start,idx);
+	}
+	
+}
+
 bool Client::requestFullyReceived()
 {
 	//Parse dos headers normais

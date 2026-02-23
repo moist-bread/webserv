@@ -26,4 +26,3 @@
 #include "sockets/Client.hpp"
 #include "ansi_color_codes.h"
 #include <map>
-#define PORT 8080

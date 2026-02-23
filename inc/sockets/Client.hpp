@@ -27,6 +27,9 @@ public:
     void ClearRequestBuffer();
     void ClearRespondBuffer();
 
+    //Erase
+    void EraseParte(int start,int idx);
+
     //bool
     bool requestFullyReceived();
 
