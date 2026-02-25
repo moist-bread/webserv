@@ -9,6 +9,9 @@ Client::Client(void)
 
 Client::Client(int fd) : _ClientFd(fd)
 {
+	this->_readAllHeaders = false;
+	this->_headerBytes = 0;
+	this->_contentLength = 0;
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
@@ -31,6 +34,9 @@ std::string Client::GetWriteBuffer() const
 void Client::ClearRequestBuffer()
 {
 	this->_requestBuffer.clear();
+	this->_readAllHeaders = false;
+    this->_headerBytes = 0;
+    this->_contentLength = 0;
 }
 
 void Client::ClearRespondBuffer()
@@ -52,15 +58,61 @@ void Client::EraseParte(int start,int idx)
 	
 }
 
+void Client::extractContentLength()
+{
+    // Procura por "Content-Length: "
+    size_t pos = _requestBuffer.find("Content-Length: ");
+    
+    if (pos != std::string::npos)
+    {
+        // Avança o ponteiro para o início do número
+        pos += 16; 
+        
+        // Converte o texto para número (usando atoi do C, que é C++98 safe)
+        _contentLength = std::atoi(_requestBuffer.c_str() + pos);
+        std::cout << "O servidor espera um Body de " << _contentLength << " bytes." << std::endl;
+    }
+    else
+    {
+        _contentLength = 0; // Se não tem Content-Length, assumimos que não tem body
+    }
+}
+
 bool Client::requestFullyReceived()
 {
 	//Parse dos headers normais
-	if(_requestBuffer.find("\r\n\r\n") != std::string::npos)
+	if(!_readAllHeaders)
 	{
-		//Eventualmente vou ter de voltar aqui para ver de outros headers de outros eventos
-		std::cout << "End of request from client ..." << std::endl;
-		return true;
+		size_t pos = _requestBuffer.find("\r\n\r\n");
+		if(pos != std::string::npos)
+		{
+			//Acabei os headers
+
+			_headerBytes = pos + 4;
+
+			_readAllHeaders = true;
+
+			//
+			extractContentLength();
+		}
 	}
+	
+	if(_readAllHeaders)
+	{
+		//Nao tenho body sou um humilde GET
+		if(_contentLength == 0)
+		{
+			return true;
+		}
+
+		size_t currentbodySize = _requestBuffer.size() - _headerBytes;
+		if(currentbodySize >= _contentLength)
+		{
+			std::cout << "Post recebido com sucesso, tamanho do body: " << currentbodySize << std::endl;
+			return true;
+		} 
+	}
+
 	return false;
 }
 

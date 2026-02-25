@@ -186,7 +186,7 @@ void Server::launch()
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
 			else if(_pollfds[i].revents == POLLIN)
 			{
-				char tmp[1024];
+				char tmp[65536]; //64kb por segundo
 				int ret = recv(fd, tmp, sizeof(tmp), 0);
 				
 				ConnectionStatus status = getStatus(ret);
@@ -197,8 +197,9 @@ void Server::launch()
 
 				//Passa a informaçao para o buffer do cliente
 				_clients[fd].feed(tmp, ret);
-				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
-
+				//std::cout << _clients[fd].GetRequestBuffer() << std::endl;
+				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\r" << std::flush;
+				
 				if(_clients[fd].requestFullyReceived())
 				{
 

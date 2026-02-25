@@ -7,7 +7,11 @@ private:
     int _ClientFd;
     std::string _requestBuffer; //Informaçao que estou a receber
     std::string _respondBuffer; //Informaçao que vou enviar 
-    int _Status; //Status das ligaçoes
+
+    //Post
+    bool _readAllHeaders; //Verifica se ja passei dos headers
+    size_t  _headerBytes; //tamanho dos headers
+    size_t  _contentLength; //tamanho do body
 public:
     Client(void); 				// default constructor
 	Client(int fd); 				// default constructor
@@ -16,6 +20,9 @@ public:
 
     //Appending 
     void feed(const char* data, int size);
+
+
+    void extractContentLength();
 
     //Getters
     std::string GetRequestBuffer() const;
