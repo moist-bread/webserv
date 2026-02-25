@@ -86,6 +86,11 @@ int Server::responder(int clientFd,const std::string& data)
 void Server::SetNonblocking(int fd)
 {
 
+	/*
+	
+		FLAG PROIBIDA F_GETFL REMOVER FUTURAMENTE
+	
+	*/
 	//Vamos verificar se tem alguma flag de erro no fd da socket
 	int flags = fcntl(fd,F_GETFL,0);
 	if(flags == -1)
@@ -97,7 +102,7 @@ void Server::SetNonblocking(int fd)
 	// | O_NONBLOCK adiciona nova flag sem remover outras
 	if(fcntl(fd,F_SETFL,flags | O_NONBLOCK) == -1)
 	{
-		perror("Something went wrong wgile passing to NONBLOCKING");
+		perror("Something went wrong while passing to NONBLOCKING");
 	}
 }
 
@@ -172,16 +177,14 @@ void Server::launch()
     		int fd = _pollfds[i].fd;
 
 			// --- CASO 1: NOVA CONEXÃO ---
-			
-
-			if(isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
+			if(isServerSocket(fd) && (_pollfds[i].revents == POLLIN))
 			{
 				accepter(fd);
 				continue; // Vai para o próximo fd
 			}
 
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
-			else if(_pollfds[i].revents & POLLIN)
+			else if(_pollfds[i].revents == POLLIN)
 			{
 				char tmp[1024];
 				int ret = recv(fd, tmp, sizeof(tmp), 0);
@@ -231,7 +234,7 @@ void Server::launch()
     	}
 
 		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-		else if(_pollfds[i].revents & POLLOUT)
+		else if(_pollfds[i].revents == POLLOUT)
 		{
 
 			int bytesWritten;
@@ -240,7 +243,6 @@ void Server::launch()
 			
 			//Vou apagar o que ja li do buffer pois ja nao e preciso
 			//Para isso vou pegar a posicao inicial e ate a parte que li
-			
 			//Tenho de limpar os dados que o buffer ja leu
 			
 			if(bytesWritten > 0)
