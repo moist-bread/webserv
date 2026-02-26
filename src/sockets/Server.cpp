@@ -274,7 +274,6 @@ void Server::launch()
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
     		// Chegámos ao fim do processamento deste FD nesta volta.
     		// Vamos verificar se ele está "morto" há demasiado tempo.
-    		// IMPORTANTE: Só verificar timeout para clientes, não para server sockets!
 			if (!isServerSocket(fd))
 			{
 				time_t now = std::time(NULL);
