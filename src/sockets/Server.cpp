@@ -271,22 +271,26 @@ void Server::launch()
 		}
 
 
-		// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
-    // Chegámos ao fim do processamento deste FD nesta volta.
-    // Vamos verificar se ele está "morto" há demasiado tempo.
-		time_t now = std::time(NULL);
-    	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
-    
-    	// Vamos definir 60 segundos como o limite máximo de inatividade
-		if (seconds_idle > 60)
-		{
-			std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-			removeClient(fd, i);
-			continue;
+			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    		// Chegámos ao fim do processamento deste FD nesta volta.
+    		// Vamos verificar se ele está "morto" há demasiado tempo.
+    		// IMPORTANTE: Só verificar timeout para clientes, não para server sockets!
+			if (!isServerSocket(fd))
+			{
+				time_t now = std::time(NULL);
+				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    		
+				// Vamos definir 120 segundos como o limite máximo de inatividade
+				if (seconds_idle > TIMEOUT_TIME)
+				{
+					std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+					removeClient(fd, i);
+					continue;
+				}
+			}
 		}
+		std::cout << "== DONE ===" << std::endl;
 	}
-	}		
-	std::cout << "== DONE ===" << std::endl;
 }
 	
 

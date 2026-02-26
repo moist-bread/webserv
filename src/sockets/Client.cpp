@@ -2,6 +2,10 @@
 
 Client::Client(void) 
 {
+	this->_readAllHeaders = false;
+	this->_headerBytes = 0;
+	this->_contentLength = 0;
+	updateLastActivity();
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
@@ -149,7 +153,15 @@ Client &Client::operator=(Client const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
+	{
 		this->_ClientFd = source._ClientFd;
+		this->_requestBuffer = source._requestBuffer;
+		this->_respondBuffer = source._respondBuffer;
+		this->_readAllHeaders = source._readAllHeaders;
+		this->_headerBytes = source._headerBytes;
+		this->_contentLength = source._contentLength;
+		this->_lastActivity = source._lastActivity;
+	}
 	return (*this);
 }
 

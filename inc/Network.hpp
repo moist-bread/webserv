@@ -24,3 +24,5 @@
 #include "sockets/ASimpleServer.hpp"
 #include "sockets/Client.hpp"
 #include "ansi_color_codes.h"
+
+#define TIMEOUT_TIME 120
