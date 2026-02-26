@@ -12,6 +12,9 @@ private:
     bool _readAllHeaders; //Verifica se ja passei dos headers
     size_t  _headerBytes; //tamanho dos headers
     size_t  _contentLength; //tamanho do body
+
+    //
+    time_t _lastActivity;
 public:
     Client(void); 				// default constructor
 	Client(int fd); 				// default constructor
@@ -27,6 +30,9 @@ public:
     //Getters
     std::string GetRequestBuffer() const;
     std::string GetWriteBuffer() const;
+    time_t GetLastActivity() const;
+
+    void updateLastActivity();
 
     ///Setter
     void SetRespondBuffer(const std::string& str);

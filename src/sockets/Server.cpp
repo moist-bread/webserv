@@ -241,32 +241,50 @@ void Server::launch()
 			else if(_pollfds[i].revents == POLLOUT)
 			{
 
-				int bytesWritten;
-				
-				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
-				
-				//Vou apagar o que ja li do buffer pois ja nao e preciso
-				//Para isso vou pegar a posicao inicial e ate a parte que li
-				//Tenho de limpar os dados que o buffer ja leu
-				
-				if(bytesWritten > 0)
-				{
-					_clients[fd].EraseParte(0,bytesWritten);
+			int bytesWritten;
+			
+			bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+			
+			//Vou apagar o que ja li do buffer pois ja nao e preciso
+			//Para isso vou pegar a posicao inicial e ate a parte que li
+			//Tenho de limpar os dados que o buffer ja leu
+			
+			if(bytesWritten > 0)
+			{
+				_clients[fd].updateLastActivity();
+				_clients[fd].EraseParte(0,bytesWritten);
 
-					//Buffer vazio, vamos voltar a escutar para input
-					if(_clients[fd].GetWriteBuffer().empty())
-					{
-						_pollfds[i].events = POLLIN;
-						//Cleaning
-						_clients[fd].ClearRequestBuffer(); 
-					}
-				}
-				else if(0 > bytesWritten)
+
+				//Buffer vazio, vamos voltar a escutar para input
+				if(_clients[fd].GetWriteBuffer().empty())
 				{
-					removeClient(fd,i);
+					_pollfds[i].events = POLLIN;
+					//Cleaning
+					_clients[fd].ClearRequestBuffer(); 
 				}
 			}
+			else if(0 > bytesWritten)
+			{
+				removeClient(fd,i);
+				continue;
+			}
 		}
+
+
+		// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    // Chegámos ao fim do processamento deste FD nesta volta.
+    // Vamos verificar se ele está "morto" há demasiado tempo.
+		time_t now = std::time(NULL);
+    	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    
+    	// Vamos definir 60 segundos como o limite máximo de inatividade
+		if (seconds_idle > 60)
+		{
+			std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+			removeClient(fd, i);
+			continue;
+		}
+	}
 	}		
 	std::cout << "== DONE ===" << std::endl;
 }
