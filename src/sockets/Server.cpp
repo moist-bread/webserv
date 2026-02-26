@@ -202,70 +202,68 @@ void Server::launch()
 				
 				if(_clients[fd].requestFullyReceived())
 				{
+					//Vou ler o ficheiro 
+					std::string content;
+					content = OpenFile("src/sockets/index.html");
 
-				//Vou ler o ficheiro 
-				std::string content;
-				content = OpenFile("src/sockets/index.html");
+					//Erro 404
+					if(content.empty())
+					{
+						std::cout << "File is empty maybe use another file" << std::endl;
+					}
+					
+					std::cout << content << std::endl;
 
-				//Erro 404
-				if(content.empty())
-				{
-					std::cout << "File is empty maybe use another file" << std::endl;
+					//Vou criar uma resposta para enviar :)
+					std::string body = content;
+
+					std::stringstream ss;
+					ss << "HTTP/1.1 200 OK\r\n";
+					ss << "Content-Length: " << body.size() << "\r\n";
+					ss << "\r\n";
+					ss << body;
+
+					std::string response = ss.str();
+
+					_clients[fd].SetRespondBuffer(response);
+
+					// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+					_pollfds[i].events = POLLOUT;
 				}
+    		}
+
+			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
+			else if(_pollfds[i].revents == POLLOUT)
+			{
+
+				int bytesWritten;
 				
-				std::cout << content << std::endl;
-
-				//Vou criar uma resposta para enviar :)
-
-				std::string body = content;
-
-				std::stringstream ss;
-				ss << "HTTP/1.1 200 OK\r\n";
-				ss << "Content-Length: " << body.size() << "\r\n";
-				ss << "\r\n";
-				ss << body;
-
-				std::string response = ss.str();
-
-				_clients[fd].SetRespondBuffer(response);
-
-				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-				_pollfds[i].events = POLLOUT;
-			}
-    	}
-
-		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-		else if(_pollfds[i].revents == POLLOUT)
-		{
-
-			int bytesWritten;
-			
-			bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
-			
-			//Vou apagar o que ja li do buffer pois ja nao e preciso
-			//Para isso vou pegar a posicao inicial e ate a parte que li
-			//Tenho de limpar os dados que o buffer ja leu
-			
-			if(bytesWritten > 0)
-			{
-				_clients[fd].EraseParte(0,bytesWritten);
-
-				//Buffer vazio, vamos voltar a escutar para input
-				if(_clients[fd].GetWriteBuffer().empty())
+				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+				
+				//Vou apagar o que ja li do buffer pois ja nao e preciso
+				//Para isso vou pegar a posicao inicial e ate a parte que li
+				//Tenho de limpar os dados que o buffer ja leu
+				
+				if(bytesWritten > 0)
 				{
-					_pollfds[i].events = POLLIN;
-					//Cleaning
-					_clients[fd].ClearRequestBuffer(); 
+					_clients[fd].EraseParte(0,bytesWritten);
+
+					//Buffer vazio, vamos voltar a escutar para input
+					if(_clients[fd].GetWriteBuffer().empty())
+					{
+						_pollfds[i].events = POLLIN;
+						//Cleaning
+						_clients[fd].ClearRequestBuffer(); 
+					}
 				}
-			}
-			else if(0 > bytesWritten)
-			{
-				removeClient(fd,i);
+				else if(0 > bytesWritten)
+				{
+					removeClient(fd,i);
+				}
 			}
 		}
-	}
 	}		
-		std::cout << "== DONE ===" << std::endl;
+	std::cout << "== DONE ===" << std::endl;
 }
 	
 

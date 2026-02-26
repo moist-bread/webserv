@@ -1,7 +1,6 @@
 #include "../../inc/sockets/ConnectingSocket.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-
 ConnectingSocket::ConnectingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
 {
 	std::cout << GRN "the ConnectingSocket ";
@@ -17,8 +16,6 @@ ConnectingSocket::ConnectingSocket(ConnectingSocket const &source) : SocketContr
 	std::cout << GRN "the ConnectingSocket ";
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
-
-
 
 ConnectingSocket &ConnectingSocket::operator=(ConnectingSocket const &source)
 {

@@ -43,4 +43,3 @@ std::ostream &operator<<(std::ostream &out, ListeningSocket const &source)
 	out << DEF << std::endl;
 	return (out);
 }
-

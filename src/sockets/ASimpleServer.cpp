@@ -1,7 +1,6 @@
 #include "../../inc/sockets/ASimpleServer.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-
 ASimpleServer::ASimpleServer(int domain,int type,int protocol,int port,u_long ip,int backlog) : ListeningSocket(domain,type,protocol,port,ip,backlog)
 {
 	std::cout << GRN "the ASimpleServer ";

@@ -3,11 +3,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 /*
     [X]Criar uma socket
     [X] fazer bind para obter o socket address(IPV4 + PORT)
 */
-
 
 // SocketController::SocketController(void)
 // {
@@ -36,17 +36,17 @@
 SocketController::SocketController(int domain,int type,int protocol,int port,u_long ip)
 	: _sock(socket(domain,type,protocol))
 {
-	std::cout << GRN "the SocketController ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+    std::cout << GRN "the SocketController ";
+    std::cout << UCYN "has been created" DEF << std::endl;
 
     //Init na estrutura de network para configurar a conexao feita atraves do bind
     this->_address.sin_family = domain;
     /*
     temos de usar htons para organizar os bites de port para se encaxarem bem na network
     */
-   this->_address.sin_port = htons(port);
-   //IPV4 da maquina
-   this->_address.sin_addr.s_addr = htonl(ip);
+    this->_address.sin_port = htons(port);
+    //IPV4 da maquina
+    this->_address.sin_addr.s_addr = htonl(ip);
     test_connection(_sock);
 }
 
@@ -77,7 +77,6 @@ SocketController &SocketController::operator=(SocketController const &source)
 
 std::ostream &operator<<(std::ostream &out, SocketController const &source)
 {
-	
 	out << BLU "SocketController " << "_sockedfd value: " << source.getSocketfd();
 	out << DEF << std::endl;
 	return (out);
@@ -88,10 +87,9 @@ int SocketController::getSocketfd(void) const{
 }
 
 
- struct sockaddr_in SocketController::getStructAdress(void)const
- {
+struct sockaddr_in SocketController::getStructAdress(void)const{
     return _address;
- }
+}
 
 
 SocketController::~SocketController(void)
