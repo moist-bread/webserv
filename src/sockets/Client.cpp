@@ -107,12 +107,10 @@ bool Client::requestFullyReceived()
 		if(pos != std::string::npos)
 		{
 			//Acabei os headers
-
 			_headerBytes = pos + 4;
 
 			_readAllHeaders = true;
 
-			//
 			extractContentLength();
 		}
 	}
