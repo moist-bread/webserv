@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <ctime>
 #include "fcntl.h"
 #include "poll.h"
 #include "../inc/ansi_color_codes.h"

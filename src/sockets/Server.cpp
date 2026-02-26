@@ -248,7 +248,9 @@ void Server::launch()
 			
 			if(bytesWritten > 0)
 			{
+				_clients[fd].updateLastActivity();
 				_clients[fd].EraseParte(0,bytesWritten);
+
 
 				//Buffer vazio, vamos voltar a escutar para input
 				if(_clients[fd].GetWriteBuffer().empty())
@@ -261,7 +263,23 @@ void Server::launch()
 			else if(0 > bytesWritten)
 			{
 				removeClient(fd,i);
+				continue;
 			}
+		}
+
+
+		// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    // Chegámos ao fim do processamento deste FD nesta volta.
+    // Vamos verificar se ele está "morto" há demasiado tempo.
+		time_t now = std::time(NULL);
+    	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    
+    	// Vamos definir 60 segundos como o limite máximo de inatividade
+		if (seconds_idle > 60)
+		{
+			std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+			removeClient(fd, i);
+			continue;
 		}
 	}
 	}		

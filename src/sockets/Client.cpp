@@ -12,6 +12,7 @@ Client::Client(int fd) : _ClientFd(fd)
 	this->_readAllHeaders = false;
 	this->_headerBytes = 0;
 	this->_contentLength = 0;
+	updateLastActivity();
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
@@ -19,7 +20,10 @@ Client::Client(int fd) : _ClientFd(fd)
 void Client::feed(const char* data, int size)
 {
     _requestBuffer.append(data, size);
+	updateLastActivity();
 }
+
+//Getter
 
 std::string Client::GetRequestBuffer() const
 {
@@ -31,6 +35,24 @@ std::string Client::GetWriteBuffer() const
 	return _respondBuffer;
 }
 
+time_t Client::GetLastActivity() const
+{
+	return _lastActivity;
+}
+
+//Setter
+void Client::SetRespondBuffer(const std::string& str)
+{
+	this->_respondBuffer = str;
+}
+
+void Client::updateLastActivity()
+{
+	this->_lastActivity = std::time(NULL);
+}
+
+
+// Cleaning
 void Client::ClearRequestBuffer()
 {
 	this->_requestBuffer.clear();
@@ -42,11 +64,6 @@ void Client::ClearRequestBuffer()
 void Client::ClearRespondBuffer()
 {
 	this->_respondBuffer.clear();
-}
-
-void Client::SetRespondBuffer(const std::string& str)
-{
-	this->_respondBuffer = str;
 }
 
 void Client::EraseParte(int start,int idx)
