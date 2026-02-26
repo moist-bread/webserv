@@ -1,6 +1,5 @@
 #include "../../inc/sockets/Client.hpp"
 
-
 Client::Client(void) 
 {
 	std::cout << GRN "the Client ";
@@ -161,4 +160,3 @@ std::ostream &operator<<(std::ostream &out, Client const &source)
 	out << DEF << std::endl;
 	return (out);
 }
-

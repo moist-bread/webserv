@@ -3,7 +3,7 @@
 
 class BindingSocket : public SocketController
 {
-	private:
+private:
 	int _binding;
 public:
 	BindingSocket(int domain,int type,int protocol,int port,u_long ip);

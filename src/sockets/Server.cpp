@@ -174,7 +174,7 @@ void Server::launch()
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
-    		int fd = _pollfds[i].fd;
+	    	int fd = _pollfds[i].fd;
 
 			// --- CASO 1: NOVA CONEXÃO ---
 			if(isServerSocket(fd) && (_pollfds[i].revents == POLLIN))
@@ -202,90 +202,92 @@ void Server::launch()
 				
 				if(_clients[fd].requestFullyReceived())
 				{
+					//Vou ler o ficheiro 
+					std::string content;
+					content = OpenFile("src/sockets/index.html");
 
-				//Vou ler o ficheiro 
-				std::string content;
-				content = OpenFile("src/sockets/index.html");
+					//Erro 404
+					if(content.empty())
+					{
+						std::cout << "File is empty maybe use another file" << std::endl;
+					}
+					
+					std::cout << content << std::endl;
 
-				//Erro 404
-				if(content.empty())
-				{
-					std::cout << "File is empty maybe use another file" << std::endl;
+					//Vou criar uma resposta para enviar :)
+					std::string body = content;
+					
+					std::stringstream ss;
+					ss << "HTTP/1.1 200 OK\r\n";
+					ss << "Content-Length: " << body.size() << "\r\n";
+					ss << "\r\n";
+					ss << body;
+
+					std::string response = ss.str();
+
+					_clients[fd].SetRespondBuffer(response);
+
+					// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+					_pollfds[i].events = POLLOUT;
 				}
+	    	}
+
+			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
+			else if(_pollfds[i].revents == POLLOUT)
+			{
+				int bytesWritten;
 				
-				std::cout << content << std::endl;
-
-				//Vou criar uma resposta para enviar :)
-
-				std::string body = content;
-
-				std::stringstream ss;
-				ss << "HTTP/1.1 200 OK\r\n";
-				ss << "Content-Length: " << body.size() << "\r\n";
-				ss << "\r\n";
-				ss << body;
-
-				std::string response = ss.str();
-
-				_clients[fd].SetRespondBuffer(response);
-
-				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-				_pollfds[i].events = POLLOUT;
-			}
-    	}
-
-		// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-		else if(_pollfds[i].revents == POLLOUT)
-		{
-
-			int bytesWritten;
-			
-			bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
-			
-			//Vou apagar o que ja li do buffer pois ja nao e preciso
-			//Para isso vou pegar a posicao inicial e ate a parte que li
-			//Tenho de limpar os dados que o buffer ja leu
-			
-			if(bytesWritten > 0)
-			{
-				_clients[fd].updateLastActivity();
-				_clients[fd].EraseParte(0,bytesWritten);
-
-
-				//Buffer vazio, vamos voltar a escutar para input
-				if(_clients[fd].GetWriteBuffer().empty())
+				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+				
+				//Vou apagar o que ja li do buffer pois ja nao e preciso
+				//Para isso vou pegar a posicao inicial e ate a parte que li
+				//Tenho de limpar os dados que o buffer ja leu
+				
+				if(bytesWritten > 0)
 				{
-					_pollfds[i].events = POLLIN;
-					//Cleaning
-					_clients[fd].ClearRequestBuffer(); 
+					_clients[fd].updateLastActivity();
+					_clients[fd].EraseParte(0,bytesWritten);
+
+
+					//Buffer vazio, vamos voltar a escutar para input
+					if(_clients[fd].GetWriteBuffer().empty())
+					{
+						_clients[fd].EraseParte(0,bytesWritten);
+
+						//Buffer vazio, vamos voltar a escutar para input
+						if(_clients[fd].GetWriteBuffer().empty())
+						{
+							_pollfds[i].events = POLLIN;
+							//Cleaning
+							_clients[fd].ClearRequestBuffer(); 
+						}
+					}
+				}
+				else if(0 > bytesWritten)
+				{
+					removeClient(fd,i);
+					continue;
 				}
 			}
-			else if(0 > bytesWritten)
+
+
+			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    		// Chegámos ao fim do processamento deste FD nesta volta.
+    		// Vamos verificar se ele está "morto" há demasiado tempo.
+			time_t now = std::time(NULL);
+			double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    		
+			// Vamos definir 60 segundos como o limite máximo de inatividade
+			if (seconds_idle > 60)
 			{
-				removeClient(fd,i);
+				std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+				removeClient(fd, i);
 				continue;
 			}
 		}
-
-
-		// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
-    // Chegámos ao fim do processamento deste FD nesta volta.
-    // Vamos verificar se ele está "morto" há demasiado tempo.
-		time_t now = std::time(NULL);
-    	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
-    
-    	// Vamos definir 60 segundos como o limite máximo de inatividade
-		if (seconds_idle > 60)
-		{
-			std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-			removeClient(fd, i);
-			continue;
-		}
-	}
-	}		
 		std::cout << "== DONE ===" << std::endl;
+	}
 }
-	
 
 Server::Server(Server const &source) : ASimpleServer(source)
 {

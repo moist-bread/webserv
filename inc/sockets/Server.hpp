@@ -22,8 +22,6 @@
 class Server : public ASimpleServer
 {
 private:
-
-
     std::map<int,Client>_clients;
     std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
 
@@ -35,8 +33,8 @@ private:
     void accepter(int listenFd);
     void handler(std::string buffer);
     int responder(int clientFd,const std::string& data);
-public:
 
+public:
 	Server(void); 				// default constructor
 	Server(Server const &source);	// copy constructor
 	~Server(void);				// destructor

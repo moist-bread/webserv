@@ -1,7 +1,6 @@
 #include "../../inc/sockets/BindingSocket.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-
 BindingSocket::BindingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
 {
 	std::cout << GRN "the BindingSocket ";
@@ -18,8 +17,6 @@ BindingSocket::BindingSocket(BindingSocket const &source) : SocketController(sou
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
 
-
-
 BindingSocket &BindingSocket::operator=(BindingSocket const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
@@ -27,6 +24,7 @@ BindingSocket &BindingSocket::operator=(BindingSocket const &source)
 		(void)source;
 	return (*this);
 }
+
 int BindingSocket::connect_to_network(int sock,struct sockaddr_in address)
 {
     return bind(sock,(struct sockaddr *)&address,sizeof(address));
