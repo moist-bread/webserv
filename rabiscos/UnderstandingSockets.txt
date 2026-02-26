@@ -1,0 +1,47 @@
+Sockets
+
+Sockets sao usadas por sistemas operativos para obter comunicaçao em
+diferentes processos podendo atuar na maquina ou na network.
+
+Sockets funcionam como endpoints em uma comunicaçao de dois lados cada um vai
+ter a sua propria sucket que ser como meio de comunicaçao
+
+Socket= IP Address + Port Number
+
+Representaçao de um Socket Address
+192.168.1.255::3389
+
+Como e que Sockets funcionam em Server Side
+
+Socket LifeCicle 
+
+Socket() <- Listenning Socket
+    |
+Bind()  <- Associate IP Address and port # with a Socket
+    | 
+Listen() <- Espera pela conexao do Cliente 
+    |
+accept() <- Quando aceita a conexao do cliente vai criar uma nova instancia de Socket
+    |
+read() 
+    |
+write()
+    |
+close() <- Fechar socket para evitar leaks
+
+Em resumo vamos ter a Primeira Socket que vai estar sempre a ouvir por novas ligacoes,
+quando alguem se tenta connectar e consegue com sucesso ele vai usar o accept que vai criar uma socket especialmente para a conexao deixando assim a primeira como "manager" 
+
+
+-------------------------
+Client process LifeCicle
+
+socket()
+    |
+connect()
+    |
+write()
+    |
+read()
+    |
+close()
