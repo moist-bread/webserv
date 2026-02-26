@@ -36,7 +36,7 @@
 SocketController::SocketController(int domain,int type,int protocol,int port,u_long ip)
 	: _sock(socket(domain,type,protocol))
 {
-    std::cout << GRN "the SocketController ";
+      std::cout << GRN "the SocketController ";
     std::cout << UCYN "has been created" DEF << std::endl;
 
     test_connection(_sock);
