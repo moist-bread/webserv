@@ -8,7 +8,6 @@
 
 #include <unistd.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <cstring>
 #include <vector>
 #include <map>

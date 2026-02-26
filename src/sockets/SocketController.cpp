@@ -39,6 +39,15 @@ SocketController::SocketController(int domain,int type,int protocol,int port,u_l
     std::cout << GRN "the SocketController ";
     std::cout << UCYN "has been created" DEF << std::endl;
 
+    test_connection(_sock);
+
+    // adding an option so that the socket can be reused
+    // SOL_SOCKET: sets the option on API level
+    // SO_REUSEADDR: allows adress to be reused without cooldown
+    // optval: 1 enable, 0 disable
+    int optval = 1;
+    setsockopt(_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+
     //Init na estrutura de network para configurar a conexao feita atraves do bind
     this->_address.sin_family = domain;
     /*
@@ -47,7 +56,6 @@ SocketController::SocketController(int domain,int type,int protocol,int port,u_l
     this->_address.sin_port = htons(port);
     //IPV4 da maquina
     this->_address.sin_addr.s_addr = htonl(ip);
-    test_connection(_sock);
 }
 
 void SocketController::test_connection(int test_connection)
@@ -55,6 +63,7 @@ void SocketController::test_connection(int test_connection)
     if(0 > test_connection)
     {
         perror("Trying to connect...");
+        // CAN'T USE EXIT!!
         exit(EXIT_FAILURE);
     }
 }

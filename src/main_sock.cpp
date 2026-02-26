@@ -1,6 +1,4 @@
-#include "../inc/Class.hpp"
-#include "../inc/Network.hpp"
-#include "../inc/sockets/Server.hpp"
+#include "../inc/Webserv.hpp"
 
 int main(int ac, char **av)
 {
@@ -8,7 +6,7 @@ int main(int ac, char **av)
         return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
     (void)av;
 
-    
+    std::signal(SIGINT, sigint_handler);
     Server t;
     
     return (0);

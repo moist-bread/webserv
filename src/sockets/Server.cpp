@@ -164,7 +164,8 @@ bool Server::isServerSocket(int fd)
 
 void Server::launch()
 {
-    while (true)
+	running = true;
+    while (running)
 	{
 		int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
 		if(0 > pollCount)
@@ -188,18 +189,21 @@ void Server::launch()
 			{
 				char tmp[65536]; //64kb por segundo
 				int ret = recv(fd, tmp, sizeof(tmp), 0);
-				
+				// -- get the request more efficiently and parse it
+
 				ConnectionStatus status = getStatus(ret);
 				if (status == IO_ERROR || status == IO_CLOSED) {
 					removeClient(fd, i);
 					continue;
 				}
 
+
 				//Passa a informaçao para o buffer do cliente
 				_clients[fd].feed(tmp, ret);
-				//std::cout << _clients[fd].GetRequestBuffer() << std::endl;
-				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\r" << std::flush;
-				
+				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
+				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
+				// std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\r" << std::flush;
+				Request request(tmp);
 				if(_clients[fd].requestFullyReceived())
 				{
 					//Vou ler o ficheiro 

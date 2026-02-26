@@ -1,5 +1,7 @@
 #pragma once
 #include "../Network.hpp"
+#include "../requests/Request.hpp"
+
 /*
 
 1)
@@ -63,6 +65,8 @@ enum ConnectionStatus {
     IO_DATA_READY,
     IO_DATA_OUT
 };
+
+extern bool running;
 
 std::ostream &operator<<(std::ostream &out, Server const &source);
 ConnectionStatus getStatus(int ret);

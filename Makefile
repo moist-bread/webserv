@@ -4,7 +4,7 @@ NAME	=	webserv
 # =====>┊( CMDS AND FLAGS )┊
 CXX		 =	c++
 CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98
-VAL		 =	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes -s
+VAL		 =	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
 
 # =====>┊( DIRECTORIES )┊
 SRC_DIR		=	src
@@ -22,7 +22,7 @@ SOCK_FILES_C	=	SocketController.cpp ListeningSocket.cpp ConnectingSocket.cpp \
 
 PARSE_FILES_C	=
 
-OTHER_FILES_C	=	Class.cpp
+OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp
 
 OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))

@@ -14,10 +14,10 @@ FileDescriptor::FileDescriptor(int fd) : _fd(fd)
 
 FileDescriptor::~FileDescriptor(void)
 {
-    if(this->_fd >= 0)
+    if (this->_fd >= 2)
     {
         close(_fd);
-        std::cout << "Socket " << this->_fd << " has been close automatically" << std::endl;
+        std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
     }
 	std::cout << GRN "the FileDescriptor ";
 	std::cout << URED "has been deleted" DEF << std::endl;
@@ -31,7 +31,7 @@ std::ostream &operator<<(std::ostream &out, FileDescriptor const &source)
 	return (out);
 }
 
-int FileDescriptor::getFd() const{
+int FileDescriptor::getFd() const {
     return _fd;
 }
 
