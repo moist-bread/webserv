@@ -188,6 +188,7 @@ void Server::launch()
 			else if(_pollfds[i].revents == POLLIN)
 			{
 				char tmp[65536]; //64kb por segundo
+				bzero(tmp, 65536); // VERY BAD FIX, NEEDS TO BE REPLACED
 				int ret = recv(fd, tmp, sizeof(tmp), 0);
 				// -- get the request more efficiently and parse it
 
@@ -202,8 +203,8 @@ void Server::launch()
 				_clients[fd].feed(tmp, ret);
 				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
 				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
-				// std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\r" << std::flush;
 				Request request(tmp);
+
 				if(_clients[fd].requestFullyReceived())
 				{
 					//Vou ler o ficheiro 
