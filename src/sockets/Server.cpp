@@ -174,7 +174,7 @@ void Server::launch()
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
-    		int fd = _pollfds[i].fd;
+	    	int fd = _pollfds[i].fd;
 
 			// --- CASO 1: NOVA CONEXÃO ---
 			if(isServerSocket(fd) && (_pollfds[i].revents == POLLIN))
@@ -216,7 +216,7 @@ void Server::launch()
 
 					//Vou criar uma resposta para enviar :)
 					std::string body = content;
-
+					
 					std::stringstream ss;
 					ss << "HTTP/1.1 200 OK\r\n";
 					ss << "Content-Length: " << body.size() << "\r\n";
@@ -230,12 +230,11 @@ void Server::launch()
 					// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 					_pollfds[i].events = POLLOUT;
 				}
-    		}
+	    	}
 
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
 			else if(_pollfds[i].revents == POLLOUT)
 			{
-
 				int bytesWritten;
 				
 				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
@@ -246,26 +245,52 @@ void Server::launch()
 				
 				if(bytesWritten > 0)
 				{
+					_clients[fd].updateLastActivity();
 					_clients[fd].EraseParte(0,bytesWritten);
+
 
 					//Buffer vazio, vamos voltar a escutar para input
 					if(_clients[fd].GetWriteBuffer().empty())
 					{
-						_pollfds[i].events = POLLIN;
-						//Cleaning
-						_clients[fd].ClearRequestBuffer(); 
+						_clients[fd].EraseParte(0,bytesWritten);
+
+						//Buffer vazio, vamos voltar a escutar para input
+						if(_clients[fd].GetWriteBuffer().empty())
+						{
+							_pollfds[i].events = POLLIN;
+							//Cleaning
+							_clients[fd].ClearRequestBuffer(); 
+						}
 					}
 				}
 				else if(0 > bytesWritten)
 				{
 					removeClient(fd,i);
+					continue;
+				}
+			}
+
+
+			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    		// Chegámos ao fim do processamento deste FD nesta volta.
+    		// Vamos verificar se ele está "morto" há demasiado tempo.
+			if (!isServerSocket(fd))
+			{
+				time_t now = std::time(NULL);
+				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    		
+				// Vamos definir 120 segundos como o limite máximo de inatividade
+				if (seconds_idle > TIMEOUT_TIME)
+				{
+					std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+					removeClient(fd, i);
+					continue;
 				}
 			}
 		}
-	}		
-	std::cout << "== DONE ===" << std::endl;
+		std::cout << "== DONE ===" << std::endl;
+	}
 }
-	
 
 Server::Server(Server const &source) : ASimpleServer(source)
 {

@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <ctime>
 #include "fcntl.h"
 #include "poll.h"
 #include "sockets/SocketController.hpp"
@@ -24,3 +25,5 @@
 #include "sockets/ASimpleServer.hpp"
 #include "sockets/Client.hpp"
 #include "ansi_color_codes.h"
+
+#define TIMEOUT_TIME 120
