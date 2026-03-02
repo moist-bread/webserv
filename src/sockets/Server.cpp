@@ -198,7 +198,6 @@ void Server::launch()
 					continue;
 				}
 
-
 				//Passa a informaçao para o buffer do cliente
 				_clients[fd].feed(tmp, ret);
 				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
@@ -240,36 +239,34 @@ void Server::launch()
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
 			else if(_pollfds[i].revents == POLLOUT)
 			{
-
-			int bytesWritten;
-			
-			bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
-			
-			//Vou apagar o que ja li do buffer pois ja nao e preciso
-			//Para isso vou pegar a posicao inicial e ate a parte que li
-			//Tenho de limpar os dados que o buffer ja leu
-			
-			if(bytesWritten > 0)
-			{
-				_clients[fd].updateLastActivity();
-				_clients[fd].EraseParte(0,bytesWritten);
-
-
-				//Buffer vazio, vamos voltar a escutar para input
-				if(_clients[fd].GetWriteBuffer().empty())
+				int bytesWritten;
+				
+				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+				
+				//Vou apagar o que ja li do buffer pois ja nao e preciso
+				//Para isso vou pegar a posicao inicial e ate a parte que li
+				//Tenho de limpar os dados que o buffer ja leu
+				
+				if(bytesWritten > 0)
 				{
-					_pollfds[i].events = POLLIN;
-					//Cleaning
-					_clients[fd].ClearRequestBuffer(); 
+					_clients[fd].updateLastActivity();
+					_clients[fd].EraseParte(0,bytesWritten);
+
+
+					//Buffer vazio, vamos voltar a escutar para input
+					if(_clients[fd].GetWriteBuffer().empty())
+					{
+						_pollfds[i].events = POLLIN;
+						//Cleaning
+						_clients[fd].ClearRequestBuffer(); 
+					}
+				}
+				else if(0 > bytesWritten)
+				{
+					removeClient(fd,i);
+					continue;
 				}
 			}
-			else if(0 > bytesWritten)
-			{
-				removeClient(fd,i);
-				continue;
-			}
-		}
-
 
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
     		// Chegámos ao fim do processamento deste FD nesta volta.
@@ -287,6 +284,8 @@ void Server::launch()
 					continue;
 				}
 			}
+			if (!running)
+				removeClient(fd, i);
 		}
 		std::cout << "== DONE ===" << std::endl;
 	}
