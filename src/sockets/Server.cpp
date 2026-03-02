@@ -208,7 +208,7 @@ void Server::launch()
 				{
 					//Vou ler o ficheiro 
 					std::string content;
-					content = OpenFile("src/sockets/index.html");
+					content = OpenFile("www/index.html");
 
 					//Erro 404
 					if(content.empty())
