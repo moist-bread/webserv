@@ -63,6 +63,7 @@ void SocketController::test_connection(int test_connection)
     if(0 > test_connection)
     {
         perror("Trying to connect...");
+        // CAN'T USE EXIT!!
         exit(EXIT_FAILURE);
     }
 }

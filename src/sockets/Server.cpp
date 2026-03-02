@@ -164,7 +164,8 @@ bool Server::isServerSocket(int fd)
 
 void Server::launch()
 {
-    while (true)
+	running = true;
+    while (running)
 	{
 		int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
 		if(0 > pollCount)
@@ -187,8 +188,10 @@ void Server::launch()
 			else if(_pollfds[i].revents == POLLIN)
 			{
 				char tmp[65536]; //64kb por segundo
+				bzero(tmp, 65536); // VERY BAD FIX, NEEDS TO BE REPLACED
 				int ret = recv(fd, tmp, sizeof(tmp), 0);
-				
+				// -- get the request more efficiently and parse it
+
 				ConnectionStatus status = getStatus(ret);
 				if (status == IO_ERROR || status == IO_CLOSED) {
 					removeClient(fd, i);
@@ -197,9 +200,10 @@ void Server::launch()
 
 				//Passa a informaçao para o buffer do cliente
 				_clients[fd].feed(tmp, ret);
-				//std::cout << _clients[fd].GetRequestBuffer() << std::endl;
-				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\r" << std::flush;
-				
+				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
+				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
+				Request request(tmp);
+
 				if(_clients[fd].requestFullyReceived())
 				{
 					//Vou ler o ficheiro 
@@ -287,6 +291,25 @@ void Server::launch()
 					continue;
 				}
 			}
+
+			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+    		// Chegámos ao fim do processamento deste FD nesta volta.
+    		// Vamos verificar se ele está "morto" há demasiado tempo.
+			if (!isServerSocket(fd))
+			{
+				time_t now = std::time(NULL);
+				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+    		
+				// Vamos definir 120 segundos como o limite máximo de inatividade
+				if (seconds_idle > TIMEOUT_TIME)
+				{
+					std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
+					removeClient(fd, i);
+					continue;
+				}
+			}
+			if (!running)
+				removeClient(fd, i);
 		}
 		std::cout << "== DONE ===" << std::endl;
 	}
