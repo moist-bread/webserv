@@ -85,25 +85,10 @@ int Server::responder(int clientFd,const std::string& data)
 
 void Server::SetNonblocking(int fd)
 {
-
-	/*
-	
-		FLAG PROIBIDA F_GETFL REMOVER FUTURAMENTE
-	
-	*/
-	//Vamos verificar se tem alguma flag de erro no fd da socket
-	int flags = fcntl(fd,F_GETFL,0);
-	if(flags == -1)
-	{
-		perror("fnctl F_GETFL");
-		return;
-	}
-	//Fixe esta tudo bem vamos passar para NONBLOCKING
-	// | O_NONBLOCK adiciona nova flag sem remover outras
-	if(fcntl(fd,F_SETFL,flags | O_NONBLOCK) == -1)
-	{
-		perror("Something went wrong while passing to NONBLOCKING");
-	}
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        perror("Something went wrong while passing to NONBLOCKING");
+    }
 }
 
 void Server::PopulatePollInfo(int fd)
