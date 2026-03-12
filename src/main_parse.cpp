@@ -6,9 +6,21 @@ int main(int ac, char **av)
 		return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
 	(void)av;
 
+	Request recieved;
+	Response reply;
+	t_status_code parse_status = OK;
 	try
 	{
-		Request test(av[1]);
+		recieved.process(av[1]);
+	}
+	catch (Request::ParseError &e)
+	{
+		std::cerr << e.what() << std::endl;
+		parse_status = e.request_status;
+	}
+	try
+	{
+		reply.process(recieved, parse_status);
 	}
 	catch (std::exception &e)
 	{

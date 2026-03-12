@@ -7,15 +7,7 @@ int main(int ac, char **av)
     (void)av;
 
     std::signal(SIGINT, sigint_handler);
-    try
-    {
-        Server t;
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
-    
+    Server t;
     
     return (0);
 }

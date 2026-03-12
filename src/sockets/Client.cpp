@@ -44,7 +44,7 @@ time_t Client::GetLastActivity() const
 }
 
 //Setter
-void Client::SetRespondBuffer(const std::string& str)
+void Client::SetRespondBuffer(const std::string str)
 {
 	this->_respondBuffer = str;
 }

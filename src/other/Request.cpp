@@ -1,4 +1,5 @@
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/requests/Response.hpp"
 
 std::string method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", ""};
 std::string protocol_names[] = {"HTTP/1.0", "HTTP/1.1", ""};
@@ -9,7 +10,7 @@ Request::Request(void) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_PROTOC
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-Request::Request(char *rec) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_PROTOCOL)
+void Request::process(char *rec)
 {
 	std::string request = rec;
 	size_t len;
@@ -20,7 +21,7 @@ Request::Request(char *rec) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_P
 	// -- GET URI
 	len = request.find(" ");
 	if (len == std::string::npos)
-		throw(Request::ParseError("Miss formated request"));
+		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 	path_uri = request.substr(0, len);
 	request.erase(0, len + 1);
 
@@ -28,7 +29,6 @@ Request::Request(char *rec) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_P
 	len = path_uri.find("?");
 	if(len != std::string::npos)
 	{
-		// -- extract query
 		std::string remaining_query;
 		remaining_query = path_uri.substr(len + 1, path_uri.length() - len);
 		path_uri.erase(len, path_uri.length() - len);
@@ -41,18 +41,24 @@ Request::Request(char *rec) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_P
 
 	// -- GET HEADERS
 	headers = extract_key_value(&request, ":", CRLF);
-	// headers = extract_key_value(&request, ":", "\n"); //  testing with text
-
-	len = request.find_first_not_of(CRLF);
-	if (len != std::string::npos)
-		request.erase(0, len);
+	// headers = extract_key_value(&request, ":", "\n"); // testing with text
 	
 	// -- GET BODY
+	request.erase(0, 2);
+	// request.erase(0, 1); // testing with text
+	
+	if (headers["content-length"].empty() && request.size())
+		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+	else if (!headers["content-length"].empty())
+	{
+		char *end = NULL;
+		double value = std::strtod(headers["content-length"].c_str(), &end);
+		if ( *end || value == HUGE_VAL || value == -HUGE_VAL || value != request.size())
+			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+	}
 	body = extract_key_value(&request, "=", "&");
 
-	std::cout << *this;
-	std::cout << GRN "the Request ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	std::cout << *this << std::endl;
 }
 
 Request::Request(Request const &source)
@@ -75,8 +81,10 @@ Request &Request::operator=(Request const &source)
 	{
 		this->method = source.method;
 		this->path_uri = source.path_uri;
+		this->query = source.query;
 		this->protocol = source.protocol;
 		this->headers = source.headers;
+		this->body = source.body;
 	}
 	return (*this);
 }
@@ -85,7 +93,7 @@ int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *
 {
 	size_t len = (*src).find(sep);
 	if (len == std::string::npos)
-		throw(Request::ParseError("Miss formated request"));
+		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 
 	std::string segment = (*src).substr(0, len);
 	(*src).erase(0, len + (static_cast<std::string>(sep)).length());
@@ -93,7 +101,7 @@ int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *
 	for (int i = 0; !cmp[i].empty(); i++)
 		if (!segment.compare(cmp[i]))
 			return (i);
-	throw(Request::ParseError("Unsupported parameter"));
+	throw(Request::ParseError("Unsupported parameter", BAD_REQUEST));
 }
 
 map_strings Request::extract_key_value(std::string *src, std::string sep, std::string delim) const
@@ -113,6 +121,7 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 		if (len == std::string::npos)
 			break;
 		key = (*src).substr(0, len);
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower); // a header is a case-insensitive name
 		(*src).erase(0, len + sep.length());
 
 		// -- get the value content
