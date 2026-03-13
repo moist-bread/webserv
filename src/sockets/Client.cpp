@@ -32,6 +32,10 @@ std::string Client::GetRequestBuffer() const
 {
 	return _requestBuffer;
 }
+int Client::GetClientFd() const
+{
+	return _ClientFd;
+}
 
 std::string Client::GetWriteBuffer() const
 {
@@ -47,6 +51,11 @@ time_t Client::GetLastActivity() const
 void Client::SetRespondBuffer(const std::string& str)
 {
 	this->_respondBuffer = str;
+}
+
+void Client::AppendRespondBuffer(const std::string& str)
+{
+	this->_respondBuffer.append(str);
 }
 
 void Client::updateLastActivity()

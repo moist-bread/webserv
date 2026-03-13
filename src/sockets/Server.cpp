@@ -169,6 +169,41 @@ void Server::launch()
 				continue; // Vai para o próximo fd
 			}
 
+
+			else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & POLLIN))
+    	{
+        //  Descobrir a quem pertence este tubo
+        int clientFd = _cgiMap[fd];
+
+        //  Ler do tubo
+        char buffer[4096];
+        int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+
+        if (bytesRead > 0)
+        {
+            //Da append a info
+            _clients[clientFd].AppendRespondBuffer(buffer); 
+        }
+        else if (bytesRead == 0) // EOF
+        {
+            std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
+            
+            //  Fechar e limpar o tubo
+            close(fd);
+            _cgiMap.erase(fd);
+            _pollfds.erase(_pollfds.begin() + i);
+            i--; // Ajustar o índice porque apagámos um elemento do vector
+
+            // Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
+            for (size_t j = 0; j < _pollfds.size(); j++) {
+                if (_pollfds[j].fd == clientFd) {
+                    _pollfds[j].events = POLLOUT;
+                    break;
+                }
+            }
+        }
+        continue;
+    }
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
 			else if(_pollfds[i].revents == POLLIN)
 			{
@@ -201,6 +236,18 @@ void Server::launch()
 						std::cout << "File is empty maybe use another file" << std::endl;
 					}
 					
+					if(content.find(".py") != std::string::npos)
+					{
+						//sou cgi bora executar
+						CgiHandler	cgi("main.py","nome=dinis", "REQUEST_METHOD=POST");
+						cgi.executeCgi();
+						int contentOfCgiFd = cgi.getPipeOutReadFd();
+						PopulatePollInfo(contentOfCgiFd);
+						_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
+
+						_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+					}
+
 					std::cout << content << std::endl;
 
 					//Vou criar uma resposta para enviar :)
