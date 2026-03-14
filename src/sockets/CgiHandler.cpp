@@ -1,8 +1,8 @@
-#include "CgiHandler.hpp"
+#include "../../inc/sockets/CgiHandler.hpp"
 
 
 CgiHandler::CgiHandler(const std::string& ScriptPath, const std::string& body, const std::string& method) 
-    : _scriptPath(ScriptPath), _body(body), _method(method)
+    : _body(body), _scriptPath(ScriptPath), _method(method)
 {
     this->_compiler = "/usr/bin/python3";
 }
@@ -105,6 +105,8 @@ int CgiHandler::executeCgi()
         envp[1] = const_cast<char *>(contentLengthEnv.c_str()); 
         envp[2] = NULL;
         execve(argv[0],argv,envp);
+        perror("execve failed");
+        _exit(EXIT_FAILURE);
     }
     return 1;
 }

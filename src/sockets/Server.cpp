@@ -163,14 +163,14 @@ void Server::launch()
 	    	int fd = _pollfds[i].fd;
 
 			// --- CASO 1: NOVA CONEXÃO ---
-			if(isServerSocket(fd) && (_pollfds[i].revents == POLLIN))
+			if(isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 			{
 				accepter(fd);
 				continue; // Vai para o próximo fd
 			}
 
 
-			else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & POLLIN))
+		else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR)))
     	{
         //  Descobrir a quem pertence este tubo
         int clientFd = _cgiMap[fd];
@@ -182,9 +182,9 @@ void Server::launch()
         if (bytesRead > 0)
         {
             //Da append a info
-            _clients[clientFd].AppendRespondBuffer(buffer); 
+            _clients[clientFd].AppendRespondBuffer(std::string(buffer, bytesRead)); 
         }
-        else if (bytesRead == 0) // EOF
+        else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF
         {
             std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
             
@@ -205,7 +205,7 @@ void Server::launch()
         continue;
     }
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
-			else if(_pollfds[i].revents == POLLIN)
+			else if(_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR))
 			{
 				char tmp[65536]; //64kb por segundo
 				bzero(tmp, 65536); // VERY BAD FIX, NEEDS TO BE REPLACED
@@ -239,37 +239,40 @@ void Server::launch()
 					if(content.find(".py") != std::string::npos)
 					{
 						//sou cgi bora executar
-						CgiHandler	cgi("main.py","nome=dinis", "REQUEST_METHOD=POST");
+						CgiHandler	cgi("src/sockets/main.py","nome=dinis", "REQUEST_METHOD=POST");
 						cgi.executeCgi();
 						int contentOfCgiFd = cgi.getPipeOutReadFd();
 						PopulatePollInfo(contentOfCgiFd);
 						_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
 
 						_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+					}else
+					{
+						//Executa normal as coisas
+						std::cout << content << std::endl;
+						//Vou criar uma resposta para enviar :)
+						std::string body = content;
+						
+						std::stringstream ss;
+						ss << "HTTP/1.1 200 OK\r\n";
+						ss << "Content-Length: " << body.size() << "\r\n";
+						ss << "\r\n";
+						ss << body;
+	
+						std::string response = ss.str();
+	
+						_clients[fd].SetRespondBuffer(response);
+	
+						// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+						_pollfds[i].events = POLLOUT;
 					}
 
-					std::cout << content << std::endl;
 
-					//Vou criar uma resposta para enviar :)
-					std::string body = content;
-					
-					std::stringstream ss;
-					ss << "HTTP/1.1 200 OK\r\n";
-					ss << "Content-Length: " << body.size() << "\r\n";
-					ss << "\r\n";
-					ss << body;
-
-					std::string response = ss.str();
-
-					_clients[fd].SetRespondBuffer(response);
-
-					// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-					_pollfds[i].events = POLLOUT;
 				}
 	    	}
 
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-			else if(_pollfds[i].revents == POLLOUT)
+			else if(_pollfds[i].revents & POLLOUT)
 			{
 				int bytesWritten;
 				
@@ -306,28 +309,10 @@ void Server::launch()
 				}
 			}
 
-
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
     		// Chegámos ao fim do processamento deste FD nesta volta.
     		// Vamos verificar se ele está "morto" há demasiado tempo.
-			if (!isServerSocket(fd))
-			{
-				time_t now = std::time(NULL);
-				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
-    		
-				// Vamos definir 120 segundos como o limite máximo de inatividade
-				if (seconds_idle > TIMEOUT_TIME)
-				{
-					std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-					removeClient(fd, i);
-					continue;
-				}
-			}
-
-			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
-    		// Chegámos ao fim do processamento deste FD nesta volta.
-    		// Vamos verificar se ele está "morto" há demasiado tempo.
-			if (!isServerSocket(fd))
+			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 			{
 				time_t now = std::time(NULL);
 				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
