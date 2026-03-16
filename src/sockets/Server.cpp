@@ -85,25 +85,10 @@ int Server::responder(int clientFd,const std::string& data)
 
 void Server::SetNonblocking(int fd)
 {
-
-	/*
-	
-		FLAG PROIBIDA F_GETFL REMOVER FUTURAMENTE
-	
-	*/
-	//Vamos verificar se tem alguma flag de erro no fd da socket
-	int flags = fcntl(fd,F_GETFL,0);
-	if(flags == -1)
-	{
-		perror("fnctl F_GETFL");
-		return;
-	}
-	//Fixe esta tudo bem vamos passar para NONBLOCKING
-	// | O_NONBLOCK adiciona nova flag sem remover outras
-	if(fcntl(fd,F_SETFL,flags | O_NONBLOCK) == -1)
-	{
-		perror("Something went wrong while passing to NONBLOCKING");
-	}
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        perror("Something went wrong while passing to NONBLOCKING");
+    }
 }
 
 void Server::PopulatePollInfo(int fd)
@@ -178,14 +163,49 @@ void Server::launch()
 	    	int fd = _pollfds[i].fd;
 
 			// --- CASO 1: NOVA CONEXÃO ---
-			if(isServerSocket(fd) && (_pollfds[i].revents == POLLIN))
+			if(isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 			{
 				accepter(fd);
 				continue; // Vai para o próximo fd
 			}
 
+
+		else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+    	{
+        //  Descobrir a quem pertence este tubo
+        int clientFd = _cgiMap[fd];
+
+        //  Ler do tubo
+        char buffer[4096];
+        int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+
+        if (bytesRead > 0)
+        {
+            //Da append a info
+            _clients[clientFd].AppendRespondBuffer(std::string(buffer, bytesRead)); 
+        }
+        else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF
+        {
+            std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
+            
+            //  Fechar e limpar o tubo
+            close(fd);
+            _cgiMap.erase(fd);
+            _pollfds.erase(_pollfds.begin() + i);
+            i--; // Ajustar o índice porque apagámos um elemento do vector
+
+            // Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
+            for (size_t j = 0; j < _pollfds.size(); j++) {
+                if (_pollfds[j].fd == clientFd) {
+                    _pollfds[j].events = POLLOUT;
+                    break;
+                }
+            }
+        }
+        continue;
+    }
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
-			else if(_pollfds[i].revents == POLLIN)
+			else if(_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR))
 			{
 				char tmp[65536]; //64kb por segundo
 				bzero(tmp, 65536); // VERY BAD FIX, NEEDS TO BE REPLACED
@@ -216,28 +236,41 @@ void Server::launch()
 						std::cout << "File is empty maybe use another file" << std::endl;
 					}
 					
-					std::cout << content << std::endl;
+					if(content.find(".py") != std::string::npos)
+					{
+						//sou cgi bora executar
+						CgiHandler	cgi("src/sockets/main.py","nome=dinis", "REQUEST_METHOD=POST");
+						cgi.executeCgi();
+						int contentOfCgiFd = cgi.getPipeOutReadFd();
+						PopulatePollInfo(contentOfCgiFd);
+						_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
 
-					//Vou criar uma resposta para enviar :)
-					std::string body = content;
-					
-					std::stringstream ss;
-					ss << "HTTP/1.1 200 OK\r\n";
-					ss << "Content-Length: " << body.size() << "\r\n";
-					ss << "\r\n";
-					ss << body;
-
-					std::string response = ss.str();
-
-					_clients[fd].SetRespondBuffer(response);
-
-					// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-					_pollfds[i].events = POLLOUT;
+						_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+					}else
+					{
+						//Executa normal as coisas
+						std::cout << content << std::endl;
+						//Vou criar uma resposta para enviar :)
+						std::string body = content;
+						
+						std::stringstream ss;
+						ss << "HTTP/1.1 200 OK\r\n";
+						ss << "Content-Length: " << body.size() << "\r\n";
+						ss << "\r\n";
+						ss << body;
+	
+						std::string response = ss.str();
+	
+						_clients[fd].SetRespondBuffer(response);
+	
+						// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+						_pollfds[i].events = POLLOUT;
+					}
 				}
 	    	}
 
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-			else if(_pollfds[i].revents == POLLOUT)
+			else if(_pollfds[i].revents & POLLOUT)
 			{
 				int bytesWritten;
 				
@@ -274,28 +307,10 @@ void Server::launch()
 				}
 			}
 
-
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
     		// Chegámos ao fim do processamento deste FD nesta volta.
     		// Vamos verificar se ele está "morto" há demasiado tempo.
-			if (!isServerSocket(fd))
-			{
-				time_t now = std::time(NULL);
-				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
-    		
-				// Vamos definir 120 segundos como o limite máximo de inatividade
-				if (seconds_idle > TIMEOUT_TIME)
-				{
-					std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-					removeClient(fd, i);
-					continue;
-				}
-			}
-
-			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
-    		// Chegámos ao fim do processamento deste FD nesta volta.
-    		// Vamos verificar se ele está "morto" há demasiado tempo.
-			if (!isServerSocket(fd))
+			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 			{
 				time_t now = std::time(NULL);
 				double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());

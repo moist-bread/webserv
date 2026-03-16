@@ -13,7 +13,7 @@ private:
     size_t  _headerBytes; //tamanho dos headers
     size_t  _contentLength; //tamanho do body
 
-    //
+    
     time_t _lastActivity;
 public:
     Client(void); 				// default constructor
@@ -31,11 +31,13 @@ public:
     std::string GetRequestBuffer() const;
     std::string GetWriteBuffer() const;
     time_t GetLastActivity() const;
-
+    int GetClientFd() const;
+    
     void updateLastActivity();
 
     ///Setter
     void SetRespondBuffer(const std::string& str);
+    void AppendRespondBuffer(const std::string& str);
     //Clean up
     void ClearRequestBuffer();
     void ClearRespondBuffer();

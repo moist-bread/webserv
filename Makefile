@@ -4,7 +4,7 @@ NAME	=	webserv
 # =====>┊( CMDS AND FLAGS )┊
 CXX		 =	c++
 CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98
-VAL		 =	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
+VAL		 =	valgrind --leak-check=full --trace-children=yes --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
 
 # =====>┊( DIRECTORIES )┊
 SRC_DIR		=	src
@@ -17,7 +17,7 @@ OTHER_DIR	= 	other
 MAIN_SOCK			=	main_sock.cpp
 MAIN_PARSE			=	main_parse.cpp
 
-SOCK_FILES_C	=	SocketController.cpp ListeningSocket.cpp ConnectingSocket.cpp \
+SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp ConnectingSocket.cpp \
 					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
 
 PARSE_FILES_C	=
