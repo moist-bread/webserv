@@ -4,7 +4,7 @@ NAME	=	webserv
 # =====>┊( CMDS AND FLAGS )┊
 CXX		 =	c++
 CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98
-VAL		 =	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
+VAL		 =	valgrind --leak-check=full --trace-children=yes --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
 
 # =====>┊( DIRECTORIES )┊
 SRC_DIR		=	src

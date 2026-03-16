@@ -266,8 +266,6 @@ void Server::launch()
 						// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 						_pollfds[i].events = POLLOUT;
 					}
-
-
 				}
 	    	}
 

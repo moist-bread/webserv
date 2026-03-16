@@ -9,6 +9,7 @@ private:
     int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
     int _pid;
 
+    //std::map<std::string, std::string>query;
     std::string _body;
     std::string _scriptPath;
     std::string _method;
