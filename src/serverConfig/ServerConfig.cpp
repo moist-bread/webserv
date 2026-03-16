@@ -47,7 +47,7 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 
 	out << "    Locations:\n";
 	for (size_t i = 0; i < source.locations.size(); ++i) {
-		out << source.locations[i]; // This magically calls the LocationConfig print function!
+		out << source.locations[i]; 
 		out << "\n";
 	}
 	return out;

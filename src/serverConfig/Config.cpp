@@ -52,11 +52,10 @@ std::ostream &operator<<(std::ostream &out, Config const &source)
 	out << "         WEBSERV CONFIGURATION          \n";
 	out << "========================================\n";
 	
-	// Assuming you followed our earlier advice and made a getter!
 	const std::vector<ServerConfig>& servers = source.getServers(); 
 	
 	for (size_t i = 0; i < servers.size(); ++i) {
-		out << servers[i]; // Magically calls the ServerConfig print function!
+		out << servers[i];
 		out << "----------------------------------------\n";
 	}
 	return out;
