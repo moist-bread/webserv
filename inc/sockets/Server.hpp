@@ -31,6 +31,8 @@ private:
     std::vector<ListeningSocket*> _extraListeners;
     std::vector<int> _listeningFds;
 
+    std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
+
     void  SetNonblocking(int fd);
     void accepter(int listenFd);
     void handler(std::string buffer);
