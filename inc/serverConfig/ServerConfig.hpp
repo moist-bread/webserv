@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include "../requests/HTTP.hpp"
 
 #include "../ansi_color_codes.h"
 #include "LocationConfig.hpp"
@@ -26,7 +27,7 @@ class ServerConfig
 
 		// Default error pages
 		// Maps the HTTP error code to a file (e.g., 404 -> "/errors/404.html")
-		std::map<int, std::string>	errorPages;         
+		std::map<t_status_code, std::string>	errorPages;         
 
 		// The routes that belong to this server
 		std::vector<LocationConfig>	locations;          

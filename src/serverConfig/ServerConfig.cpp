@@ -41,7 +41,7 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "\n";
 
 	out << "    Error Pages:\n";
-	for (std::map<int, std::string>::const_iterator it = source.errorPages.begin(); it != source.errorPages.end(); ++it) {
+	for (std::map<t_status_code, std::string>::const_iterator it = source.errorPages.begin(); it != source.errorPages.end(); ++it) {
 		out << "      " << it->first << " -> " << it->second << "\n";
 	}
 

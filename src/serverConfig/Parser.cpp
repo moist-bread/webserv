@@ -99,7 +99,7 @@ ServerConfig Parser::_parseServerBlock(void)
 		{
 			t_token sizeToken = _expect(TOKEN_KEYWORD);
 			newServer.clientMaxBodySize = std::strtoul(sizeToken.content.c_str(), NULL, 10);
-			if (sizeToken.content.back() == 'M')
+			if (*(sizeToken.content.end()) == 'M')
 				newServer.clientMaxBodySize *= 1048576;
 			_expect(TOKEN_SEMICOLON);
 		}
@@ -119,7 +119,7 @@ ServerConfig Parser::_parseServerBlock(void)
 			for (size_t i = 0; i < tempArgs.size(); ++i)
 			{
 				int errorCode = std::atoi(tempArgs[i].c_str());
-				newServer.errorPages[errorCode] = uri;
+				newServer.errorPages[static_cast <t_status_code>(errorCode)] = uri;
 			}
 		}
 		else if (directiveToken.content == "location")

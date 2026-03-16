@@ -3,6 +3,7 @@
 // ==┊ needed libs by class
 #include <iostream>
 #include <map>
+#include <vector>
 
 #include "../ansi_color_codes.h"
 

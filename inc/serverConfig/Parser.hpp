@@ -2,6 +2,8 @@
 
 // ==┊ needed libs by class
 #include <iostream>
+#include <vector>
+#include <stdlib.h>
 
 #include "../ansi_color_codes.h"
 #include "token.h"
