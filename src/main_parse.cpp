@@ -1,30 +1,18 @@
-#include "../inc/Webserv.hpp"
+#include "../inc/Class.hpp"
+#include "../inc/Network.hpp"
+#include "../inc/serverConfig/Config.hpp"
 
 int main(int ac, char **av)
 {
 	if (ac != 2)
 		return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
-	(void)av;
-
-	Request recieved;
-	Response reply;
-	t_status_code parse_status = OK;
-	try
-	{
-		recieved.process(av[1]);
-	}
-	catch (Request::ParseError &e)
-	{
-		std::cerr << e.what() << std::endl;
-		parse_status = e.request_status;
-	}
-	try
-	{
-		reply.process(recieved, parse_status);
-	}
-	catch (std::exception &e)
-	{
-		std::cerr << e.what() << std::endl;
+	try {
+		Config webServerConfig;
+		webServerConfig.load(av[1]);
+		std::cout << webServerConfig << std::endl;
+	} catch (const std::exception& e) {
+		std::cerr << "Error: " << e.what() << std::endl;
+		return (1);
 	}
 	return (0);
 }

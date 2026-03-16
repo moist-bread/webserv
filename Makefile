@@ -10,7 +10,7 @@ VAL		 =	valgrind --leak-check=full --trace-children=yes --show-leak-kinds=all --
 SRC_DIR		=	src
 OBJ_DIR		=	obj
 SOCK_DIR	=	sockets
-PARSE_DIR	=	parse
+CONF_DIR	=	serverConfig
 OTHER_DIR	= 	other
 
 # =====>┊( SRC/OBJS )┊
@@ -20,7 +20,7 @@ MAIN_PARSE			=	main_parse.cpp
 SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp ConnectingSocket.cpp \
 					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
 
-PARSE_FILES_C	=
+CONF_FILES_C	= 	Lexer.cpp Parser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp \
 
 OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp Response.cpp
 
@@ -28,22 +28,22 @@ OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))
 
 OBJS_SOCK		=	$(addprefix $(OBJ_DIR)/, $(SOCK_FILES_C:.cpp=.o))
-OBJS_PARSE		=	$(addprefix $(OBJ_DIR)/, $(PARSE_FILES_C:.cpp=.o))
+OBJS_CONF		=	$(addprefix $(OBJ_DIR)/, $(CONF_FILES_C:.cpp=.o))
 OBJS_OTHER		=	$(addprefix $(OBJ_DIR)/, $(OTHER_FILES_C:.cpp=.o))
 
 
 # =====>┊( COMP RULES )┊
 all: $(NAME)
 
-$(NAME): $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_PARSE) $(OBJS_OTHER)
+$(NAME): $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
 	$(M_COMOBJS)
-	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_PARSE) $(OBJS_OTHER) -o $(NAME)
+	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
 	$(M_COM)
 
 
-parse: $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_PARSE) $(OBJS_OTHER)
+parse: fclean $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
 	$(M_COMOBJS)
-	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_PARSE) $(OBJS_OTHER) -o $(NAME)
+	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
 	$(M_COM)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
@@ -52,7 +52,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/$(SOCK_DIR)/%.cpp | $(OBJ_DIR)
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/$(PARSE_DIR)/%.cpp | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/$(CONF_DIR)/%.cpp | $(OBJ_DIR)
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/$(OTHER_DIR)/%.cpp | $(OBJ_DIR)
