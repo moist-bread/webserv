@@ -222,21 +222,15 @@ void Server::launch()
 				_clients[fd].feed(tmp, ret);
 				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
 				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
-				Request request(tmp);
+				
 
-				if(_clients[fd].requestFullyReceived())
+				_clients[fd].response.status_code = OK;
+				try
 				{
-					//Vou ler o ficheiro 
-					std::string content;
-					content = OpenFile("www/index.html");
-
-					//Erro 404
-					if(content.empty())
-					{
-						std::cout << "File is empty maybe use another file" << std::endl;
-					}
+					// -- !! RESET REQUEST BEFORE PROCESS !!
+					_clients[fd].request.process(tmp);
 					
-					if(content.find(".py") != std::string::npos)
+					/* if(content.find(".py") != std::string::npos)
 					{
 						//sou cgi bora executar
 						CgiHandler	cgi("src/sockets/main.py","nome=dinis", "REQUEST_METHOD=POST");
@@ -246,27 +240,18 @@ void Server::launch()
 						_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
 
 						_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
-					}else
-					{
-						//Executa normal as coisas
-						std::cout << content << std::endl;
-						//Vou criar uma resposta para enviar :)
-						std::string body = content;
-						
-						std::stringstream ss;
-						ss << "HTTP/1.1 200 OK\r\n";
-						ss << "Content-Length: " << body.size() << "\r\n";
-						ss << "\r\n";
-						ss << body;
-	
-						std::string response = ss.str();
-	
-						_clients[fd].SetRespondBuffer(response);
-	
-						// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-						_pollfds[i].events = POLLOUT;
-					}
+					} */
 				}
+				catch(const std::exception& e)
+				{
+					// make a custom request exception where i can send the error
+					std::cerr << e.what() << std::endl;
+					_clients[fd].response.status_code = BAD_REQUEST;
+				}
+				_clients[fd].response.process(_clients[fd].request);
+				_clients[fd].SetRespondBuffer(_clients[fd].response.full_response);
+				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+				_pollfds[i].events = POLLOUT;
 	    	}
 
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
@@ -274,7 +259,7 @@ void Server::launch()
 			{
 				int bytesWritten;
 				
-				bytesWritten = responder(fd,_clients[fd].GetWriteBuffer());
+				bytesWritten = responder(fd, _clients[fd].response.full_response);
 				
 				//Vou apagar o que ja li do buffer pois ja nao e preciso
 				//Para isso vou pegar a posicao inicial e ate a parte que li
@@ -365,6 +350,7 @@ std::ostream &operator<<(std::ostream &out, Server const &source)
 
 void Server::removeClient(int fd, size_t& index)
 {
+	std::cout << "REMOVING THE CLIENTS\n";
     _clients.erase(fd);
     close(fd);
     _pollfds.erase(_pollfds.begin() + index);

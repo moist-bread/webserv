@@ -6,7 +6,7 @@ class Client
 private:
     int _ClientFd;
     std::string _requestBuffer; //Informaçao que estou a receber
-    std::string _respondBuffer; //Informaçao que vou enviar 
+    std::string _respondBuffer; //Informaçao que estou a receber
 
     //Post
     bool _readAllHeaders; //Verifica se ja passei dos headers
@@ -21,9 +21,11 @@ public:
 	Client(Client const &source);	// copy constructor
 	~Client(void);				// destructor
 
+    Request request;
+    Response response;
+    
     //Appending 
     void feed(const char* data, int size);
-
 
     void extractContentLength();
 

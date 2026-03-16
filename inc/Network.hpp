@@ -17,6 +17,9 @@
 #include <ctime>
 #include "fcntl.h"
 #include "poll.h"
+
+#include "requests/HTTP.hpp"
+
 #include "sockets/SocketController.hpp"
 #include "sockets/ConnectingSocket.hpp"
 #include "sockets/BindingSocket.hpp"
