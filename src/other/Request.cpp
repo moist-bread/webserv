@@ -58,6 +58,9 @@ void Request::process(char *rec)
 	}
 	body = extract_key_value(&request, "=", "&");
 
+	// !! check if method is valid for the locations in config !!
+	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
+	
 	std::cout << *this << std::endl;
 }
 

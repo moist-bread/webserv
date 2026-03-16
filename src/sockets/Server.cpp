@@ -204,19 +204,19 @@ void Server::launch()
 				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
 				
 
-				Request request;
-				t_status_code parse_error = OK;
+				_clients[fd].response.status_code = OK;
 				try
 				{
-					request.process(tmp);
+					// -- !! RESET REQUEST BEFORE PROCESS !!
+					_clients[fd].request.process(tmp);
 				}
 				catch(const std::exception& e)
 				{
 					// make a custom request exception where i can send the error
 					std::cerr << e.what() << std::endl;
-					parse_error = BAD_REQUEST;
+					_clients[fd].response.status_code = BAD_REQUEST;
 				}
-				_clients[fd].response.process(request, parse_error);
+				_clients[fd].response.process(_clients[fd].request);
 				_clients[fd].SetRespondBuffer(_clients[fd].response.full_response);
 				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 				_pollfds[i].events = POLLOUT;

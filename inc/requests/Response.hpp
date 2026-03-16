@@ -22,10 +22,11 @@ public:
 
 	Response &operator=(Response const &source);
 
-	void process(Request &src, t_status_code parse_status);
-	void update_response_elements(Request &src, t_status_code parse_status);
+	void process(Request &src);
+	void update_response_elements(Request &src);
 	static std::string assemble_content_path(Request &src, t_status_code status_code);
 	static std::string get_reason_phrase(t_status_code status_code);
+	static std::string date_generate(void);
 	
 	t_protocol protocol;
 	t_status_code status_code;

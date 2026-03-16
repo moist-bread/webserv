@@ -21,6 +21,7 @@ public:
 	Client(Client const &source);	// copy constructor
 	~Client(void);				// destructor
 
+    Request request;
     Response response;
     
     //Appending 

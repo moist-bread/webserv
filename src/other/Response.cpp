@@ -35,18 +35,19 @@ Response &Response::operator=(Response const &source)
 	return (*this);
 }
 
-void Response::process(Request &src, t_status_code parse_status)
+void Response::process(Request &src)
 {
-	update_response_elements(src, parse_status);
+	update_response_elements(src);
 
 	// get the requested content
 	std::ifstream file(assemble_content_path(src, status_code).c_str());
 	if(!file.is_open())
 	{
 		perror("File does not exist");
-		// dont do this ALWAYS
-		// ei: missing images and such
-		status_code = NOT_FOUND;
+		if (src.path_uri.find(".html") == src.path_uri.size() - 5)
+			status_code = NOT_FOUND;
+		else
+			status_code = INTERNAL_SERVER_ERROR;
 		file.open(assemble_content_path(src, status_code).c_str());
 	}
 	std::stringstream buffer;
@@ -54,15 +55,17 @@ void Response::process(Request &src, t_status_code parse_status)
 	std::string content = buffer.str();
 	if(content.empty())
 	{
-		//Erro 404
-		perror("Default error page is not present");
-		status_code = NOT_FOUND;
+		perror("Desired error page is not present");
+		status_code = INTERNAL_SERVER_ERROR;
 	}
 	
 	// putting together the full response
 	std::stringstream ss;
 	ss << protocol_names[protocol] << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
-	ss << "Content-Length: " << content.size() << CRLF CRLF;
+	ss << "Content-Length: " << content.size() << CRLF;
+	// -- Content-Type
+	ss << "Date: " << date_generate() << CRLF;
+	ss << CRLF;
 	ss << content;
 	full_response = ss.str();
 
@@ -71,12 +74,11 @@ void Response::process(Request &src, t_status_code parse_status)
 	std::cout << *this << std::endl;
 }
 
-void Response::update_response_elements(Request &src, t_status_code parse_status)
+void Response::update_response_elements(Request &src)
 {
 	protocol = src.protocol;
 	if (protocol_names[protocol].empty())
 		protocol = H1_0;
-	status_code = parse_status;
 	headers.clear();
 	body.clear();
 	full_response.clear();
@@ -190,6 +192,19 @@ std::string Response::get_reason_phrase(t_status_code status_code)
 		default:
 			return ("OK");
 	}
+}
+
+std::string	Response::date_generate(void)
+{
+	time_t timestamp = time(NULL);
+	struct tm datetime = *localtime(&timestamp);
+	char buff[30];
+	std::string buffer;
+
+	// example: Fri, 13 Mar 2026 17:32:50 GMT
+	if (strftime(buff, sizeof buff, "%a, %d %b %Y %T GMT", &datetime))
+		buffer = buff;
+	return (buffer);
 }
 
 
