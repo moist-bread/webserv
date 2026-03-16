@@ -1,8 +1,8 @@
 #include "../../inc/sockets/CgiHandler.hpp"
 
 
-CgiHandler::CgiHandler(const std::string& ScriptPath, const std::string& body, const std::string& method) 
-    : _body(body), _scriptPath(ScriptPath), _method(method)
+CgiHandler::CgiHandler(const std::string& ScriptPath, const  std::map<std::string, std::string>& query, const std::string& method) 
+    : _query(query), _scriptPath(ScriptPath), _method(method)
 {
     this->_compiler = "/usr/bin/python3";
 }
@@ -25,20 +25,31 @@ int CgiHandler::InitPipe()
 
 int CgiHandler::writeBodyToCgiInput()
 {
-    size_t total = 0;
-    const char* data = this->_body.c_str();
-    size_t len = this->_body.size();
-
-    while (total < len)
+    // very inefficient, will later try not to parse the querys so much as to keep this simple
+    std::map<std::string, std::string>::iterator end = _query.end();
+    for (std::map<std::string, std::string>::iterator begin = _query.begin(); begin != end; begin++)
     {
-        ssize_t n = write(this->_pipeIn[1], data + total, len - total);
+        ssize_t n = write(this->_pipeIn[1], (*begin).first.c_str() , (*begin).first.size());
         if (n <= 0)
         {
             std::cout << "write() failed" << std::endl;
             close(this->_pipeIn[1]);
             return -1;
         }
-        total += static_cast<size_t>(n);
+        n = write(this->_pipeIn[1], "=" , 1);
+        if (n <= 0)
+        {
+            std::cout << "write() failed" << std::endl;
+            close(this->_pipeIn[1]);
+            return -1;
+        }
+        n = write(this->_pipeIn[1], (*begin).second.c_str() , (*begin).second.size());
+        if (n <= 0)
+        {
+            std::cout << "write() failed" << std::endl;
+            close(this->_pipeIn[1]);
+            return -1;
+        }
     }
 
     if (close(this->_pipeIn[1]) == -1)
@@ -89,10 +100,15 @@ int CgiHandler::executeCgi()
         close(this->_pipeIn[1]);
         close(this->_pipeOut[0]);
 
-
+        ssize_t n = 0;
+        std::map<std::string, std::string>::iterator end = _query.end();
+        for (std::map<std::string, std::string>::iterator begin = _query.begin(); begin != end; begin++)
+        {
+            n += (*begin).first.size() + 1 + (*begin).second.size();
+        }
         // Converter o tamanho do body para string 
         std::stringstream ss;
-        ss << "CONTENT_LENGTH=" << this->_body.size();
+        ss << "CONTENT_LENGTH=" << n;
         std::string contentLengthEnv = ss.str();
 
         char* argv[3];

@@ -169,41 +169,43 @@ void Server::launch()
 				continue; // Vai para o próximo fd
 			}
 
+			// --- CASO X: CGI ---
+			else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+			{
+				//  Descobrir a quem pertence este tubo
+				int clientFd = _cgiMap[fd];
 
-		else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR)))
-    	{
-        //  Descobrir a quem pertence este tubo
-        int clientFd = _cgiMap[fd];
+				//  Ler do tubo
+				char buffer[4096];
+				bzero(buffer, 4096); // VERY BAD FIX, NEEDS TO BE REPLACED
+				int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
 
-        //  Ler do tubo
-        char buffer[4096];
-        int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+				if (bytesRead > 0)
+				{
+					//Da append a info
+					_clients[clientFd].AppendRespondBuffer(std::string(buffer, bytesRead)); 
+				}
+				else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF // CANT USE ERRNO
+				{
+					std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
+					
+					//  Fechar e limpar o tubo
+					close(fd);
+					_cgiMap.erase(fd);
+					_pollfds.erase(_pollfds.begin() + i);
+					i--; // Ajustar o índice porque apagámos um elemento do vector
 
-        if (bytesRead > 0)
-        {
-            //Da append a info
-            _clients[clientFd].AppendRespondBuffer(std::string(buffer, bytesRead)); 
-        }
-        else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF
-        {
-            std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
-            
-            //  Fechar e limpar o tubo
-            close(fd);
-            _cgiMap.erase(fd);
-            _pollfds.erase(_pollfds.begin() + i);
-            i--; // Ajustar o índice porque apagámos um elemento do vector
-
-            // Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
-            for (size_t j = 0; j < _pollfds.size(); j++) {
-                if (_pollfds[j].fd == clientFd) {
-                    _pollfds[j].events = POLLOUT;
-                    break;
-                }
-            }
-        }
-        continue;
-    }
+					// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
+					for (size_t j = 0; j < _pollfds.size(); j++) {
+						if (_pollfds[j].fd == clientFd) {
+							_pollfds[j].events = POLLOUT;
+							break;
+						}
+					}
+				}
+				continue;
+			}
+			
 			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
 			else if(_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR))
 			{
@@ -227,29 +229,32 @@ void Server::launch()
 				_clients[fd].response.status_code = OK;
 				try
 				{
-					// -- !! RESET REQUEST BEFORE PROCESS !!
 					_clients[fd].request.process(tmp);
-					
-					/* if(content.find(".py") != std::string::npos)
-					{
-						//sou cgi bora executar
-						CgiHandler	cgi("src/sockets/main.py","nome=dinis", "REQUEST_METHOD=POST");
-						cgi.executeCgi();
-						int contentOfCgiFd = cgi.getPipeOutReadFd();
-						PopulatePollInfo(contentOfCgiFd);
-						_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
-
-						_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
-					} */
 				}
 				catch(const std::exception& e)
 				{
-					// make a custom request exception where i can send the error
 					std::cerr << e.what() << std::endl;
 					_clients[fd].response.status_code = BAD_REQUEST;
 				}
-				_clients[fd].response.process(_clients[fd].request);
-				_clients[fd].SetRespondBuffer(_clients[fd].response.full_response);
+				
+				if (_clients[fd].request.path_uri.find(".py") != std::string::npos) // detect cgi
+				{
+					//sou cgi bora executar
+					CgiHandler	cgi("www/main.py", _clients[fd].request.query , "REQUEST_METHOD=POST");
+					cgi.executeCgi();
+					int contentOfCgiFd = cgi.getPipeOutReadFd();
+					PopulatePollInfo(contentOfCgiFd);
+					_cgiMap.insert(std::make_pair(contentOfCgiFd,_clients[fd].GetClientFd()));
+
+					_pollfds[i].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+					continue ;
+				}
+				else
+				{
+					_clients[fd].response.process(_clients[fd].request);
+					_clients[fd].SetRespondBuffer(_clients[fd].response.full_response);
+				}
+				
 				// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 				_pollfds[i].events = POLLOUT;
 	    	}
@@ -259,7 +264,8 @@ void Server::launch()
 			{
 				int bytesWritten;
 				
-				bytesWritten = responder(fd, _clients[fd].response.full_response);
+				std::cout << _clients[fd].GetWriteBuffer() << std::endl;
+				bytesWritten = responder(fd, _clients[fd].GetWriteBuffer());
 				
 				//Vou apagar o que ja li do buffer pois ja nao e preciso
 				//Para isso vou pegar a posicao inicial e ate a parte que li

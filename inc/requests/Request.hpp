@@ -24,6 +24,8 @@ public:
 	void process(char *rec);
 	int extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const;
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
+	// bool detect_cgi(void) const;
+
 
 	class ParseError : public std::runtime_error {
 		public:

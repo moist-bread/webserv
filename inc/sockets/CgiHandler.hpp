@@ -9,8 +9,8 @@ private:
     int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
     int _pid;
 
-    //std::map<std::string, std::string>query;
-    std::string _body;
+    std::map<std::string, std::string> _query;
+    // std::string _body;
     std::string _scriptPath;
     std::string _method;
     std::string _compiler;
@@ -18,7 +18,7 @@ private:
     int writeBodyToCgiInput();
 
 public:
-    CgiHandler(const std::string& ScriptPath, const std::string& body, const std::string& method);
+    CgiHandler(const std::string& ScriptPath, const  std::map<std::string, std::string>& query, const std::string& method);
     int InitPipe();
     int getPipeOutReadFd() const;
     int executeCgi();
