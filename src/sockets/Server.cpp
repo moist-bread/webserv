@@ -155,6 +155,7 @@ void Server::launch()
 		int pollCount = poll(&_pollfds[0],_pollfds.size(),-1);
 		if(0 > pollCount)
 		{
+			// research what to do when it timeout
 			std::cout << "Timeout..." << std::endl;
 		}
 
@@ -182,7 +183,6 @@ void Server::launch()
 
 				if (bytesRead > 0)
 				{
-					//Da append a info
 					_clients[clientFd].AppendRespondBuffer(std::string(buffer, bytesRead)); 
 				}
 				else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF // CANT USE ERRNO
@@ -224,7 +224,6 @@ void Server::launch()
 				_clients[fd].feed(tmp, ret);
 				std::cout << _clients[fd].GetRequestBuffer() << std::endl;
 				std::cout << "Bytes recebidos: " << _clients[fd].GetRequestBuffer().size() << "\n";
-				
 
 				_clients[fd].response.status_code = OK;
 				try
@@ -239,7 +238,6 @@ void Server::launch()
 				
 				if (_clients[fd].request.path_uri.find(".py") != std::string::npos) // detect cgi
 				{
-					//sou cgi bora executar
 					CgiHandler	cgi("www/main.py", _clients[fd].request.query , "REQUEST_METHOD=POST");
 					cgi.executeCgi();
 					int contentOfCgiFd = cgi.getPipeOutReadFd();
@@ -264,7 +262,7 @@ void Server::launch()
 			{
 				int bytesWritten;
 				
-				std::cout << _clients[fd].GetWriteBuffer() << std::endl;
+				// std::cout << _clients[fd].GetWriteBuffer() << std::endl;
 				bytesWritten = responder(fd, _clients[fd].GetWriteBuffer());
 				
 				//Vou apagar o que ja li do buffer pois ja nao e preciso
