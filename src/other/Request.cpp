@@ -29,10 +29,11 @@ void Request::process(char *rec)
 	len = path_uri.find("?");
 	if(len != std::string::npos)
 	{
-		std::string remaining_query;
-		remaining_query = path_uri.substr(len + 1, path_uri.length() - len);
+		query = path_uri.substr(len + 1, path_uri.length() - len);
 		path_uri.erase(len, path_uri.length() - len);
-		query = extract_key_value(&remaining_query, "=", "&");
+		/* std::string remaining_query;
+		remaining_query = path_uri.substr(len + 1, path_uri.length() - len);
+		query = extract_key_value(&remaining_query, "=", "&"); */
 	}
 
 	// -- GET PROTOCOL
@@ -56,7 +57,8 @@ void Request::process(char *rec)
 		if ( *end || value == HUGE_VAL || value == -HUGE_VAL || value != request.size())
 			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
 	}
-	body = extract_key_value(&request, "=", "&");
+	body = request.substr(0, request.size());
+	//body = extract_key_value(&request, "=", "&");
 
 	// !! check if method is valid for the locations in config !!
 	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
@@ -150,8 +152,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 	if (!source.query.empty())
 	{
 		out << BLU "    Query..." DEF << std::endl;
-		for (map_strings::iterator it = source.query.begin(); it != source.query.end(); it++)
-			out << BLU "        [" << (*it).first << "]" DEF " |" << (*it).second << "|"<< std::endl;
+		out << BLU "        [" << source.query << "]" DEF << std::endl;
 	}
 	out << BLU "PROTOCOL: " DEF << protocol_names[source.protocol] << std::endl;
 	out << BLU "Headers..." DEF << std::endl;
@@ -160,8 +161,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 	if (!source.body.empty())
 	{
 		out << BLU "Body..." DEF << std::endl;
-		for (map_strings::iterator it = source.body.begin(); it != source.body.end(); it++)
-			out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|"<< std::endl;
+		out << BLU "        [" << source.body << "]" DEF << std::endl;
 		out << std::endl;
 	}
 	return (out);

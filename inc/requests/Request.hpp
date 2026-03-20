@@ -35,10 +35,10 @@ public:
 
 	t_method method;
 	std::string path_uri;
-	map_strings query;
+	std::string query;
 	t_protocol protocol;
 	map_strings headers;
-	map_strings body;
+	std::string body;
 
 };
 

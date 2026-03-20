@@ -238,7 +238,8 @@ void Server::launch()
 				
 				if (_clients[fd].request.path_uri.find(".py") != std::string::npos) // detect cgi
 				{
-					CgiHandler	cgi("www/main.py", _clients[fd].request.query , "REQUEST_METHOD=POST");
+					CgiHandler	cgi(_clients[fd].request);
+					// CgiHandler	cgi("www/main.py", _clients[fd].request.query , "REQUEST_METHOD=POST");
 					cgi.executeCgi();
 					int contentOfCgiFd = cgi.getPipeOutReadFd();
 					PopulatePollInfo(contentOfCgiFd);

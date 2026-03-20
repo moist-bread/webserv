@@ -1,10 +1,12 @@
 #include "../../inc/sockets/CgiHandler.hpp"
 
+extern std::string method_names[];
 
-CgiHandler::CgiHandler(const std::string& ScriptPath, const  std::map<std::string, std::string>& query, const std::string& method) 
-    : _query(query), _scriptPath(ScriptPath), _method(method)
+CgiHandler::CgiHandler(Request &src) 
+    : _query(src.query), _body(src.body), _method(src.method)
 {
-    this->_compiler = "/usr/bin/python3";
+    _scriptPath = ("www" + src.path_uri);
+    this->_compiler = "/usr/bin/python3"; // FROM CONFIG
 }
 
 int CgiHandler::InitPipe()
@@ -25,25 +27,9 @@ int CgiHandler::InitPipe()
 
 int CgiHandler::writeBodyToCgiInput()
 {
-    // very inefficient, will later try not to parse the querys so much as to keep this simple
-    std::map<std::string, std::string>::iterator end = _query.end();
-    for (std::map<std::string, std::string>::iterator begin = _query.begin(); begin != end; begin++)
+    if (!_body.empty())
     {
-        ssize_t n = write(this->_pipeIn[1], (*begin).first.c_str() , (*begin).first.size());
-        if (n <= 0)
-        {
-            std::cout << "write() failed" << std::endl;
-            close(this->_pipeIn[1]);
-            return -1;
-        }
-        n = write(this->_pipeIn[1], "=" , 1);
-        if (n <= 0)
-        {
-            std::cout << "write() failed" << std::endl;
-            close(this->_pipeIn[1]);
-            return -1;
-        }
-        n = write(this->_pipeIn[1], (*begin).second.c_str() , (*begin).second.size());
+        ssize_t n = write(this->_pipeIn[1], _body.c_str() , _body.size());
         if (n <= 0)
         {
             std::cout << "write() failed" << std::endl;
@@ -85,6 +71,7 @@ int CgiHandler::executeCgi()
         close(this->_pipeIn[0]);
         close(this->_pipeOut[1]);
 
+        // writing body to cgi stdinput
         if (writeBodyToCgiInput() == -1)
             return -1;
     }
@@ -100,26 +87,27 @@ int CgiHandler::executeCgi()
         close(this->_pipeIn[1]);
         close(this->_pipeOut[0]);
 
-        ssize_t n = 0;
-        std::map<std::string, std::string>::iterator end = _query.end();
-        for (std::map<std::string, std::string>::iterator begin = _query.begin(); begin != end; begin++)
-        {
-            n += (*begin).first.size() + 1 + (*begin).second.size();
-        }
-        // Converter o tamanho do body para string 
-        std::stringstream ss;
-        ss << "CONTENT_LENGTH=" << n;
-        std::string contentLengthEnv = ss.str();
-
+        
         char* argv[3];
         argv[0] = const_cast<char *>(_compiler.c_str());
         argv[1] = const_cast<char *>(this->_scriptPath.c_str());
         argv[2] = NULL;
+        
+        // -- CREATING THE ENV FOR THE CGI
+        char *envp[4];
+        //std::vector<char *> build_env;
 
-        char *envp[3];
-        envp[0] = const_cast<char *>(this->_method.c_str());
-        envp[1] = const_cast<char *>(contentLengthEnv.c_str()); 
-        envp[2] = NULL;
+
+        // Converter o tamanho do body para string 
+        std::stringstream ss;
+        ss << "CONTENT_LENGTH=" << _body.size();
+        std::string contentLengthEnv = ss.str();
+        std::string requestmethod = "REQUEST_METHOD=" + method_names[_method];
+        std::string querystring = "QUERY_STRING=" + _query;
+        envp[0] = const_cast<char *>(requestmethod.c_str());
+        envp[1] = const_cast<char *>(querystring.c_str());
+        envp[2] = const_cast<char *>(contentLengthEnv.c_str()); 
+        envp[3] = NULL;
         execve(argv[0],argv,envp);
         perror("execve failed");
         _exit(EXIT_FAILURE);

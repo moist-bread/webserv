@@ -1,5 +1,6 @@
 #pragma once
 #include "../Network.hpp"
+#include "../requests/HTTP.hpp"
 #include <sstream>
 
 class CgiHandler
@@ -9,16 +10,16 @@ private:
     int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
     int _pid;
 
-    std::map<std::string, std::string> _query;
-    // std::string _body;
+    std::string _query;
+    std::string _body;
     std::string _scriptPath;
-    std::string _method;
+    t_method _method;
     std::string _compiler;
 
     int writeBodyToCgiInput();
 
 public:
-    CgiHandler(const std::string& ScriptPath, const  std::map<std::string, std::string>& query, const std::string& method);
+    CgiHandler(Request &src);
     int InitPipe();
     int getPipeOutReadFd() const;
     int executeCgi();
