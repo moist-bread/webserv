@@ -1,6 +1,10 @@
 #include "../../inc/requests/Response.hpp"
+#include "../../inc/requests/Request.hpp"
 
-extern std::string protocol_names[];
+#include <cstdio>
+#include <ctime>
+#include <fstream>
+#include <sstream>
 
 Response::Response(void) : protocol(UNSUPPORTED_PROTOCOL), status_code(OK)
 {
@@ -61,7 +65,7 @@ void Response::process(Request &src)
 	
 	// putting together the full response
 	std::stringstream ss;
-	ss << protocol_names[protocol] << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
+	ss << HTTP::stringProtocol(protocol) << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
 	ss << "Content-Length: " << content.size() << CRLF;
 	// -- Content-Type
 	ss << "Date: " << date_generate() << CRLF;
@@ -77,7 +81,7 @@ void Response::process(Request &src)
 void Response::update_response_elements(Request &src)
 {
 	protocol = src.protocol;
-	if (protocol_names[protocol].empty())
+	if (protocol == UNSUPPORTED_PROTOCOL)
 		protocol = H1_0;
 	headers.clear();
 	body.clear();
@@ -212,7 +216,7 @@ std::ostream &operator<<(std::ostream &out, Response &source)
 {
 	out << YEL "-- Response Information --";
 	out << DEF << std::endl << std::endl;
-	out << YEL "PROTOCOL: " DEF << protocol_names[source.protocol] << std::endl;
+	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(source.protocol) << std::endl;
 	out << YEL "Status Code: " DEF << source.status_code << std::endl;
 	out << YEL "Reason Phrase: " DEF << source.get_reason_phrase(source.status_code) << std::endl;
 	out << YEL "Headers..." DEF << std::endl;

@@ -1,6 +1,7 @@
 #pragma once
 
 // ==┊ needed libs by class
+#include <stdexcept>
 #include "HTTP.hpp"
 
 // TO-DO
@@ -22,7 +23,7 @@ public:
 	Request &operator=(Request const &source);
 	
 	void process(char *rec);
-	int extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const;
+	std::string extract(std::string *src, const char *sep) const;
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
 	// bool detect_cgi(void) const;
 

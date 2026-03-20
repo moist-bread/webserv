@@ -22,7 +22,7 @@ SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp Connectin
 
 CONF_FILES_C	= 	Lexer.cpp Parser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp \
 
-OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp Response.cpp
+OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp Response.cpp HTTP.cpp
 
 OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))
@@ -41,10 +41,12 @@ $(NAME): $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
 	$(M_COM)
 
 
-parse: fclean $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
+parse: $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
 	$(M_COMOBJS)
 	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
 	$(M_COM)
+
+reparse: fclean parse 
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	@$(CXX) $(CXXFLAGS) -c $< -o $@

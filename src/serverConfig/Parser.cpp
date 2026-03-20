@@ -53,6 +53,7 @@ void Parser::parse(std::vector<ServerConfig> &servers)
 			_advanceToken();
 			ServerConfig newServer = _parseServerBlock();
 			servers.push_back(newServer);
+			// std::cout << "SERVER_BLOCK -> port = " << servers[0].port << "\n";
 		}
 		else
 			throw std::runtime_error("Syntax error at line " /* + line number */ ": Expected 'server' block");
@@ -80,8 +81,6 @@ ServerConfig Parser::_parseServerBlock(void)
 				newServer.host = "0.0.0.0";
 				newServer.port = std::atoi(listenToken.content.c_str());
 			}
-
-			newServer.port = std::atoi(listenToken.content.c_str());
 			_expect(TOKEN_SEMICOLON);
 		}
 		else if (directiveToken.content == "server_name")
@@ -173,7 +172,8 @@ LocationConfig Parser::_parseLocationBlock(const std::string &path)
 		{
 			while (_currentToken().type == TOKEN_KEYWORD)
 			{
-				newLocation.allowedMethods.push_back(_currentToken().content);
+				t_method method = HTTP::getMethod(_currentToken().content);
+				newLocation.allowedMethods.push_back(method);
 				_advanceToken();
 			}
 			_expect(TOKEN_SEMICOLON);
@@ -209,6 +209,8 @@ LocationConfig Parser::_parseLocationBlock(const std::string &path)
 		}
 	}
 	_expect(TOKEN_RBRACE);
+	if (newLocation.allowedMethods.empty())
+		newLocation.allowedMethods.push_back(GET);
 	return (newLocation);
 }
 

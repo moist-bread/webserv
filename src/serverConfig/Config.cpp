@@ -34,6 +34,7 @@ void Config::load(const std::string &filePath)
 {
 	//	tokenize the file
 	std::vector<t_token> fileTokens = Lexer::tokenizeFile(filePath);
+	std::cout << fileTokens << std::endl;
 
 	//	Parse the tokens and dump the tokens into the Config class variables
 	//	The parser class instantiate with tokens and then parse into a given servers vector 

@@ -1,8 +1,12 @@
 #include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Response.hpp"
 
-std::string method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", ""};
-std::string protocol_names[] = {"HTTP/1.0", "HTTP/1.1", ""};
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <cctype>
+
+// std::string method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", ""};
+// std::string protocol_names[] = {"HTTP/1.0", "HTTP/1.1", ""};
 
 Request::Request(void) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_PROTOCOL)
 {
@@ -16,7 +20,7 @@ void Request::process(char *rec)
 	size_t len;
 
 	// -- GET METHOD
-	method = static_cast<t_method>(extract_cmp_verify(&request, " ", method_names));
+	method = HTTP::getMethod(extract(&request, " "));
 
 	// -- GET URI
 	len = request.find(" ");
@@ -36,7 +40,7 @@ void Request::process(char *rec)
 	}
 
 	// -- GET PROTOCOL
-	protocol = static_cast<t_protocol>(extract_cmp_verify(&request, CRLF, protocol_names));
+	protocol = HTTP::getProtocol(extract(&request, CRLF));
 	// protocol = static_cast<t_protocol>(extract_cmp_verify(&request, "\n", protocol_names)); // testing with text
 
 	// -- GET HEADERS
@@ -92,7 +96,7 @@ Request &Request::operator=(Request const &source)
 	return (*this);
 }
 
-int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const
+std::string Request::extract(std::string *src, const char *sep) const
 {
 	size_t len = (*src).find(sep);
 	if (len == std::string::npos)
@@ -101,10 +105,12 @@ int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *
 	std::string segment = (*src).substr(0, len);
 	(*src).erase(0, len + (static_cast<std::string>(sep)).length());
 
-	for (int i = 0; !cmp[i].empty(); i++)
-		if (!segment.compare(cmp[i]))
-			return (i);
-	throw(Request::ParseError("Unsupported parameter", BAD_REQUEST));
+	return (segment);
+
+	//	* PREVIOUS VERSION *
+	// for (int i = 0; !cmp[i].empty(); i++)
+	// 	if (!segment.compare(cmp[i]))
+	// 		return (i);
 }
 
 map_strings Request::extract_key_value(std::string *src, std::string sep, std::string delim) const
@@ -145,7 +151,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 {
 	out << BLU "-- Request Information --";
 	out << DEF << std::endl << std::endl;
-	out << BLU "Method: " DEF << method_names[source.method] << std::endl;
+	out << BLU "Method: " DEF << HTTP::stringMethod(source.method) << std::endl;
 	out << BLU "URI: " DEF << source.path_uri << std::endl;
 	if (!source.query.empty())
 	{
@@ -153,7 +159,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 		for (map_strings::iterator it = source.query.begin(); it != source.query.end(); it++)
 			out << BLU "        [" << (*it).first << "]" DEF " |" << (*it).second << "|"<< std::endl;
 	}
-	out << BLU "PROTOCOL: " DEF << protocol_names[source.protocol] << std::endl;
+	out << BLU "PROTOCOL: " DEF << HTTP::stringProtocol(source.protocol) << std::endl;
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = source.headers.begin(); it != source.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|"<< std::endl;

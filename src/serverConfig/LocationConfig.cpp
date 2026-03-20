@@ -1,4 +1,5 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
+#include "../../inc/requests/HTTP.hpp"
 
 LocationConfig::LocationConfig(void)
 {
@@ -23,7 +24,17 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
-		(void)source;
+	{
+		this->path = source.path;
+		this->root = source.root;
+		this->index = source.index;
+		this->autoindex = source.autoindex;
+		this->allowedMethods = source.allowedMethods;
+		this->uploadStore = source.uploadStore;
+		this->returnCode = source.returnCode;
+		this->returnUrl = source.returnUrl;
+		this->cgi = source.cgi;
+	}
 	return (*this);
 }
 
@@ -40,7 +51,7 @@ std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 
 	out << "      Allowed Methods: ";
 	for (size_t i = 0; i < source.allowedMethods.size(); ++i) {
-		out << source.allowedMethods[i] << " ";
+		out << HTTP::stringMethod(source.allowedMethods[i]) << " ";
 	}
 	out << "\n";
 

@@ -3,6 +3,8 @@
 // ==┊ needed libs by class
 #include "HTTP.hpp"
 
+class Request;
+
 // TO-DO
 //
 // [x] list of elements of an http response

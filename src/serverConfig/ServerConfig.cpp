@@ -23,7 +23,14 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
-		(void)source;
+	{
+		this->port = source.port;
+		this->host = source.host;
+		this->serverNames = source.serverNames;
+		this->clientMaxBodySize = source.clientMaxBodySize;
+		this->errorPages = source.errorPages;
+		this->locations = source.locations;
+	}
 	return (*this);
 }
 

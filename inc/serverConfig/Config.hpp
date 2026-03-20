@@ -24,6 +24,6 @@ class Config
 	private:
 		std::vector<ServerConfig>	_servers;
 		
-	};
+};
 
 std::ostream &operator<<(std::ostream &out, Config const &source);
