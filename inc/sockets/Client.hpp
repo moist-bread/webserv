@@ -23,6 +23,8 @@ public:
 
     Request request;
     Response response;
+    // each client is able to execute multiple CGI at a time
+    // std::vector<CgiHandler> cgi;
     
     //Appending 
     void feed(const char* data, int size);
