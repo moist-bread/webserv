@@ -1,11 +1,11 @@
 #include "../../inc/sockets/ASimpleServer.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-ASimpleServer::ASimpleServer(int domain,int type,int protocol,int port,u_long ip,int backlog) : ListeningSocket(domain,type,protocol,port,ip,backlog)
+ASimpleServer::ASimpleServer(int domain, int type, int protocol, int port, u_long ip, int backlog) : ListeningSocket(domain, type, protocol, port, ip, backlog)
 {
 	std::cout << GRN "the ASimpleServer ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-    this->_backlog = backlog;
+	this->_backlog = backlog;
 }
 
 ASimpleServer::ASimpleServer(ASimpleServer const &source) : ListeningSocket(source)
@@ -21,8 +21,9 @@ ASimpleServer::~ASimpleServer(void)
 	std::cout << URED "has been deleted" DEF << std::endl;
 }
 
-ListeningSocket *ASimpleServer::getSocket() const{
-    return this->_socket;
+ListeningSocket *ASimpleServer::getSocket() const
+{
+	return this->_socket;
 }
 
 ASimpleServer &ASimpleServer::operator=(ASimpleServer const &source)

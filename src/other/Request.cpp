@@ -10,62 +10,6 @@ Request::Request(void) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_PROTOC
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-void Request::process(char *rec)
-{
-	std::string request = rec;
-	size_t len;
-
-	// -- GET METHOD
-	method = static_cast<t_method>(extract_cmp_verify(&request, " ", method_names));
-
-	// -- GET URI
-	len = request.find(" ");
-	if (len == std::string::npos)
-		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
-	path_uri = request.substr(0, len);
-	request.erase(0, len + 1);
-
-	// -- GET QUERY
-	len = path_uri.find("?");
-	if(len != std::string::npos)
-	{
-		query = path_uri.substr(len + 1, path_uri.length() - len);
-		path_uri.erase(len, path_uri.length() - len);
-		/* std::string remaining_query;
-		remaining_query = path_uri.substr(len + 1, path_uri.length() - len);
-		query = extract_key_value(&remaining_query, "=", "&"); */
-	}
-
-	// -- GET PROTOCOL
-	protocol = static_cast<t_protocol>(extract_cmp_verify(&request, CRLF, protocol_names));
-	// protocol = static_cast<t_protocol>(extract_cmp_verify(&request, "\n", protocol_names)); // testing with text
-
-	// -- GET HEADERS
-	headers = extract_key_value(&request, ":", CRLF);
-	// headers = extract_key_value(&request, ":", "\n"); // testing with text
-	
-	// -- GET BODY
-	request.erase(0, 2);
-	// request.erase(0, 1); // testing with text
-	
-	if (headers["content-length"].empty() && request.size())
-		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
-	else if (!headers["content-length"].empty())
-	{
-		char *end = NULL;
-		double value = std::strtod(headers["content-length"].c_str(), &end);
-		if ( *end || value == HUGE_VAL || value == -HUGE_VAL || value != request.size())
-			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
-	}
-	body = request.substr(0, request.size());
-	//body = extract_key_value(&request, "=", "&");
-
-	// !! check if method is valid for the locations in config !!
-	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
-	
-	std::cout << *this << std::endl;
-}
-
 Request::Request(Request const &source)
 {
 	*this = source;
@@ -94,6 +38,68 @@ Request &Request::operator=(Request const &source)
 	return (*this);
 }
 
+void Request::process(std::string request)
+{
+	size_t len;
+
+	clear();
+	// -- GET METHOD
+	method = static_cast<t_method>(extract_cmp_verify(&request, " ", method_names));
+
+	// -- GET URI
+	len = request.find(" ");
+	if (len == std::string::npos)
+		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+	path_uri = request.substr(0, len);
+	request.erase(0, len + 1);
+
+	// -- GET QUERY
+	len = path_uri.find("?");
+	if (len != std::string::npos)
+	{
+		query = path_uri.substr(len + 1, path_uri.length() - len);
+		path_uri.erase(len, path_uri.length() - len);
+	}
+
+	// -- GET PROTOCOL
+	protocol = static_cast<t_protocol>(extract_cmp_verify(&request, CRLF, protocol_names));
+	// protocol = static_cast<t_protocol>(extract_cmp_verify(&request, "\n", protocol_names)); // testing with text
+
+	// -- GET HEADERS
+	headers = extract_key_value(&request, ":", CRLF);
+	// headers = extract_key_value(&request, ":", "\n"); // testing with text
+
+	// -- GET BODY
+	request.erase(0, 2);
+	// request.erase(0, 1); // testing with text
+
+	if (headers["content-length"].empty() && request.size())
+		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+	else if (!headers["content-length"].empty())
+	{
+		char *end = NULL;
+		double value = std::strtod(headers["content-length"].c_str(), &end);
+		if (*end || value == HUGE_VAL || value == -HUGE_VAL || value != request.size())
+			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+	}
+	body = request.substr(0, request.size());
+
+	// !! check if method is valid for the locations in config !!
+	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
+
+	std::cout << *this << std::endl;
+}
+
+void Request::clear(void)
+{
+	method = UNSUPPORTED_METHOD;
+	path_uri.clear();
+	query.clear();
+	protocol = UNSUPPORTED_PROTOCOL;
+	headers.clear();
+	body.clear();
+}
+
 int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const
 {
 	size_t len = (*src).find(sep);
@@ -119,8 +125,6 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 
 	while (!(*src).empty())
 	{
-		// std::cout << "-- remaining src: " << std::endl << (*src) << std::endl;
-		
 		// -- get the key name
 		len = (*src).find(sep);
 		if (len == std::string::npos)
@@ -146,7 +150,8 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 std::ostream &operator<<(std::ostream &out, Request &source)
 {
 	out << BLU "-- Request Information --";
-	out << DEF << std::endl << std::endl;
+	out << DEF << std::endl
+		<< std::endl;
 	out << BLU "Method: " DEF << method_names[source.method] << std::endl;
 	out << BLU "URI: " DEF << source.path_uri << std::endl;
 	if (!source.query.empty())
@@ -157,7 +162,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 	out << BLU "PROTOCOL: " DEF << protocol_names[source.protocol] << std::endl;
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = source.headers.begin(); it != source.headers.end(); it++)
-		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|"<< std::endl;
+		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	if (!source.body.empty())
 	{
 		out << BLU "Body..." DEF << std::endl;

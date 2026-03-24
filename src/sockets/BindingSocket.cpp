@@ -1,12 +1,12 @@
 #include "../../inc/sockets/BindingSocket.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-BindingSocket::BindingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
+BindingSocket::BindingSocket(int domain, int type, int protocol, int port, u_long ip) : SocketController(domain, type, protocol, port, ip)
 {
 	std::cout << GRN "the BindingSocket ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-    
-	this->_binding = connect_to_network(getSocketfd(),getStructAdress());
+
+	this->_binding = connect_to_network(getSocketfd(), getStructAdress());
 	test_connection(_binding);
 }
 
@@ -25,10 +25,10 @@ BindingSocket &BindingSocket::operator=(BindingSocket const &source)
 	return (*this);
 }
 
-int BindingSocket::connect_to_network(int sock,struct sockaddr_in address)
+int BindingSocket::connect_to_network(int sock, struct sockaddr_in address)
 {
-    return bind(sock,(struct sockaddr *)&address,sizeof(address));
-} 
+	return bind(sock, (struct sockaddr *)&address, sizeof(address));
+}
 
 std::ostream &operator<<(std::ostream &out, BindingSocket const &source)
 {

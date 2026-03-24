@@ -1,7 +1,7 @@
 #include "../../inc/sockets/ListeningSocket.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-ListeningSocket::ListeningSocket(int domain,int type,int protocol,int port,u_long ip,int backlog) : BindingSocket(domain,type,protocol,port,ip)  
+ListeningSocket::ListeningSocket(int domain, int type, int protocol, int port, u_long ip, int backlog) : BindingSocket(domain, type, protocol, port, ip)
 {
 	std::cout << GRN "the ListeningSocket ";
 	std::cout << UCYN "has been created" DEF << std::endl;
@@ -25,7 +25,7 @@ ListeningSocket::~ListeningSocket(void)
 
 void ListeningSocket::start_listening()
 {
-	this->listening = listen(this->_sock,this->_backlog);
+	this->listening = listen(this->_sock, this->_backlog);
 }
 
 ListeningSocket &ListeningSocket::operator=(ListeningSocket const &source)

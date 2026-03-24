@@ -5,9 +5,6 @@
 
 // TO-DO
 //
-// [ ] see if essencial headers are present
-// [ ] validate headers
-// [x] make parsing work for POST
 // [ ] vefify LWS (linear whitespace) better
 
 // =====>┊( REQUEST )┊
@@ -18,19 +15,20 @@ public:
 	Request(void);
 	Request(Request const &source);
 	~Request(void);
-	
+
 	Request &operator=(Request const &source);
-	
-	void process(char *rec);
+
+	void process(std::string request);
+	void clear(void);
 	int extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const;
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
 	// bool detect_cgi(void) const;
 
-
-	class ParseError : public std::runtime_error {
-		public:
-			ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {}; // 400 Bad Request
-			t_status_code request_status;
+	class ParseError : public std::runtime_error
+	{
+	public:
+		ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {}; // 400 Bad Request
+		t_status_code request_status;
 	};
 
 	t_method method;
@@ -39,7 +37,6 @@ public:
 	t_protocol protocol;
 	map_strings headers;
 	std::string body;
-
 };
 
 std::ostream &operator<<(std::ostream &out, Request &source);
