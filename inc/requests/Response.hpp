@@ -17,7 +17,9 @@ public:
 	void process(Request &src);
 	void clear(Request &src);
 	static std::string assemble_content_path(Request &src, t_status_code status_code);
+	static std::string backup_error_pages(t_status_code status_code);
 	static std::string get_reason_phrase(t_status_code status_code);
+	const char *define_content_type(std::string extension) const;
 	static std::string date_generate(void);
 
 	void eraseWritten(int start, int idx);

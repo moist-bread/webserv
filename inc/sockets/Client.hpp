@@ -17,8 +17,6 @@ public:
     Request request;
     Response response;
     CgiHandler cgi;
-    // std::vector<CgiHandler> cgi;
-    // each client is able to execute multiple CGI at a time?
 
     // Getters
     time_t GetLastActivity() const;

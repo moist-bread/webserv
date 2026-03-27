@@ -44,25 +44,25 @@ void Response::process(Request &src)
 	if (!file.is_open())
 	{
 		perror("File does not exist");
-		if (src.path_uri.find(".html") == src.path_uri.size() - 5)
+		if (src.file_extension == "html")
 			status_code = NOT_FOUND;
 		else
 			status_code = INTERNAL_SERVER_ERROR;
+		src.file_extension = "html";
 		file.open(assemble_content_path(src, status_code).c_str());
 	}
 
-	std::string content = ft_to_string(file.rdbuf());
-	if (content.empty())
-	{
-		perror("Desired error page is not present");
-		status_code = INTERNAL_SERVER_ERROR;
-	}
+	std::string content;
+	if (file.is_open())
+		content = ft_to_string(file.rdbuf());
+	else
+		content = backup_error_pages(status_code);
 
 	// putting together the full response
 	std::stringstream ss;
 	ss << protocol_names[protocol] << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
 	ss << "Content-Length: " << content.size() << CRLF;
-	// -- Content-Type
+	ss << "Content-Type: " << define_content_type(src.file_extension) << CRLF;
 	ss << "Date: " << date_generate() << CRLF;
 	ss << CRLF;
 	ss << content;
@@ -91,17 +91,29 @@ std::string Response::assemble_content_path(Request &src, t_status_code status_c
 		// look at the config to see which error page to send
 		// (later) consider default error pages from config
 		path = "www/404.html";
+		src.file_extension = "html";
 	}
 	else
 	{
 		// in case of everything being fine
 		// do path with
 		// (later) consider locations from config
-		if (src.path_uri.find(".") == std::string::npos)
+		if (src.file_extension == "html")
+		{
+			if (!(*src.path_uri.end() == '/'))
+				src.path_uri.append("/");
 			src.path_uri.append("index.html");
+		}
 		path = "www" + src.path_uri;
 	}
 	return (path);
+}
+std::string Response::backup_error_pages(t_status_code status_code)
+{
+	return ("");
+	(void)status_code;
+	// -----------------------------------------------------------
+	// send in hardcoded error page and css
 }
 
 std::string Response::get_reason_phrase(t_status_code status_code)
@@ -193,15 +205,67 @@ std::string Response::get_reason_phrase(t_status_code status_code)
 	}
 }
 
+const char *Response::define_content_type(std::string extension) const
+{
+	// text types
+	if (extension == "html")
+		return ("text/html");
+	else if (extension == "css")
+		return ("text/css");
+	else if (extension == "csv")
+		return ("text/csv");
+	else if (extension == "txt")
+		return ("text/plain");
+
+	// image types
+	else if (extension == ".jpeg" || extension == ".jpg")
+		return ("image/jpeg");
+	else if (extension == "png")
+		return ("image/png");
+	else if (extension == "gif")
+		return ("image/gif");
+	else if (extension == "svg")
+		return ("image/svg+xml");
+	else if (extension == "webp")
+		return ("image/webp");
+	else if (extension == "ico")
+		return ("image/vnd.microsoft.icon");
+
+	// video and audio types
+	if (extension == "mp4")
+		return ("video/mp4");
+	else if (extension == "webm")
+		return ("video/webm");
+	else if (extension == "mpeg")
+		return ("audio/mpeg");
+	else if (extension == "wav")
+		return ("audio/wav");
+
+	// app types
+	if (extension == "pdf")
+		return ("application/pdf");
+	else if (extension == "form") // --------------------
+		return ("application/x-www-form-urlencoded");
+
+	// multipart types
+	if (extension == "multiform") // --------------------
+		return ("multipart/form-data");
+	else if (extension == "byteranges") // --------------------
+		return ("multipart/byteranges");
+
+	else
+		return ("application/octet-stream");
+}
+
 std::string Response::date_generate(void)
 {
-	time_t timestamp = time(NULL);
-	struct tm datetime = *localtime(&timestamp);
+	time_t timestamp = std::time(NULL);
+	struct tm datetime = *std::localtime(&timestamp);
 	char buff[30];
 	std::string buffer;
 
 	// example: Fri, 13 Mar 2026 17:32:50 GMT
-	if (strftime(buff, sizeof buff, "%a, %d %b %Y %T GMT", &datetime))
+	if (std::strftime(buff, sizeof buff, "%a, %d %b %Y %T GMT", &datetime))
 		buffer = buff;
 	return (buffer);
 }

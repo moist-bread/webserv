@@ -1,15 +1,17 @@
 #include "../../inc/sockets/CgiHandler.hpp"
+#include <ctime>
 
 extern std::string method_names[];
+extern std::string protocol_names[];
 
-CgiHandler::CgiHandler(void) {}
+CgiHandler::CgiHandler(void) : time_started(-1) {}
 
 CgiHandler::CgiHandler(CgiHandler const &source)
 {
 	*this = source;
 }
 
-CgiHandler::~CgiHandler(void) {}
+CgiHandler::~CgiHandler(void) { clear(); }
 
 CgiHandler &CgiHandler::operator=(CgiHandler const &source)
 {
@@ -45,30 +47,42 @@ void CgiHandler::clear()
 	_pipeOut[0] = 0;
 	_pipeOut[1] = 0;
 	_pid = 0;
-	_env.clear();
 	_body.clear();
-	_scriptPath.clear();
 	_compiler.clear();
+	_scriptPath.clear();
+	_env.clear();
+	time_started = -1;
 }
 
 void CgiHandler::update_info(Request &src)
 {
 	_body = src.body;
-	_scriptPath = ("www" + src.path_uri);
-	this->_compiler = "/usr/bin/python3"; // FROM CONFIG
+	std::string filename = extract_script_filename(src.path_uri);
+	_scriptPath = "www" + filename;
+
+	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
+	if (!fs.is_open())
+		throw(CgiHandler::CgiExecutionFail());
+
+	this->_compiler = "/usr/bin/python3"; // BASED ON THE file extension
 
 	std::string empty;
-	// -- server info
-	// from config
-	_env.push_back("SERVER_SOFTWARE=" + empty);
-	_env.push_back("SERVER_NAME=" + empty);
-	_env.push_back("SERVER_PROTOCOL=" + empty);
-	_env.push_back("SERVER_PORT=" + empty);
-	_env.push_back("SERVER_ADMIN=" + empty);
-	_env.push_back("GATEWAY_INTERFACE=" + empty);
-	_env.push_back("DOCUMENT_ROOT=" + empty);
+	_env.push_back("SERVER_SOFTWARE=" + ft_to_string("server/1.0.0"));
+	_env.push_back("SERVER_NAME=" + empty); // -------------------------
+	_env.push_back("SERVER_PROTOCOL=" + protocol_names[src.protocol]);
+	_env.push_back("SERVER_PORT=" + empty); // -------------------------
+	_env.push_back("GATEWAY_INTERFACE=" + ft_to_string("CGI/1.1"));
 
-	// -- all the headers from the http request
+	_env.push_back("REQUEST_METHOD=" + method_names[src.method]);
+	_env.push_back("PATH_INFO=" + extract_path_info(src.path_uri));
+	_env.push_back("QUERY_STRING=" + src.query);
+	_env.push_back("SCRIPT_NAME=" + _scriptPath);
+	_env.push_back("SCRIPT_FILENAME=" + filename);
+	_env.push_back("REMOTE_ADDR=" + src.headers["x-forwarded-for"]);
+	_env.push_back("REQUEST_URI=" + src.path_uri + src.query);
+	_env.push_back("CONTENT_LENGTH=" + ft_to_string(_body.size()));
+	_env.push_back("CONTENT_TYPE=" + src.headers["content-type"]);
+
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 	{
 		// add "HTTP_" before all keys, the "-" become "_" and all uppercase
@@ -76,35 +90,50 @@ void CgiHandler::update_info(Request &src)
 		std::transform(key.begin(), key.end(), key.begin(), ::screaming_snake_case);
 		_env.push_back("HTTP_" + key + "=" + (*it).second);
 	}
+}
 
-	_env.push_back("REQUEST_METHOD=" + method_names[src.method]);
-	_env.push_back("PATH=" + empty);
-	_env.push_back("QUERY_STRING=" + src.query);
-	_env.push_back("REMOTE_ADDR=" + empty);
-	_env.push_back("REMOTE_HOST=" + empty);
-	_env.push_back("REMOTE_PORT=" + empty);
-	_env.push_back("REMOTE_USER=" + empty);
-	_env.push_back("REQUEST_URI=" + _scriptPath);
-	_env.push_back("SCRIPT_FILENAME=" + empty);
-	_env.push_back("SCRIPT_NAME=" + _scriptPath);
-	_env.push_back("CONTENT_LENGTH=" + ft_to_string(_body.size()));
-	_env.push_back("CONTENT_TYPE=" + empty);
+std::string CgiHandler::extract_script_filename(std::string full_path)
+{
+	// script filename is everything until the end of the script extention
+	size_t pos = full_path.find(".py"); // OR ANY OTHER THING WE DECIDE FOR THE CGI
+	if (pos == std::string::npos)
+		return (full_path);
+	else if (pos + 3 < full_path.size())
+		return (full_path.substr(0, pos + 3));
+	else
+		return (full_path);
+}
+
+std::string CgiHandler::extract_path_info(std::string full_path)
+{
+	// "path info is whatever comes after the program name in the url"
+	size_t pos = full_path.rfind(".py"); // OR ANY OTHER THING WE DECIDE FOR THE CGI
+	if (pos == std::string::npos)
+		return (full_path);
+	else if (pos + 3 < full_path.size())
+		return (full_path.substr(pos + 3));
+	else
+		return (ft_to_string("/"));
 }
 
 int CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
+	{
+		throw(std::runtime_error("pipe failure"));
 		return -1; // WHAT TO DO IN CASE OF -1????
+	}
 
 	this->_pid = fork();
 	if (_pid == -1)
 	{
 		std::cout << "Something went wrong while doing fork" << std::endl;
+		throw(std::runtime_error("fork failure"));
 		return -1;
 	}
 	else if (_pid >= 1)
 	{
-		std::cout << "------Parent process ------" << std::endl;
+		std::cout << "------ Parent process ------" << std::endl;
 
 		close(this->_pipeIn[0]);
 		close(this->_pipeOut[1]);
@@ -127,30 +156,29 @@ int CgiHandler::executeCgi()
 		argv[1] = const_cast<char *>(this->_scriptPath.c_str());
 		argv[2] = NULL;
 
-		// -- CREATING THE ENV FOR THE CGI
-		char **envp = NULL;
-		try
-		{
-			envp = create_execve_env();
-		}
-		catch (const std::bad_alloc &e)
-		{
-			std::cerr << e.what() << std::endl;
-		}
-
-		// testing the env
-		std::cerr << "\nCgi env:\n";
+		// -- turning the env into char **
+		std::vector<char *> exec_env;
 		for (size_t i = 0; i < _env.size(); i++)
-			std::cerr << envp[i] << std::endl;
+			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
+		exec_env.push_back(NULL);
 
-		execve(argv[0], argv, envp);
+		/*
+		// -- testing only env
+		char **envp = &exec_env[0];
+		std::cerr << "\nCGI env:\n";
+		for (size_t i = 0; i < _env.size(); i++)
+		std::cerr << envp[i] << std::endl;
+		// --
+		*/
+
+		execve(argv[0], argv, &exec_env[0]);
 		perror("execve failed");
-
-		for (size_t i = 0; i < _env.size(); i++)
-			delete[] envp[i];
-		delete[] envp;
+		sleep(500);
 		_exit(EXIT_FAILURE);
 	}
+	time_started = std::time(NULL);
+	// !!!!!! WHAT TO DO IN CASE OF CGI TIMEOUT
+	// !!!!!! when there's a problem it starts looping
 	return 1;
 }
 
@@ -179,6 +207,7 @@ int CgiHandler::writeBodyToCgiInput() const
 		{
 			std::cout << "write() failed" << std::endl;
 			close(this->_pipeIn[1]);
+			throw(std::runtime_error("write failure"));
 			return -1;
 		}
 	}
@@ -187,6 +216,7 @@ int CgiHandler::writeBodyToCgiInput() const
 	if (close(this->_pipeIn[1]) == -1)
 	{
 		std::cout << "close(_pipeIn[1]) failed" << std::endl;
+		throw(std::runtime_error("close failure"));
 		return -1;
 	}
 
@@ -195,17 +225,20 @@ int CgiHandler::writeBodyToCgiInput() const
 
 char **CgiHandler::create_execve_env(void) const
 {
-	char **exec_env = new char *[(_env.size() + 1)];
+	std::vector<char *> exec_env;
 	for (size_t i = 0; i < _env.size(); i++)
-	{
-		exec_env[i] = new char[_env[i].length() + 1];
-		std::strcpy(exec_env[i], _env[i].c_str());
-	}
-	exec_env[_env.size()] = NULL;
-	return (exec_env);
+		exec_env.push_back(const_cast<char *>(_env[i].c_str()));
+	exec_env.push_back(NULL);
+
+	return (&exec_env[0]);
 }
 
 int CgiHandler::getPipeOutReadFd() const
 {
 	return this->_pipeOut[0];
+}
+
+time_t CgiHandler::getCgiActivityStart(void) const
+{
+	return (time_started);
 }

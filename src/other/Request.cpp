@@ -31,6 +31,7 @@ Request &Request::operator=(Request const &source)
 		this->method = source.method;
 		this->path_uri = source.path_uri;
 		this->query = source.query;
+		this->file_extension = source.file_extension;
 		this->protocol = source.protocol;
 		this->headers = source.headers;
 		this->body = source.body;
@@ -60,6 +61,18 @@ void Request::process(std::string request)
 		query = path_uri.substr(len + 1, path_uri.length() - len);
 		path_uri.erase(len, path_uri.length() - len);
 	}
+
+	// -- GET FILE EXTENSION
+	len = path_uri.rfind(".");
+	if (len != std::string::npos)
+	{
+		file_extension = path_uri.substr(len + 1, path_uri.length() - len);
+		len = file_extension.find("/");
+		if (len != std::string::npos)
+			file_extension.erase(len, file_extension.length() - len);
+	}
+	else
+		file_extension = "html";
 
 	// -- GET PROTOCOL
 	protocol = static_cast<t_protocol>(extract_cmp_verify(&request, CRLF, protocol_names));
@@ -95,6 +108,7 @@ void Request::clear(void)
 	method = UNSUPPORTED_METHOD;
 	path_uri.clear();
 	query.clear();
+	file_extension.clear();
 	protocol = UNSUPPORTED_PROTOCOL;
 	headers.clear();
 	body.clear();
@@ -154,6 +168,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 		<< std::endl;
 	out << BLU "Method: " DEF << method_names[source.method] << std::endl;
 	out << BLU "URI: " DEF << source.path_uri << std::endl;
+	out << BLU "file extension... " DEF << source.file_extension << std::endl;
 	if (!source.query.empty())
 	{
 		out << BLU "    Query..." DEF << std::endl;

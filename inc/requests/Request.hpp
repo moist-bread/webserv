@@ -5,6 +5,9 @@
 
 // TO-DO
 //
+// [ ] DO CHUNCKED REQUESTS AND RESPONSES
+// [ ] START DOING COOKIES
+// [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
 
 // =====>┊( REQUEST )┊
@@ -27,13 +30,14 @@ public:
 	class ParseError : public std::runtime_error
 	{
 	public:
-		ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {}; // 400 Bad Request
+		ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {};
 		t_status_code request_status;
 	};
 
 	t_method method;
 	std::string path_uri;
 	std::string query;
+	std::string file_extension;
 	t_protocol protocol;
 	map_strings headers;
 	std::string body;

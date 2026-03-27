@@ -12,10 +12,12 @@ private:
 	int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
 	int _pid;
 
-	std::vector<std::string> _env;
 	std::string _body;
-	std::string _scriptPath;
 	std::string _compiler;
+	std::string _scriptPath;
+	std::vector<std::string> _env;
+
+	time_t time_started; // use to detect CGI timeout
 
 	void clear();
 	void update_info(Request &src);
@@ -23,6 +25,8 @@ private:
 	int InitPipes();
 	int writeBodyToCgiInput() const;
 	char **create_execve_env(void) const;
+	static std::string extract_script_filename(std::string full_path);
+	static std::string extract_path_info(std::string full_path);
 
 public:
 	CgiHandler(void);
@@ -34,4 +38,11 @@ public:
 
 	void process(Request &src);
 	int getPipeOutReadFd() const;
+	time_t getCgiActivityStart(void) const;
+
+	class CgiExecutionFail : public std::exception
+	{
+	public:
+		const char *what(void) const throw() { return ("execution failure"); }
+	};
 };

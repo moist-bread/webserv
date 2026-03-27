@@ -194,10 +194,9 @@ int Server::responder(int clientFd, const std::string &data)
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
-	// CHANGE IT SO EACH CLIENT HAS A VECTOR OS CGIS INSTEAD OF ONE FOR THE WHOLE SERVER
 
 	//  Ler do tubo
-	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG
+	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
 	char buffer[4096];
 	int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
 
@@ -236,10 +235,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	ConnectionStatus status = getStatus(ret);
 	if (status == IO_ERROR || status == IO_CLOSED)
-	{
-		removeClient(fd, *pollfds_idx);
-		return;
-	}
+		return (removeClient(fd, *pollfds_idx));
 
 	std::string rec = std::string(tmp, ret);
 	std::cout << std::endl
@@ -259,30 +255,32 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		_clients[fd].response.status_code = e.request_status;
 	}
 
-	if (_clients[fd].request.path_uri.find(".py") != std::string::npos) // detect cgi
+	if (_clients[fd].request.file_extension == "py")
 	{
-
-		_clients[fd].cgi.process(_clients[fd].request);
-		int contentOfCgiFd = _clients[fd].cgi.getPipeOutReadFd();
-		PopulatePollInfo(contentOfCgiFd);
-		_cgiMap.insert(std::make_pair(contentOfCgiFd, _clients[fd].GetClientFd()));
-		// O cliente fica "adormecido" no poll até o CGI acabar
-		_pollfds[*pollfds_idx].events = 0;
+		try
+		{
+			_clients[fd].cgi.process(_clients[fd].request);
+			int contentOfCgiFd = _clients[fd].cgi.getPipeOutReadFd();
+			PopulatePollInfo(contentOfCgiFd);
+			_cgiMap.insert(std::make_pair(contentOfCgiFd, _clients[fd].GetClientFd()));
+			// O cliente fica "adormecido" no poll até o CGI acabar
+			_pollfds[*pollfds_idx].events = 0;
+			return;
+		}
+		catch (const CgiHandler::CgiExecutionFail &e)
+		{
+			std::cerr << "cgi failure: " << e.what() << '\n';
+			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
+		}
 	}
-	else
-	{
-		_clients[fd].response.process(_clients[fd].request);
-		// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-		_pollfds[*pollfds_idx].events = POLLOUT;
-	}
+	_clients[fd].response.process(_clients[fd].request);
+	// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+	_pollfds[*pollfds_idx].events = POLLOUT;
 }
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
-	int bytesWritten;
-	// SWITCH TO SENDING FULL RESPONSE INSTEAD
-	bytesWritten = responder(fd, _clients[fd].response.full_response);
-
+	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
 		_clients[fd].updateLastActivity();
@@ -312,7 +310,16 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 	if (seconds_idle > TIMEOUT_TIME)
 	{
 		std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-		removeClient(fd, *pollfds_idx);
+		return (removeClient(fd, *pollfds_idx));
+	}
+
+	if (_clients[fd].cgi.getCgiActivityStart() == -1)
+		return;
+	double cgi_time = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
+	if (cgi_time > TIMEOUT_TIME)
+	{
+		std::cout << "\n[TIMEOUT] Cgi Timed out " << fd << " inativo há " << cgi_time << " segundos. A desconectar..." << std::endl;
+		return (removeClient(fd, *pollfds_idx));
 	}
 }
 
