@@ -99,8 +99,16 @@ void Server::PopulatePollInfo(int fd)
 
 void Server::removeClient(int fd, size_t &index)
 {
-	std::cout << "REMOVING THE CLIENTS\n";
+	std::cout << RED "REMOVING THE CLIENT " DEF << fd << "\n";
 	_clients.erase(fd);
+	for (std::map<int, int>::iterator it = _cgiMap.begin(); it !=_cgiMap.end(); it++)
+	{
+		if (it->second == fd)
+		{
+			_cgiMap.erase(it);
+			break;
+		}
+	}
 	close(fd);
 	_pollfds.erase(_pollfds.begin() + index);
 	index--;
@@ -112,16 +120,16 @@ void Server::launch()
 	while (running)
 	{
 		int pollCount = poll(&_pollfds[0], _pollfds.size(), -1);
-		if (pollCount < 0)
+		if (pollCount <= 0)
 		{
 			// research what to do when it timesout
-			std::cout << "Timeout..." << std::endl;
+			std::cout << "Timeout... " << pollCount << std::endl;
 		}
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
 			int fd = _pollfds[i].fd;
-
+			
 			if (!running && _clients.find(fd) != _clients.end())
 			{
 				removeClient(fd, i);
@@ -198,6 +206,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 	int clientFd = -1;
 	clientFd = _cgiMap[fd];
 
+	_clients[clientFd].cgi.time_started = -1;
 	//  Ler do tubo
 	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
 	char buffer[4096];
@@ -278,11 +287,13 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	}
 	_clients[fd].response.process(_clients[fd].request);
 	// Paramos de escutar POLLIN e passamos a escutar POLLOUT
+	_clients[fd].updateLastActivity();
 	_pollfds[*pollfds_idx].events = POLLOUT;
 }
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
+	std::cout << "send client response" << std::endl;
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{

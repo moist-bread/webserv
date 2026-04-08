@@ -39,27 +39,18 @@ void Response::process(Request &src)
 {
 	clear(src);
 
-	// IN CASE OF PUT
-	// create a special default location path to dump all PUT information into
-	// open the file and write to it 
-
-	// get the requested content
-	std::ifstream file(assemble_content_path(src, status_code).c_str());
-	if (!file.is_open())
+	switch (src.method)
 	{
-		perror("File does not exist");
-		if (src.file_extension == "html")
-			status_code = NOT_FOUND;
-		else
-			status_code = INTERNAL_SERVER_ERROR;
-		src.file_extension = "html";
-		file.open(assemble_content_path(src, status_code).c_str());
+	case GET:
+		method_get(src);
+		break;
+	case POST:
+		method_post(src);
+		break;
+	default:
+		method_get(src);
+		break;
 	}
-
-	if (file.is_open())
-		body = to_str(file.rdbuf());
-	else
-		body = backup_error_pages(status_code);
 	
 	headers["Content-Length"] = to_str(body.size());
 	headers["Content-Type"] = define_content_type(src.file_extension);
@@ -89,6 +80,38 @@ void Response::clear(Request &src)
 	body.clear();
 	full_response.clear();
 }
+
+void Response::method_get(Request &src)
+{
+	// get the requested content
+	std::ifstream file(assemble_content_path(src, status_code).c_str());
+	if (!file.is_open())
+	{
+		perror("File does not exist");
+		if (src.file_extension == "html")
+			status_code = NOT_FOUND;
+		else
+			status_code = INTERNAL_SERVER_ERROR;
+		src.file_extension = "html";
+		file.open(assemble_content_path(src, status_code).c_str());
+	}
+
+	if (file.is_open())
+		body = to_str(file.rdbuf());
+	else
+		body = backup_error_pages(status_code);
+}
+
+void Response::method_post(Request &src)
+{
+	std::cout << "THIS IS A POST METHOD\n";
+
+	// create a special default location path to dump all PUT information into
+	// open the file and write to it 
+
+	method_get(src);
+}
+
 std::string Response::assemble_content_path(Request &src, t_status_code status_code)
 {
 	std::string path;

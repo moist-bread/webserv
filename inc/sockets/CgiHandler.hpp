@@ -17,7 +17,6 @@ private:
 	std::string _scriptPath;
 	std::vector<std::string> _env;
 
-	time_t time_started; // use to detect CGI timeout
 
 	void clear();
 	void update_info(Request &src);
@@ -40,6 +39,8 @@ public:
 	int getPipeOutReadFd() const;
 	time_t getCgiActivityStart(void) const;
 
+	time_t time_started; // use to detect CGI timeout
+	
 	class CgiExecutionFail : public std::exception
 	{
 	public:

@@ -173,11 +173,11 @@ int CgiHandler::executeCgi()
 
 		execve(argv[0], argv, &exec_env[0]);
 		perror("execve failed");
-		sleep(500);
 		_exit(EXIT_FAILURE);
+		time_started = -1;
 	}
 	time_started = std::time(NULL);
-	// !!!!!! WHAT TO DO IN CASE OF CGI TIMEOUT
+	// !!!!!! WHAT TO DO IN CASE OF CGI ERROR
 	// !!!!!! when there's a problem it starts looping
 	return 1;
 }
@@ -225,7 +225,9 @@ int CgiHandler::writeBodyToCgiInput() const
 
 char **CgiHandler::create_execve_env(void) const
 {
-	std::vector<char *> exec_env;
+	// PROBLEMS HERE !!!!
+	static std::vector<char *> exec_env;
+	exec_env.clear();
 	for (size_t i = 0; i < _env.size(); i++)
 		exec_env.push_back(const_cast<char *>(_env[i].c_str()));
 	exec_env.push_back(NULL);
