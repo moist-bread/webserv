@@ -67,11 +67,11 @@ void CgiHandler::update_info(Request &src)
 	this->_compiler = "/usr/bin/python3"; // BASED ON THE file extension
 
 	std::string empty;
-	_env.push_back("SERVER_SOFTWARE=" + ft_to_string("server/1.0.0"));
+	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
 	_env.push_back("SERVER_NAME=" + empty); // -------------------------
 	_env.push_back("SERVER_PROTOCOL=" + protocol_names[src.protocol]);
 	_env.push_back("SERVER_PORT=" + empty); // -------------------------
-	_env.push_back("GATEWAY_INTERFACE=" + ft_to_string("CGI/1.1"));
+	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
 	_env.push_back("REQUEST_METHOD=" + method_names[src.method]);
 	_env.push_back("PATH_INFO=" + extract_path_info(src.path_uri));
@@ -80,7 +80,7 @@ void CgiHandler::update_info(Request &src)
 	_env.push_back("SCRIPT_FILENAME=" + filename);
 	_env.push_back("REMOTE_ADDR=" + src.headers["x-forwarded-for"]);
 	_env.push_back("REQUEST_URI=" + src.path_uri + src.query);
-	_env.push_back("CONTENT_LENGTH=" + ft_to_string(_body.size()));
+	_env.push_back("CONTENT_LENGTH=" + to_str(_body.size()));
 	_env.push_back("CONTENT_TYPE=" + src.headers["content-type"]);
 
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
@@ -113,7 +113,7 @@ std::string CgiHandler::extract_path_info(std::string full_path)
 	else if (pos + 3 < full_path.size())
 		return (full_path.substr(pos + 3));
 	else
-		return (ft_to_string("/"));
+		return (to_str("/"));
 }
 
 int CgiHandler::executeCgi()

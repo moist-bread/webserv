@@ -85,7 +85,7 @@ enum t_status_code
 // == template
 
 template <typename T>
-std::string ft_to_string(const T &value)
+std::string to_str(const T &value)
 {
 	std::stringstream ss;
 	ss << value;

@@ -30,9 +30,7 @@ Server::~Server(void)
 	std::cout << GRN "the Server ";
 	std::cout << URED "has been deleted" DEF << std::endl;
 	for (size_t i = 0; i < _extraListeners.size(); i++)
-	{
 		delete _extraListeners[i];
-	}
 }
 
 Server &Server::operator=(Server const &source)
@@ -114,7 +112,7 @@ void Server::launch()
 	while (running)
 	{
 		int pollCount = poll(&_pollfds[0], _pollfds.size(), -1);
-		if (0 > pollCount)
+		if (pollCount < 0)
 		{
 			// research what to do when it timesout
 			std::cout << "Timeout..." << std::endl;
@@ -124,6 +122,12 @@ void Server::launch()
 		{
 			int fd = _pollfds[i].fd;
 
+			if (!running && _clients.find(fd) != _clients.end())
+			{
+				removeClient(fd, i);
+				continue;
+			}
+			
 			// --- CASO 1: NOVA CONEXÃO ---
 			if (isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 				accepter(fd);
@@ -137,15 +141,13 @@ void Server::launch()
 				recieveClientRequest(fd, &i);
 
 			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
-			else if (_pollfds[i].revents & POLLOUT)
+			if (_pollfds[i].revents & POLLOUT)
 				sendClientResponse(fd, &i);
 
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
 			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 				inactivityTimeout(fd, &i);
-
-			if (!running)
-				removeClient(fd, i);
+			
 		}
 		std::cout << "== DONE ===" << std::endl;
 	}
@@ -163,9 +165,9 @@ bool Server::isServerSocket(int fd)
 
 ConnectionStatus Server::getStatus(int ret)
 {
-	if (0 > ret)
+	if (ret < 0)
 		return IO_ERROR;
-	if (0 == ret)
+	if (ret == 0)
 		return IO_CLOSED;
 	return IO_DATA_READY;
 }
@@ -193,7 +195,8 @@ int Server::responder(int clientFd, const std::string &data)
 
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
-	int clientFd = _cgiMap[fd];
+	int clientFd = -1;
+	clientFd = _cgiMap[fd];
 
 	//  Ler do tubo
 	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
@@ -238,8 +241,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		return (removeClient(fd, *pollfds_idx));
 
 	std::string rec = std::string(tmp, ret);
-	std::cout << std::endl
-			  << "Raw Request:" << std::endl;
+	std::cout << std::endl;
+	std::cout << "Raw Request:" << std::endl;
 	std::cout << rec << std::endl;
 	std::cout << "Bytes recebidos: " << ret << std::endl;
 	// HERE CHECK IF IT THE BUFFER WAS TOO SMALL
@@ -301,6 +304,10 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 
 void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
+
+	if (_clients[fd].response.headers["connection"] == "close")
+		return (removeClient(fd, *pollfds_idx));
+
 	// Chegámos ao fim do processamento deste FD nesta volta.
 	// Vamos verificar se ele está "morto" há demasiado tempo.
 	time_t now = std::time(NULL);

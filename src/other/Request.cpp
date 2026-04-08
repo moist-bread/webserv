@@ -144,14 +144,15 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 		if (len == std::string::npos)
 			break;
 		key = (*src).substr(0, len);
-		std::transform(key.begin(), key.end(), key.begin(), ::tolower); // a header is a case-insensitive name
+		// a header is a case-insensitive name
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		(*src).erase(0, len + sep.length());
 
 		// -- get the value content
 		len = (*src).find(delim);
 		if (len == std::string::npos)
 			len = (*src).size();
-		lws = (*src).find_first_not_of(" \t\n\v\f\r"); // verify lws better
+		lws = (*src).find_first_not_of(" \t\n\v\f\r"); // !!!!!! verify lws better
 		if (lws == std::string::npos)
 			lws = 0;
 		value = (*src).substr(lws, len - lws);

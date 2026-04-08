@@ -39,6 +39,10 @@ void Response::process(Request &src)
 {
 	clear(src);
 
+	// IN CASE OF PUT
+	// create a special default location path to dump all PUT information into
+	// open the file and write to it 
+
 	// get the requested content
 	std::ifstream file(assemble_content_path(src, status_code).c_str());
 	if (!file.is_open())
@@ -52,20 +56,23 @@ void Response::process(Request &src)
 		file.open(assemble_content_path(src, status_code).c_str());
 	}
 
-	std::string content;
 	if (file.is_open())
-		content = ft_to_string(file.rdbuf());
+		body = to_str(file.rdbuf());
 	else
-		content = backup_error_pages(status_code);
-
+		body = backup_error_pages(status_code);
+	
+	headers["Content-Length"] = to_str(body.size());
+	headers["Content-Type"] = define_content_type(src.file_extension);
+	headers["Connection"] = src.headers["connection"];
+	headers["Date"] = date_generate();
+		
 	// putting together the full response
 	std::stringstream ss;
 	ss << protocol_names[protocol] << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
-	ss << "Content-Length: " << content.size() << CRLF;
-	ss << "Content-Type: " << define_content_type(src.file_extension) << CRLF;
-	ss << "Date: " << date_generate() << CRLF;
+	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
+		ss << (*it).first << ": " << (*it).second << CRLF;
 	ss << CRLF;
-	ss << content;
+	ss << body;
 	full_response = ss.str();
 
 	std::cout << GRN "New Response ";
@@ -110,10 +117,20 @@ std::string Response::assemble_content_path(Request &src, t_status_code status_c
 }
 std::string Response::backup_error_pages(t_status_code status_code)
 {
-	return ("");
-	(void)status_code;
-	// -----------------------------------------------------------
-	// send in hardcoded error page and css
+	std::stringstream ss;
+	ss << "<!DOCTYPE html>" << std::endl;
+	ss << "<html lang=\"en\">" << std::endl;
+	ss << "<head>" << std::endl;
+	ss << "	<meta charset=\"UTF-8\">" << std::endl;
+	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
+	ss << "	<title>" << status_code << " " << get_reason_phrase(status_code) << "</title>" << std::endl;
+    ss << " <link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
+	ss << "</head>" << std::endl;
+	ss << "<body>" << std::endl;
+	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << get_reason_phrase(status_code) << "</div>" << std::endl;
+	ss << "</body>" << std::endl;
+	ss << "</html>" << std::endl;
+	return (ss.str());
 }
 
 std::string Response::get_reason_phrase(t_status_code status_code)
@@ -291,9 +308,10 @@ std::ostream &operator<<(std::ostream &out, Response &source)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	out << YEL "Body..." DEF << std::endl
 		<< source.body << std::endl;
+	/*
 	if (!source.full_response.empty())
-		out << YEL "Full Response..." DEF << std::endl
-			<< source.full_response << std::endl;
+		out << YEL "Full Response..." DEF << std::endl << source.full_response << std::endl;
+	*/
 	out << std::endl;
 	return (out);
 }
