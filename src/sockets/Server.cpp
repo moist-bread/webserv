@@ -214,7 +214,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 
 	if (bytesRead > 0)
 	{
-		_clients[clientFd].response.full_response = std::string(buffer, bytesRead);
+		_clients[clientFd].response.full_response += std::string(buffer, bytesRead);
 	}
 	else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF // CANT USE ERRNO
 	{
@@ -225,6 +225,19 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_cgiMap.erase(fd);
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
+		
+		/*Fix
+			Erro de antes como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
+			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
+
+			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script falhou no puro silencio shhhh e ainda recebe um 500 banger
+		*/
+		if (_clients[clientFd].response.full_response.empty())
+        {
+            std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
+            _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
+            _clients[clientFd].response.process(_clients[clientFd].request);
+        }
 
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
 		for (size_t j = 0; j < _pollfds.size(); j++)
