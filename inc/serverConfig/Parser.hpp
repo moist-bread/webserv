@@ -12,7 +12,13 @@
 class ServerConfig;
 class LocationConfig;
 
-// =====>┊( CLASS )┊
+/**
+ * @class Parser
+ * @brief Parses a token stream into server configuration objects.
+ *
+ * The parser consumes tokens produced by the lexer and builds
+ * `ServerConfig` and nested `LocationConfig` objects.
+ */
 
 class Parser
 {

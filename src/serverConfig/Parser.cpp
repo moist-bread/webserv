@@ -3,6 +3,10 @@
 #include <sstream>
 #include <stdexcept>
 
+/**
+ * @brief Construct parser and initialize directive dispatch tables.
+ * @param tokens Immutable stream of lexer tokens.
+ */
 Parser::Parser(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens)
 {
 	_serverHandlers["listen"] = &Parser::_serverListen;
@@ -30,6 +34,10 @@ Parser::Parser(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens)
 // 	std::cout << UCYN "has been created" DEF << std::endl;
 // }
 
+/**
+ * @brief Copy constructor.
+ * @param source Parser instance to copy from.
+ */
 Parser::Parser(Parser const &source) : _cursor(0), _tokens(source._tokens)
 {
 	*this = source;
@@ -37,12 +45,20 @@ Parser::Parser(Parser const &source) : _cursor(0), _tokens(source._tokens)
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
 
+/**
+ * @brief Destroy parser instance.
+ */
 Parser::~Parser(void)
 {
 	std::cout << GRN "the Parser ";
 	std::cout << URED "has been deleted" DEF << std::endl;
 }
 
+/**
+ * @brief Copy assignment.
+ * @param source Parser instance to copy mutable state from.
+ * @return Reference to this parser.
+ */
 Parser &Parser::operator=(Parser const &source)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
@@ -55,6 +71,12 @@ Parser &Parser::operator=(Parser const &source)
 	return (*this);
 }
 
+/**
+ * @brief Stream insertion helper for debug output.
+ * @param out Output stream.
+ * @param source Parser instance.
+ * @return Output stream reference.
+ */
 std::ostream &operator<<(std::ostream &out, Parser const &source)
 {
 	(void)source;
@@ -63,6 +85,10 @@ std::ostream &operator<<(std::ostream &out, Parser const &source)
 	return (out);
 }
 
+/**
+ * @brief Parse all top-level server blocks until EOF.
+ * @param servers Destination vector where parsed servers are appended.
+ */
 void Parser::parse(std::vector<ServerConfig> &servers)
 {
 	while (_currentToken().type != TOKEN_EOF)
@@ -79,6 +105,10 @@ void Parser::parse(std::vector<ServerConfig> &servers)
 	}
 }
 
+/**
+ * @brief Parse one server block and apply server directive handlers.
+ * @return Parsed ServerConfig object.
+ */
 ServerConfig Parser::_parseServerBlock(void)
 {
 	ServerConfig newServer;
@@ -104,6 +134,11 @@ ServerConfig Parser::_parseServerBlock(void)
 	return (newServer);
 }
 
+/**
+ * @brief Parse one location block and apply location directive handlers.
+ * @param path Location route/path token value.
+ * @return Parsed LocationConfig object.
+ */
 LocationConfig Parser::_parseLocationBlock(const std::string &path)
 {
 	LocationConfig newLocation;
@@ -134,6 +169,10 @@ LocationConfig Parser::_parseLocationBlock(const std::string &path)
 
 //*	----- ServerHandler functions ----- */
 
+/**
+ * @brief Parse `listen` and set server host/port.
+ * @param server Server configuration being populated.
+ */
 void Parser::_serverListen(ServerConfig &server)
 {
 	std::string listen;
@@ -152,6 +191,10 @@ void Parser::_serverListen(ServerConfig &server)
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse `server_name` values.
+ * @param server Server configuration being populated.
+ */
 void Parser::_serverName(ServerConfig &server)
 {
 	_extractKeywordVector(server.serverNames);
@@ -160,6 +203,10 @@ void Parser::_serverName(ServerConfig &server)
 		throw std::runtime_error("Syntax error: server_name directive is empty");
 }
 
+/**
+ * @brief Parse `client_max_body_size`.
+ * @param server Server configuration being populated.
+ */
 void Parser::_serverMaxBodySize(ServerConfig &server)
 {
 	std::string sizeValue;
@@ -172,6 +219,10 @@ void Parser::_serverMaxBodySize(ServerConfig &server)
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse `error_page` mappings.
+ * @param server Server configuration being populated.
+ */
 void Parser::_serverErrorPage(ServerConfig &server)
 {
 	std::vector<std::string> tempArgs;
@@ -188,6 +239,10 @@ void Parser::_serverErrorPage(ServerConfig &server)
 	}
 }
 
+/**
+ * @brief Parse nested `location` block under a server.
+ * @param server Server configuration being populated.
+ */
 void Parser::_serverLocation(ServerConfig &server)
 {
 	t_token pathToken = _expect(TOKEN_KEYWORD);
@@ -197,18 +252,30 @@ void Parser::_serverLocation(ServerConfig &server)
 
 //*	----- LocationHandler functions ----- */
 
+/**
+ * @brief Parse location `root` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationRoot(LocationConfig &location)
 {
 	_extractSingleKeyword(location.root);
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse location `index` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationIndex(LocationConfig &location)
 {
 	_extractSingleKeyword(location.index);
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse location `autoindex` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationAutoIndex(LocationConfig &location)
 {
 	std::string autoindex;
@@ -219,6 +286,10 @@ void Parser::_locationAutoIndex(LocationConfig &location)
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse location `allow_methods` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationAllowMethods(LocationConfig &location)
 {
 	while (_currentToken().type == TOKEN_KEYWORD)
@@ -232,6 +303,10 @@ void Parser::_locationAllowMethods(LocationConfig &location)
 		throw std::runtime_error("Syntax error: allow_methods directive is empty");
 }
 
+/**
+ * @brief Parse location `return` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationReturn(LocationConfig &location)
 {
 	std::string returnCode;
@@ -241,6 +316,10 @@ void Parser::_locationReturn(LocationConfig &location)
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse location `cgi` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationCgi(LocationConfig &location)
 {
 	std::string ext;
@@ -251,6 +330,10 @@ void Parser::_locationCgi(LocationConfig &location)
 	_expect(TOKEN_SEMICOLON);
 }
 
+/**
+ * @brief Parse location `upload_store` directive.
+ * @param location Location configuration being populated.
+ */
 void Parser::_locationUploadStore(LocationConfig &location)
 {
 	_extractSingleKeyword(location.uploadStore);
@@ -259,6 +342,12 @@ void Parser::_locationUploadStore(LocationConfig &location)
 
 //*	----- Helpers ----- */
 
+/**
+ * @brief Consume token if it matches expected type.
+ * @param expected_type Expected token type.
+ * @return Consumed token.
+ * @throw std::runtime_error On mismatch or unexpected EOF.
+ */
 t_token Parser::_expect(e_token_type expected_type)
 {
 	if (this->_cursor >= _tokens.size())
@@ -275,6 +364,11 @@ t_token Parser::_expect(e_token_type expected_type)
     throw std::runtime_error(ss.str());
 }
 
+/**
+ * @brief Get current token without consuming it.
+ * @return Reference to current token.
+ * @throw std::runtime_error If cursor is out of range.
+ */
 const t_token &Parser::_currentToken(void) const
 {
 	if (this->_cursor >= this->_tokens.size())
@@ -282,18 +376,29 @@ const t_token &Parser::_currentToken(void) const
 	return (this->_tokens[this->_cursor]);
 }
 
+/**
+ * @brief Advance parser cursor by one token when possible.
+ */
 void Parser::_advanceToken(void)
 {
 	if (this->_cursor < this->_tokens.size())
 		this->_cursor++;
 }
 
+/**
+ * @brief Extract one keyword token content into destination.
+ * @param destination Output string.
+ */
 void Parser::_extractSingleKeyword(std::string &destination)
 {
 	t_token token = _expect(TOKEN_KEYWORD);
 	destination = token.content;
 }
 
+/**
+ * @brief Extract all consecutive keyword token contents.
+ * @param destination Output vector to append keyword contents into.
+ */
 void Parser::_extractKeywordVector(std::vector<std::string> &destination)
 {
 	while (_currentToken().type == TOKEN_KEYWORD)
