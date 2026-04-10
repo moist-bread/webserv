@@ -18,9 +18,24 @@
   <input type="submit" value="Submit">
 </form>
 <br><br><br>
-<form action="/main.py" method="Post">
-  <label for="fname">Body POST request:</label>
+<form action="/main.py" method="POST">
+  <label for="fname">Script w/ Body POST request:</label>
   <input type="text" id="body" name="body"><br><br>
+  <input type="submit" value="Submit">
+</form>
+<br><br><br>
+<form action="/" method="POST">
+  <p>Store Body in location POST request:</p>
+  <label for="username">username:</label>
+  <input type="text" id="username" name="username"><br><br>
+  <label for="notes">notes:</label>
+  <input type="text" id="notes" name="notes"><br><br>
+  <input type="submit" value="Submit">
+</form>
+<form action="/" method="POST" enctype="multipart/form-data">
+  <p>Send us a File:</p>
+  <label for="file">file:</label>
+  <input type="file" id="fileInput" name="media" required>
   <input type="submit" value="Submit">
 </form>
 </body>

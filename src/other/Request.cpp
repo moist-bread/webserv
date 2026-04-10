@@ -140,6 +140,8 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 	while (!(*src).empty())
 	{
 		// -- get the key name
+		if ((*src).find(CRLF) == 0)
+			break;
 		len = (*src).find(sep);
 		if (len == std::string::npos)
 			break;
@@ -182,7 +184,7 @@ std::ostream &operator<<(std::ostream &out, Request &source)
 	if (!source.body.empty())
 	{
 		out << BLU "Body..." DEF << std::endl;
-		out << BLU "        [" << source.body << "]" DEF << std::endl;
+		out << "        |" << source.body << "|" << std::endl;
 		out << std::endl;
 	}
 	return (out);

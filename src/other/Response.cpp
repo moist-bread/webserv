@@ -39,6 +39,8 @@ void Response::process(Request &src)
 {
 	clear(src);
 
+	if (status_code != OK)
+		src.method = GET;
 	switch (src.method)
 	{
 	case GET:
@@ -104,12 +106,107 @@ void Response::method_get(Request &src)
 
 void Response::method_post(Request &src)
 {
-	std::cout << "THIS IS A POST METHOD\n";
-
-	// create a special default location path to dump all PUT information into
+	// create a special default location path to dump all POST info into
 	// open the file and write to it 
 
-	method_get(src);
+	// -- later get "www" replacement from config
+	std::string path = "www" + src.path_uri + "database";
+	std::ofstream output (path.c_str() , std::ofstream::out | std::ostream::app);
+
+	if (!output.is_open())
+	{
+		status_code = INTERNAL_SERVER_ERROR;
+		method_get(src);
+	}
+	else
+	{
+		if (src.headers["content-type"] == "application/x-www-form-urlencoded")
+			handle_application_form(src);
+		else if (src.headers["content-type"].find("multipart/form-data;") != std::string::npos)
+			handle_multipart_form(src);
+		else
+		{
+			body = src.body;
+			src.file_extension = "html";
+		}
+		
+		output << body << CRLF;
+		output.close();
+		headers["Location"] = src.path_uri; 
+	}
+}
+
+void Response::handle_application_form(Request &src)
+{
+	// turn body into json...
+	std::string json;
+	map_strings json_values = src.extract_key_value(&src.body, "=", "&");
+	json += "{";
+	for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
+	{
+		json += "\"" + (*it).first + "\":\"" + (*it).second + "\"";
+		if (++it != json_values.end())
+		json += ",";
+	}
+	json += "}";
+	body = json;
+	src.file_extension = "json";
+
+	// FOUND will make the client request a GET for a redirection location 
+	status_code = FOUND;
+}
+void Response::handle_multipart_form(Request &src)
+{
+	// -- boundary string
+	// 		-- headers
+	// 		-- data
+
+	// extract boundary string from the content type header
+	size_t start = src.headers["content-type"].find("boundary=");
+	if (start == std::string::npos)
+		start = 0;
+	std::string boundary_str = "--" + src.headers["content-type"].substr(start + 9, src.headers["content-type"].length() - start);
+
+	// PARSE THE MULTI FORM BY SEPARATING ITS ELEMS
+	std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
+	std::vector<MultiForm> multi_form;
+	std::string remaining_body= src.body;
+	std::cout << RED "BOUNDARY: " DEF << boundary_str << std::endl;
+	while (!remaining_body.empty())
+	{
+		// first lets try dividing the chuncks
+		std::cout << RED "IN THE PART LOOP" DEF << std::endl;
+		MultiForm part;	
+
+		start = remaining_body.find(boundary_str);
+		std::cout << RED "STARTING POINT: " DEF << start << std::endl;
+		std::cout << RED "REMAINING BODY: " DEF << remaining_body << std::endl;
+		if (start == std::string::npos)
+			break;
+		part.data = remaining_body.substr(start + boundary_str.size() + 2);
+		start = part.data.find(boundary_str);
+		std::cout << RED "END: " DEF << start << std::endl;
+		if (start == std::string::npos)
+			break; // PROBLEM
+		part.data.erase(start, part.data.size() - start);
+
+		remaining_body.erase(0, boundary_str.size() + 1 + part.data.size());
+		std::cout << RED "PART: " DEF << part.data << std::endl;
+		multi_form.push_back(part);
+
+		start = remaining_body.find(boundary_str + "--");
+		std::cout << RED "LASTPART: " DEF << start << std::endl;
+		if (start == 0 || start == std::string::npos)
+			break;
+	}
+	for (std::vector<MultiForm>::iterator it = multi_form.begin(); it != multi_form.end(); it++)
+		std::cout << "multi form part: [" << (*it).data << "]" << std::endl;
+	
+	
+	body = src.body;
+	src.file_extension = "html";
+
+	status_code = FOUND;
 }
 
 std::string Response::assemble_content_path(Request &src, t_status_code status_code)
@@ -272,7 +369,7 @@ const char *Response::define_content_type(std::string extension) const
 		return ("image/vnd.microsoft.icon");
 
 	// video and audio types
-	if (extension == "mp4")
+	else if (extension == "mp4")
 		return ("video/mp4");
 	else if (extension == "webm")
 		return ("video/webm");
@@ -282,13 +379,15 @@ const char *Response::define_content_type(std::string extension) const
 		return ("audio/wav");
 
 	// app types
-	if (extension == "pdf")
+	else if (extension == "pdf")
 		return ("application/pdf");
 	else if (extension == "form") // --------------------
 		return ("application/x-www-form-urlencoded");
+	else if (extension == "json") // --------------------
+		return ("application/json");
 
 	// multipart types
-	if (extension == "multiform") // --------------------
+	else if (extension == "multiform") // --------------------
 		return ("multipart/form-data");
 	else if (extension == "byteranges") // --------------------
 		return ("multipart/byteranges");
@@ -329,8 +428,11 @@ std::ostream &operator<<(std::ostream &out, Response &source)
 	out << YEL "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = source.headers.begin(); it != source.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-	out << YEL "Body..." DEF << std::endl
-		<< source.body << std::endl;
+	out << YEL "Body..." DEF << std::endl;
+	if (source.headers["Content-Type"] == "image/vnd.microsoft.icon")
+		out << "[PAGE ICON IMAGE]" << std::endl;
+	else
+		out << source.body << std::endl;
 	/*
 	if (!source.full_response.empty())
 		out << YEL "Full Response..." DEF << std::endl << source.full_response << std::endl;

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <cmath>
 #include <algorithm>
+#include <vector>
 #include <ctime>
 #include "../ansi_color_codes.h"
 

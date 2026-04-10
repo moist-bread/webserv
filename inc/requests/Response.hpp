@@ -5,6 +5,12 @@
 
 // =====>┊( RESPONSE )┊
 
+struct MultiForm
+{
+	map_strings headers;
+	std::string data;
+};
+
 class Response
 {
 public:
@@ -18,6 +24,8 @@ public:
 	void clear(Request &src);
 	void method_get(Request &src);
 	void method_post(Request &src);
+	void handle_application_form(Request &src);
+	void handle_multipart_form(Request &src);
 	static std::string assemble_content_path(Request &src, t_status_code status_code);
 	std::string backup_error_pages(t_status_code status_code);
 	static std::string get_reason_phrase(t_status_code status_code);
