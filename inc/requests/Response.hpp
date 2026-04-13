@@ -7,7 +7,8 @@
 
 struct MultiForm
 {
-	map_strings headers;
+	map_strings content_disposition;
+	std::string content_type;
 	std::string data;
 };
 
@@ -43,3 +44,15 @@ public:
 };
 
 std::ostream &operator<<(std::ostream &out, Response &source);
+
+// ------geckoformboundary31de085b7346c87434c3ad127bcd5b33
+// Content-Disposition: form-data; name="media"; filename="okay"
+// Content-Type: application/octet-stream
+//
+// textodeteste aqui dentro
+//
+// ------geckoformboundary31de085b7346c87434c3ad127bcd5b33
+// Content-Disposition: form-data; name="title"
+//
+// nome fo ficheiro
+// ------geckoformboundary31de085b7346c87434c3ad127bcd5b33--

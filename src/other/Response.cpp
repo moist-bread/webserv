@@ -157,6 +157,8 @@ void Response::handle_application_form(Request &src)
 }
 void Response::handle_multipart_form(Request &src)
 {
+	// IDEA: MOVE THIS TO REQUEST INSTEAD OF RESPONSE
+
 	// -- boundary string
 	// 		-- headers
 	// 		-- data
@@ -164,7 +166,7 @@ void Response::handle_multipart_form(Request &src)
 	// extract boundary string from the content type header
 	size_t start = src.headers["content-type"].find("boundary=");
 	if (start == std::string::npos)
-		start = 0;
+		throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
 	std::string boundary_str = "--" + src.headers["content-type"].substr(start + 9, src.headers["content-type"].length() - start);
 
 	// PARSE THE MULTI FORM BY SEPARATING ITS ELEMS
@@ -175,23 +177,69 @@ void Response::handle_multipart_form(Request &src)
 	while (!remaining_body.empty())
 	{
 		// first lets try dividing the chuncks
-		std::cout << RED "IN THE PART LOOP" DEF << std::endl;
-		MultiForm part;	
+		// std::cout << RED "IN THE PART LOOP" DEF << std::endl;
+		MultiForm part;
 
 		start = remaining_body.find(boundary_str);
-		std::cout << RED "STARTING POINT: " DEF << start << std::endl;
-		std::cout << RED "REMAINING BODY: " DEF << remaining_body << std::endl;
+		// std::cout << RED "STARTING POINT: " DEF << start << std::endl;
+		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
 		if (start == std::string::npos)
 			break;
 		part.data = remaining_body.substr(start + boundary_str.size() + 2);
 		start = part.data.find(boundary_str);
-		std::cout << RED "END: " DEF << start << std::endl;
+		// std::cout << RED "END: " DEF << start << std::endl;
 		if (start == std::string::npos)
-			break; // PROBLEM
+			break; // end of body
 		part.data.erase(start, part.data.size() - start);
 
 		remaining_body.erase(0, boundary_str.size() + 1 + part.data.size());
-		std::cout << RED "PART: " DEF << part.data << std::endl;
+		// std::cout << RED "PART: \n" DEF << part.data << std::endl;
+
+		std::string line;
+		size_t end_line;
+		// see if it has content-disposition
+		start = part.data.find("Content-Disposition: ");
+		if (start == std::string::npos)
+			start = part.data.find("content-disposition: ");
+		if (start != std::string::npos)
+		{
+			int comp = part.data.compare(start + 21, 11,"form-data; ");
+			// std::cout << "compare: " << comp << std::endl;
+			if (comp)
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			
+			end_line = part.data.find(CRLF, start);
+			if (end_line == std::string::npos)
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			line = part.data.substr(start, end_line - start);
+			part.data.erase(start, end_line + 2);
+			line.erase(0, 32);
+			//std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
+			//std::cout << RED "cont dis line: \n" DEF << line << std::endl;
+			part.content_disposition = src.extract_key_value(&line, "=", "; " );
+		}
+
+		// see if it has content-type
+		start = part.data.find("Content-Type: ");
+		if (start == std::string::npos)
+			start = part.data.find("content-type: ");
+		if (start != std::string::npos)
+		{
+			end_line = part.data.find(CRLF, start);
+			if (end_line == std::string::npos)
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			line = part.data.substr(start, end_line - start);
+			part.data.erase(start, end_line + 2);
+			line.erase(0, 14);
+			//std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
+			//std::cout << RED "cont type line: \n" DEF << line << std::endl;
+			part.content_type = line;
+		}
+		if (!part.data.compare(0, 2, CRLF))
+			part.data.erase(0, 2);
+		else
+			throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+
 		multi_form.push_back(part);
 
 		start = remaining_body.find(boundary_str + "--");
@@ -199,8 +247,20 @@ void Response::handle_multipart_form(Request &src)
 		if (start == 0 || start == std::string::npos)
 			break;
 	}
+
+	// Use a random or unique naming strategy for uploaded files to avoid overwriting existing files.
+
 	for (std::vector<MultiForm>::iterator it = multi_form.begin(); it != multi_form.end(); it++)
-		std::cout << "multi form part: [" << (*it).data << "]" << std::endl;
+	{
+		std::cout << RED "-- multi form part --";
+		std::cout << DEF << std::endl;
+		std::cout << RED "Content Type: " DEF << (*it).content_type << std::endl;
+		std::cout << RED "Content Disposition..." DEF << std::endl;
+		for (map_strings::iterator disp = ((*it).content_disposition).begin(); disp != ((*it).content_disposition).end(); disp++)
+			std::cout << RED "    [" << (*disp).first << "]" DEF " |" << (*disp).second << "|" << std::endl;
+		std::cout << RED "Data..." DEF << std::endl;
+		std::cout << (*it).data << std::endl;
+	}
 	
 	
 	body = src.body;
