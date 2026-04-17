@@ -86,6 +86,11 @@ void Request::process(std::string request)
 	request.erase(0, 2);
 	// request.erase(0, 1); // testing with text
 
+	// in case of :
+	// Cache-Control: max-age=0
+	// just return and wait for poll again and DONT CLEAR REQUEST
+	// try waiting and append body to the current one
+
 	if (headers["content-length"].empty() && request.size())
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
 	else if (!headers["content-length"].empty())
