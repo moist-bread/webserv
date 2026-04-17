@@ -20,6 +20,13 @@
 class Request;
 typedef std::map<std::string, std::string> map_strings;
 
+struct MultiForm
+{
+	map_strings content_disposition;
+	std::string content_type;
+	std::string data;
+};
+
 // == enums
 
 enum t_method

@@ -1,0 +1,30 @@
+POST / HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9,pt-PT;q=0.8
+Accept-Encoding: gzip, deflate, br, zstd
+Content-Type: multipart/form-data; boundary=----geckoformboundarydc18ba573d91cae9db5c1b94b748b7
+Content-Length: 357
+Origin: http://localhost:8080
+Connection: keep-alive
+Referer: http://localhost:8080/
+Cookie: sessionId=76931fac9dab2b36c248b87d6ae33f9a
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+Priority: u=0, i
+
+------geckoformboundarydc18ba573d91cae9db5c1b94b748b7
+Content-Disposition: form-data; name="media"; filename="okay"
+Content-Type: application/octet-stream
+
+textodeteste aqui dentro
+
+------geckoformboundarydc18ba573d91cae9db5c1b94b748b7
+Content-Disposition: form-data; name="title"
+
+waaaaaaa
+------geckoformboundarydc18ba573d91cae9db5c1b94b748b7--

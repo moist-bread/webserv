@@ -281,6 +281,13 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		_clients[fd].response.status_code = e.request_status;
 	}
 
+	if (_clients[fd].request.missing_request_part) 
+	{
+		// will probably change this when i implement chuncked requests
+		std::cout << RED "WE ARE MISSING SOMETHING\n" DEF;
+		return ;
+	}
+
 	if (_clients[fd].request.file_extension == "py")
 	{
 		try
@@ -328,9 +335,9 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 
 void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
-
-	if (_clients[fd].response.headers["connection"] == "close")
-		return (removeClient(fd, *pollfds_idx));
+	if (_clients[fd].response.headers.find("connection") != _clients[fd].response.headers.end())
+		if (_clients[fd].response.headers["connection"] == "close")
+			return (removeClient(fd, *pollfds_idx));
 
 	// Chegámos ao fim do processamento deste FD nesta volta.
 	// Vamos verificar se ele está "morto" há demasiado tempo.

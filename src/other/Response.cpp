@@ -120,9 +120,9 @@ void Response::method_post(Request &src)
 	}
 	else
 	{
-		if (src.headers["content-type"] == "application/x-www-form-urlencoded")
+		if (!src.json.empty())
 			handle_application_form(src);
-		else if (src.headers["content-type"].find("multipart/form-data;") != std::string::npos)
+		else if (!src.multi_form.empty())
 			handle_multipart_form(src);
 		else
 		{
@@ -130,7 +130,7 @@ void Response::method_post(Request &src)
 			src.file_extension = "html";
 		}
 		
-		output << body << CRLF;
+		output << body ;
 		output.close();
 		headers["Location"] = src.path_uri; 
 	}
@@ -138,18 +138,8 @@ void Response::method_post(Request &src)
 
 void Response::handle_application_form(Request &src)
 {
-	// turn body into json...
-	std::string json;
-	map_strings json_values = src.extract_key_value(&src.body, "=", "&");
-	json += "{";
-	for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
-	{
-		json += "\"" + (*it).first + "\":\"" + (*it).second + "\"";
-		if (++it != json_values.end())
-		json += ",";
-	}
-	json += "}";
-	body = json;
+	// json to the body...
+	body = src.json + CRLF;
 	src.file_extension = "json";
 
 	// FOUND will make the client request a GET for a redirection location 
@@ -157,113 +147,34 @@ void Response::handle_application_form(Request &src)
 }
 void Response::handle_multipart_form(Request &src)
 {
-	// IDEA: MOVE THIS TO REQUEST INSTEAD OF RESPONSE
-
-	// -- boundary string
-	// 		-- headers
-	// 		-- data
-
-	// extract boundary string from the content type header
-	size_t start = src.headers["content-type"].find("boundary=");
-	if (start == std::string::npos)
-		throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-	std::string boundary_str = "--" + src.headers["content-type"].substr(start + 9, src.headers["content-type"].length() - start);
-
-	// PARSE THE MULTI FORM BY SEPARATING ITS ELEMS
-	std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
-	std::vector<MultiForm> multi_form;
-	std::string remaining_body= src.body;
-	std::cout << RED "BOUNDARY: " DEF << boundary_str << std::endl;
-	while (!remaining_body.empty())
+	for (std::vector<MultiForm>::iterator it = src.multi_form.begin(); it != src.multi_form.end(); it++)
 	{
-		// first lets try dividing the chuncks
-		// std::cout << RED "IN THE PART LOOP" DEF << std::endl;
-		MultiForm part;
-
-		start = remaining_body.find(boundary_str);
-		// std::cout << RED "STARTING POINT: " DEF << start << std::endl;
-		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
-		if (start == std::string::npos)
-			break;
-		part.data = remaining_body.substr(start + boundary_str.size() + 2);
-		start = part.data.find(boundary_str);
-		// std::cout << RED "END: " DEF << start << std::endl;
-		if (start == std::string::npos)
-			break; // end of body
-		part.data.erase(start, part.data.size() - start);
-
-		remaining_body.erase(0, boundary_str.size() + 1 + part.data.size());
-		// std::cout << RED "PART: \n" DEF << part.data << std::endl;
-
-		std::string line;
-		size_t end_line;
-		// see if it has content-disposition
-		start = part.data.find("Content-Disposition: ");
-		if (start == std::string::npos)
-			start = part.data.find("content-disposition: ");
-		if (start != std::string::npos)
+		map_strings::iterator f_name = (*it).content_disposition.find("filename");
+		if (f_name != (*it).content_disposition.end())
 		{
-			int comp = part.data.compare(start + 21, 11,"form-data; ");
-			// std::cout << "compare: " << comp << std::endl;
-			if (comp)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			// Use a random or unique naming strategy for uploaded files to avoid overwriting existing files.
+			// generate random name
+			std::string path = "www" + src.path_uri + (*f_name).second;
+
+			// create a file in a files directory inside of where we are
+			// maybe make directory names based on (*it).content_type or on (*it).content_disposition.find("name")
+			std::ofstream output (path.c_str(), std::ofstream::out);
+			if (!output.is_open())
+			{
+				status_code = INTERNAL_SERVER_ERROR;
+				method_get(src);
+			}
 			
-			end_line = part.data.find(CRLF, start);
-			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-			line = part.data.substr(start, end_line - start);
-			part.data.erase(start, end_line + 2);
-			line.erase(0, 32);
-			//std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
-			//std::cout << RED "cont dis line: \n" DEF << line << std::endl;
-			part.content_disposition = src.extract_key_value(&line, "=", "; " );
+			// put the (*it).data in the file
+			output << (*it).data << CRLF;
+			output.close();
 		}
-
-		// see if it has content-type
-		start = part.data.find("Content-Type: ");
-		if (start == std::string::npos)
-			start = part.data.find("content-type: ");
-		if (start != std::string::npos)
-		{
-			end_line = part.data.find(CRLF, start);
-			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-			line = part.data.substr(start, end_line - start);
-			part.data.erase(start, end_line + 2);
-			line.erase(0, 14);
-			//std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
-			//std::cout << RED "cont type line: \n" DEF << line << std::endl;
-			part.content_type = line;
-		}
-		if (!part.data.compare(0, 2, CRLF))
-			part.data.erase(0, 2);
 		else
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-
-		multi_form.push_back(part);
-
-		start = remaining_body.find(boundary_str + "--");
-		std::cout << RED "LASTPART: " DEF << start << std::endl;
-		if (start == 0 || start == std::string::npos)
-			break;
+		{
+			// save it into the "database" file as i would for json??
+			body += (*it).data + CRLF;
+		}
 	}
-
-	// Use a random or unique naming strategy for uploaded files to avoid overwriting existing files.
-
-	for (std::vector<MultiForm>::iterator it = multi_form.begin(); it != multi_form.end(); it++)
-	{
-		std::cout << RED "-- multi form part --";
-		std::cout << DEF << std::endl;
-		std::cout << RED "Content Type: " DEF << (*it).content_type << std::endl;
-		std::cout << RED "Content Disposition..." DEF << std::endl;
-		for (map_strings::iterator disp = ((*it).content_disposition).begin(); disp != ((*it).content_disposition).end(); disp++)
-			std::cout << RED "    [" << (*disp).first << "]" DEF " |" << (*disp).second << "|" << std::endl;
-		std::cout << RED "Data..." DEF << std::endl;
-		std::cout << (*it).data << std::endl;
-	}
-	
-	
-	body = src.body;
 	src.file_extension = "html";
 
 	status_code = FOUND;
