@@ -49,6 +49,7 @@ void Response::process(Request &src)
 	case POST:
 		method_post(src);
 		break;
+	// DELETE 204 NO_CONTENT
 	default:
 		method_get(src);
 		break;
@@ -120,19 +121,28 @@ void Response::method_post(Request &src)
 	}
 	else
 	{
-		if (!src.json.empty())
-			handle_application_form(src);
-		else if (!src.multi_form.empty())
-			handle_multipart_form(src);
-		else
+		try
 		{
-			body = src.body;
-			src.file_extension = "html";
+			if (!src.json.empty())
+				handle_application_form(src);
+			else if (!src.multi_form.empty())
+				handle_multipart_form(src);
+			else
+			{
+				body = src.body;
+				src.file_extension = "html";
+			}
+			
+			output << body;
+			output.close();
+			headers["Location"] = src.path_uri; 
 		}
-		
-		output << body ;
-		output.close();
-		headers["Location"] = src.path_uri; 
+		catch(const std::exception& e)
+		{
+			// std::cerr << RED << e.what() << std::endl;
+			status_code = INTERNAL_SERVER_ERROR;
+			return (body.clear(), method_get(src));
+		}
 	}
 }
 
@@ -145,39 +155,88 @@ void Response::handle_application_form(Request &src)
 	// FOUND will make the client request a GET for a redirection location 
 	status_code = FOUND;
 }
+
 void Response::handle_multipart_form(Request &src)
 {
+	map_strings json_values;
+
 	for (std::vector<MultiForm>::iterator it = src.multi_form.begin(); it != src.multi_form.end(); it++)
 	{
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
-			// Use a random or unique naming strategy for uploaded files to avoid overwriting existing files.
 			// generate random name
-			std::string path = "www" + src.path_uri + (*f_name).second;
+			std::string path = "www" + src.path_uri + "uploads/" + random_name_generator();
+			size_t len;
+			len = (*f_name).second.rfind(".");
+			if (len != std::string::npos)
+				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
-			// create a file in a files directory inside of where we are
-			// maybe make directory names based on (*it).content_type or on (*it).content_disposition.find("name")
-			std::ofstream output (path.c_str(), std::ofstream::out);
+			// create a file in an uploads folder
+			// make sure that the uploads folder exists
+			// -- CAN I EVEN USE MKDIR????
+			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) && mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
+				throw(std::runtime_error("Internal Server Error"));
+			std::fstream output (path.c_str(), std::ios::out);
 			if (!output.is_open())
-			{
-				status_code = INTERNAL_SERVER_ERROR;
-				method_get(src);
-			}
-			
-			// put the (*it).data in the file
+				throw(std::runtime_error("Internal Server Error"));
+
 			output << (*it).data << CRLF;
 			output.close();
 		}
 		else
 		{
 			// save it into the "database" file as i would for json??
-			body += (*it).data + CRLF;
+			// RETHINK THIS PLEASE
+			// maybe turn it into json?
+			// json_values[] = ;
+			map_strings::iterator elem_name = (*it).content_disposition.find("name");
+			std::string name = "name";
+			if (elem_name != (*it).content_disposition.end())
+				name = (*elem_name).second;
+			
+			json_values[name] = (*it).data;
+			// body += (*it).data + CRLF;
 		}
+	}
+	if (!json_values.empty())
+	{
+		body += "{";
+		for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
+		{
+			body += (*it).first + ":\"" + (*it).second + "\"";
+			if (++it != json_values.end())
+				body += ",";
+		}
+		body += "}" CRLF;
 	}
 	src.file_extension = "html";
 
 	status_code = FOUND;
+}
+
+std::string Response::random_name_generator(void) const
+{
+    std::string name;
+	int length = 12 + (rand() % 10);
+
+    for (int i = 0; i < length; i++)
+    {
+        const int type = rand() % 3;
+        switch (type)
+        {
+        case 0: // number
+            name += '0' + rand() % 10;
+            break;
+        case 1: // lower-case
+            name += 'a' + rand() % 26;
+            break;
+        default: // upper-case
+            name += 'A' + rand() % 26;
+            break;
+        }
+    }
+    return (name);
 }
 
 std::string Response::assemble_content_path(Request &src, t_status_code status_code)
@@ -200,7 +259,8 @@ std::string Response::assemble_content_path(Request &src, t_status_code status_c
 		{
 			if (!(*src.path_uri.end() == '/'))
 				src.path_uri.append("/");
-			src.path_uri.append("index.html");
+			if (src.path_uri != "/uploads/")// remove when config added
+				src.path_uri.append("index.html");
 		}
 		path = "www" + src.path_uri;
 	}

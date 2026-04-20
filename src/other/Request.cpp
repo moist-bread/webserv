@@ -112,7 +112,7 @@ void Request::parse_request_line(std::string &request)
 void Request::parse_body(std::string &request)
 {
 	// -- GET BODY
-	if (!missing_request_part)
+	if (!missing_request_part) // maybe move this to the header parse
 		request.erase(0, 2);
 	// request.erase(0, 1); // testing with text
 	
@@ -166,7 +166,7 @@ void Request::format_application_form (void)
 	{
 		json += "\"" + (*it).first + "\":\"" + (*it).second + "\"";
 		if (++it != json_values.end())
-		json += ",";
+			json += ",";
 	}
 	json += "}";
 	file_extension = "json";
@@ -178,10 +178,10 @@ void Request::format_multipart_form(std::string type)
 	// 		-- data
 
 	// extract boundary string from the content type header
-	size_t start = type.find("boundary=");
-	if (start == std::string::npos)
+	size_t pin = type.find("boundary=");
+	if (pin == std::string::npos)
 		throw (Request::ParseError("Miss formated request", BAD_REQUEST));
-	std::string boundary_str = "--" + type.substr(start + 9, type.length() - start);
+	std::string boundary_str = "--" + type.substr(pin + 9, type.length() - pin);
 
 	// std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
 	// std::cout << RED "BOUNDARY: " DEF << boundary_str << std::endl;
@@ -189,42 +189,42 @@ void Request::format_multipart_form(std::string type)
 	std::string remaining_body = body;
 	while (!remaining_body.empty())
 	{
-		// std::cout << RED "IN THE PART LOOP" DEF << std::endl;
 		MultiForm part;
+		// std::cout << RED "IN THE PART LOOP" DEF << std::endl;
 
-		start = remaining_body.find(boundary_str);
-		// std::cout << RED "STARTING POINT: " DEF << start << std::endl;
+		pin = remaining_body.find(boundary_str);
+		// std::cout << RED "STARTING POINT: " DEF << pin << std::endl;
 		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
-		if (start == std::string::npos)
-			break;
-		part.data = remaining_body.substr(start + boundary_str.size() + 2);
-		start = part.data.find(boundary_str);
-		// std::cout << RED "END: " DEF << start << std::endl;
-		if (start == std::string::npos)
-			break; // end of body
-		part.data.erase(start, part.data.size() - start);
-
-		remaining_body.erase(0, boundary_str.size() + 1 + part.data.size());
-		// std::cout << RED "PART: \n" DEF << part.data << std::endl;
+		if (pin == std::string::npos)
+			throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+		part.data = remaining_body.substr(pin + boundary_str.size() + 2);
+		pin = part.data.find(boundary_str);
+		// std::cout << RED "END: " DEF << pin << std::endl;
+		if (pin == std::string::npos)
+			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+		
+		part.data.erase(pin - 2, part.data.size() - pin + 4);
+		remaining_body.erase(0, boundary_str.size() + 3 + part.data.size());
+		// std::cout << RED "PART: \n" DEF << "|" << part.data << "|" << std::endl;
 
 		std::string line;
 		size_t end_line;
 		// see if it has content-disposition
-		start = part.data.find("Content-Disposition: ");
-		if (start == std::string::npos)
-			start = part.data.find("content-disposition: ");
-		if (start != std::string::npos)
+		pin = part.data.find("Content-Disposition: ");
+		if (pin == std::string::npos)
+			pin = part.data.find("content-disposition: ");
+		if (pin != std::string::npos)
 		{
-			int comp = part.data.compare(start + 21, 11,"form-data; ");
+			int comp = part.data.compare(pin + 21, 11,"form-data; ");
 			// std::cout << "compare: " << comp << std::endl;
 			if (comp)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
 			
-			end_line = part.data.find(CRLF, start);
+			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-			line = part.data.substr(start, end_line - start);
-			part.data.erase(start, end_line + 2);
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+			line = part.data.substr(pin, end_line - pin);
+			part.data.erase(pin, end_line + 2);
 			line.erase(0, 32);
 			//std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
 			//std::cout << RED "cont dis line: \n" DEF << line << std::endl;
@@ -232,16 +232,16 @@ void Request::format_multipart_form(std::string type)
 		}
 
 		// see if it has content-type
-		start = part.data.find("Content-Type: ");
-		if (start == std::string::npos)
-			start = part.data.find("content-type: ");
-		if (start != std::string::npos)
+		pin = part.data.find("Content-Type: ");
+		if (pin == std::string::npos)
+			pin = part.data.find("content-type: ");
+		if (pin != std::string::npos)
 		{
-			end_line = part.data.find(CRLF, start);
+			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
-			line = part.data.substr(start, end_line - start);
-			part.data.erase(start, end_line + 2);
+				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+			line = part.data.substr(pin, end_line - pin);
+			part.data.erase(pin, end_line + 2);
 			line.erase(0, 14);
 			//std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
 			//std::cout << RED "cont type line: \n" DEF << line << std::endl;
@@ -250,13 +250,17 @@ void Request::format_multipart_form(std::string type)
 		if (!part.data.compare(0, 2, CRLF))
 			part.data.erase(0, 2);
 		else
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
 
 		multi_form.push_back(part);
 
-		start = remaining_body.find(boundary_str + "--");
-		//std::cout << RED "LASTPART: " DEF << start << std::endl;
-		if (start == 0 || start == std::string::npos)
+		pin = remaining_body.find(CRLF + boundary_str + "--");
+		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
+		// std::cout << RED "finding: " DEF << boundary_str + "--" << std::endl;
+		// std::cout << RED "LASTPART: " DEF << pin << std::endl;
+		if (pin == std::string::npos)
+			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+		if (pin == 0)
 			break;
 	}
 
@@ -355,7 +359,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 			for (map_strings::iterator disp = ((*it).content_disposition).begin(); disp != ((*it).content_disposition).end(); disp++)
 				out << BLU "    [" << (*disp).first << "]" DEF " |" << (*disp).second << "|" << std::endl;
 			out << BLU "Data..." DEF << std::endl;
-			out << (*it).data << std::endl;
+			out << "|" << (*it).data << "|" << std::endl;
 		}
 	}
 	return (out);

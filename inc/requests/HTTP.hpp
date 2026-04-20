@@ -12,6 +12,10 @@
 #include <algorithm>
 #include <vector>
 #include <ctime>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "../ansi_color_codes.h"
 
 // == defines
