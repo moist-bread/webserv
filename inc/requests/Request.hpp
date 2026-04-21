@@ -9,8 +9,8 @@
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
-// [ ] directory GET (auto indexing)
-// [ ] DELETE weee!!!
+// [x] directory GET (auto indexing)
+// [ ] DELETE method!!!
 
 // =====>┊( REQUEST )┊
 

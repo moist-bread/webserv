@@ -4,8 +4,9 @@
 std::string method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", ""};
 std::string protocol_names[] = {"HTTP/1.0", "HTTP/1.1", ""};
 
-Request::Request(void) : method(UNSUPPORTED_METHOD), protocol(UNSUPPORTED_PROTOCOL), missing_request_part(false)
+Request::Request(void)
 {
+	clear();
 	std::cout << GRN "the Request ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
@@ -47,6 +48,8 @@ void Request::process(std::string request)
 		parse_request_line(request);
 		headers = extract_key_value(&request, ":", CRLF);
 		// headers = extract_key_value(&request, ":", "\n"); // testing with text
+		request.erase(0, 2);
+		// request.erase(0, 1); // testing with text
 	}
 	parse_body(request);
 
@@ -112,10 +115,6 @@ void Request::parse_request_line(std::string &request)
 void Request::parse_body(std::string &request)
 {
 	// -- GET BODY
-	if (!missing_request_part) // maybe move this to the header parse
-		request.erase(0, 2);
-	// request.erase(0, 1); // testing with text
-	
 	if (headers.find("content-length") != headers.end())
 	{
 		char *end = NULL;
@@ -190,7 +189,6 @@ void Request::format_multipart_form(std::string type)
 	while (!remaining_body.empty())
 	{
 		MultiForm part;
-		// std::cout << RED "IN THE PART LOOP" DEF << std::endl;
 
 		pin = remaining_body.find(boundary_str);
 		// std::cout << RED "STARTING POINT: " DEF << pin << std::endl;

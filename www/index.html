@@ -40,12 +40,13 @@
 		<input type="submit" value="Submit">
 	</form>
 	<div class="text yellow-mark">uploads</div>
+	<div id="file-list">Loading files...</div>
 	
 	<script>
 		async function loadFiles()
 		{
 			try {
-				const response = await fetch("/uploads/"); // FOR THIS TO WORK I NEED GET FOLDER
+				const response = await fetch("/uploads");
 				const text = await response.text();
 
 				if (!response.ok) {
@@ -53,15 +54,14 @@
 				}
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
-				const links = Array.from(doc.querySelectorAll("a"));
+				const links = Array.from(doc.querySelectorAll("li > a"));
 
 				const listContainer = document.getElementById("file-list");
 				listContainer.innerHTML = "";
-
 				links.forEach((link) => {
 					const href = link.getAttribute("href");
 					const name = link.textContent;
-
+					
 					if (href !== ".." && name !== "..") {
 						const card = document.createElement("div");
 						console.log(href);
@@ -69,7 +69,7 @@
 						card.innerHTML = `
 						<span>${name}</span>
 						<div class="actions">
-							<a href=".${href}" target="_blank">Preview</a>
+							<a href="${href}" target="_blank">Preview</a>
 							<button onclick="deleteFile('${href}')" style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
 								Delete
 							</button>
@@ -82,9 +82,9 @@
 				document.getElementById("file-list").innerHTML =
 					"Couldn't load the files.";
 			}
-	}
+		}
 
-	loadFiles();
+		loadFiles();
 	</script>
 </body>
 </html>

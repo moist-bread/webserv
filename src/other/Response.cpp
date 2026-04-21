@@ -54,12 +54,12 @@ void Response::process(Request &src)
 		method_get(src);
 		break;
 	}
-	
+
 	headers["Content-Length"] = to_str(body.size());
 	headers["Content-Type"] = define_content_type(src.file_extension);
 	headers["Connection"] = src.headers["connection"];
 	headers["Date"] = date_generate();
-		
+
 	// putting together the full response
 	std::stringstream ss;
 	ss << protocol_names[protocol] << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
@@ -87,6 +87,11 @@ void Response::clear(Request &src)
 void Response::method_get(Request &src)
 {
 	// get the requested content
+	if (src.path_uri == "/uploads") // IN CASE OF AUTO INDEXING
+	{
+		body = create_autoindexing_page(src);
+		return;
+	}
 	std::ifstream file(assemble_content_path(src, status_code).c_str());
 	if (!file.is_open())
 	{
@@ -102,17 +107,134 @@ void Response::method_get(Request &src)
 	if (file.is_open())
 		body = to_str(file.rdbuf());
 	else
-		body = backup_error_pages(status_code);
+		body = backup_error_page(status_code);
+}
+
+std::string Response::create_autoindexing_page(Request &src)
+{
+	DIR *d = opendir(("www" + src.path_uri).c_str());
+	struct dirent *elem;
+	if (!d)
+	{
+		status_code = NOT_FOUND;
+		return (backup_error_page(status_code));
+	}
+
+	std::stringstream ss;
+	ss << "<!DOCTYPE html>" << std::endl;
+	ss << "<html lang=\"en\">" << std::endl;
+	ss << "<head>" << std::endl;
+	ss << "	<meta charset=\"UTF-8\">" << std::endl;
+	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
+	ss << "	<title>listing directory www/" << src.path_uri << "</title>" << std::endl; // -- CHANGE WWW TO NEW CONFIG
+	ss << " 	<link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
+	ss << "	</head>" << std::endl;
+	ss << "	<body>" << std::endl;
+
+	ss << "	<div id=\"wrapper\">" << std::endl;
+	
+	ss << "		<h1>";
+	ss << "<a href=\""<< "http://localhost:8080/" << "\">~</a> / "; // -- CHANGE locahost TO NEW CONFIG
+	std::string folders = src.path_uri;
+	folders.erase(0, 1);
+	while (!folders.empty())
+	{
+		size_t pin = folders.find("/");
+		std::cout << RED << folders <<std::endl;
+		if (pin != std::string::npos) // -- CHANGE locahost TO NEW CONFIG
+			ss << "<a href=\"" << "http://localhost:8080/" << "\">" << folders.substr(0, pin - 1) << "</a> / ";
+		else
+			ss << "<a href=\"" << "http://localhost:8080/" << "\">" << folders << "</a> / ";
+		if (pin != std::string::npos)
+			folders.erase(0, pin + 1);
+		else
+			folders.clear();
+	}
+	ss << "		</h1>" << std::endl;
+
+	ss << "		<ul>" << std::endl;
+	elem = readdir(d);
+	while (elem != NULL)
+	{
+		if (elem->d_type == DT_DIR)
+		{
+			elem = readdir(d);
+			continue ;
+		}
+		ss << "			<li>" << std::endl;  // -- CHANGE locahost TO NEW CONFIG
+		ss << "				<a href=\"" << "http://localhost:8080" << src.path_uri << "/" << elem->d_name << "\""<< std::endl;
+		ss << "				title=\"" << elem->d_name << "\">" << std::endl;
+		ss << "				<span>" << elem->d_name << "</span>" << std::endl;
+		ss << "				</a>" << std::endl;
+		ss << "			</li>" << std::endl;
+		elem = readdir(d);
+	}
+	closedir(d);
+	ss << "		</ul>" << std::endl;
+
+	ss << "	</div>" << std::endl;
+	ss << "</body>" << std::endl;
+	ss << "</html>" << std::endl;
+	return (ss.str());
+}
+
+
+std::string Response::assemble_content_path(Request &src, t_status_code status_code)
+{
+	std::string path;
+	if (status_code != OK)
+	{
+		// in case of error
+		// look at the config to see which error page to send
+		// (later) consider default error pages from config
+		path = "www/404.html";
+		src.file_extension = "html";
+	}
+	else
+	{
+		// in case of everything being fine
+		// do path with
+		// (later) consider locations from config
+		if (src.file_extension == "html")
+		{
+			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location  
+			if (!(*(src.path_uri.end() - 1) == '/'))
+				src.path_uri.append("/");
+			if (src.path_uri != "/uploads") // remove when config added
+				src.path_uri.append("index.html");
+		}
+		path = "www" + src.path_uri;
+	}
+	std::cout << RED "assembles path: " DEF << path << std::endl;
+	return (path);
+}
+
+std::string Response::backup_error_page(t_status_code status_code)
+{
+	std::stringstream ss;
+	ss << "<!DOCTYPE html>" << std::endl;
+	ss << "<html lang=\"en\">" << std::endl;
+	ss << "<head>" << std::endl;
+	ss << "	<meta charset=\"UTF-8\">" << std::endl;
+	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
+	ss << "	<title>" << status_code << " " << get_reason_phrase(status_code) << "</title>" << std::endl;
+	ss << " <link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
+	ss << "</head>" << std::endl;
+	ss << "<body>" << std::endl;
+	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << get_reason_phrase(status_code) << "</div>" << std::endl;
+	ss << "</body>" << std::endl;
+	ss << "</html>" << std::endl;
+	return (ss.str());
 }
 
 void Response::method_post(Request &src)
 {
 	// create a special default location path to dump all POST info into
-	// open the file and write to it 
+	// open the file and write to it
 
 	// -- later get "www" replacement from config
 	std::string path = "www" + src.path_uri + "database";
-	std::ofstream output (path.c_str() , std::ofstream::out | std::ostream::app);
+	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
 	{
@@ -132,12 +254,12 @@ void Response::method_post(Request &src)
 				body = src.body;
 				src.file_extension = "html";
 			}
-			
+
 			output << body;
 			output.close();
-			headers["Location"] = src.path_uri; 
+			headers["Location"] = src.path_uri;
 		}
-		catch(const std::exception& e)
+		catch (const std::exception &e)
 		{
 			// std::cerr << RED << e.what() << std::endl;
 			status_code = INTERNAL_SERVER_ERROR;
@@ -152,7 +274,7 @@ void Response::handle_application_form(Request &src)
 	body = src.json + CRLF;
 	src.file_extension = "json";
 
-	// FOUND will make the client request a GET for a redirection location 
+	// FOUND will make the client request a GET for a redirection location
 	status_code = FOUND;
 }
 
@@ -177,7 +299,7 @@ void Response::handle_multipart_form(Request &src)
 			// -- CAN I EVEN USE MKDIR????
 			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) && mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(std::runtime_error("Internal Server Error"));
-			std::fstream output (path.c_str(), std::ios::out);
+			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
 				throw(std::runtime_error("Internal Server Error"));
 
@@ -194,7 +316,7 @@ void Response::handle_multipart_form(Request &src)
 			std::string name = "name";
 			if (elem_name != (*it).content_disposition.end())
 				name = (*elem_name).second;
-			
+
 			json_values[name] = (*it).data;
 			// body += (*it).data + CRLF;
 		}
@@ -217,71 +339,26 @@ void Response::handle_multipart_form(Request &src)
 
 std::string Response::random_name_generator(void) const
 {
-    std::string name;
+	std::string name;
 	int length = 12 + (rand() % 10);
 
-    for (int i = 0; i < length; i++)
-    {
-        const int type = rand() % 3;
-        switch (type)
-        {
-        case 0: // number
-            name += '0' + rand() % 10;
-            break;
-        case 1: // lower-case
-            name += 'a' + rand() % 26;
-            break;
-        default: // upper-case
-            name += 'A' + rand() % 26;
-            break;
-        }
-    }
-    return (name);
-}
-
-std::string Response::assemble_content_path(Request &src, t_status_code status_code)
-{
-	std::string path;
-	if (status_code != OK)
+	for (int i = 0; i < length; i++)
 	{
-		// in case of error
-		// look at the config to see which error page to send
-		// (later) consider default error pages from config
-		path = "www/404.html";
-		src.file_extension = "html";
-	}
-	else
-	{
-		// in case of everything being fine
-		// do path with
-		// (later) consider locations from config
-		if (src.file_extension == "html")
+		const int type = rand() % 3;
+		switch (type)
 		{
-			if (!(*src.path_uri.end() == '/'))
-				src.path_uri.append("/");
-			if (src.path_uri != "/uploads/")// remove when config added
-				src.path_uri.append("index.html");
+		case 0: // number
+			name += '0' + rand() % 10;
+			break;
+		case 1: // lower-case
+			name += 'a' + rand() % 26;
+			break;
+		default: // upper-case
+			name += 'A' + rand() % 26;
+			break;
 		}
-		path = "www" + src.path_uri;
 	}
-	return (path);
-}
-std::string Response::backup_error_pages(t_status_code status_code)
-{
-	std::stringstream ss;
-	ss << "<!DOCTYPE html>" << std::endl;
-	ss << "<html lang=\"en\">" << std::endl;
-	ss << "<head>" << std::endl;
-	ss << "	<meta charset=\"UTF-8\">" << std::endl;
-	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
-	ss << "	<title>" << status_code << " " << get_reason_phrase(status_code) << "</title>" << std::endl;
-    ss << " <link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
-	ss << "</head>" << std::endl;
-	ss << "<body>" << std::endl;
-	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << get_reason_phrase(status_code) << "</div>" << std::endl;
-	ss << "</body>" << std::endl;
-	ss << "</html>" << std::endl;
-	return (ss.str());
+	return (name);
 }
 
 std::string Response::get_reason_phrase(t_status_code status_code)
