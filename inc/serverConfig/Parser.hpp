@@ -29,7 +29,7 @@ class Parser
 		void parse(std::vector<ServerConfig> &servers);
 
 	private:
-		// Parser(void); 				// default constructor
+		Parser(void); 					// default constructor
 		Parser(Parser const &source);	// copy constructor
 		Parser &operator=(Parser const &source); // copy assignment operator overload
 
@@ -69,5 +69,3 @@ class Parser
 		const std::vector<t_token> &_tokens;
 
 };
-
-std::ostream &operator<<(std::ostream &out, Parser const &source);

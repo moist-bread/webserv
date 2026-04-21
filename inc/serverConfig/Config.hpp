@@ -3,6 +3,7 @@
 // ==┊ needed libs by class
 #include <iostream>
 #include <vector>
+#include <map>
 
 #include "../ansi_color_codes.h"
 #include "ServerConfig.hpp"
@@ -23,6 +24,15 @@ class Config
 
 	private:
 		std::vector<ServerConfig>	_servers;
+
+		void _validateServers(void) const;
+		static void _validate_HostPort(const ServerConfig &server);
+		static void _validate_ServerNames(const ServerConfig &server);
+		static void _validate_BodySize(const ServerConfig &server);
+		static void _validate_ErrorPages(const ServerConfig &server);
+		static void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
+	
+		static void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
 		
 };
 

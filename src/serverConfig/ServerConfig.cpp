@@ -1,6 +1,9 @@
 #include "../../inc/serverConfig/ServerConfig.hpp"
 
-ServerConfig::ServerConfig(void)
+const int ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE = 1048576;
+const unsigned long ServerConfig::MAX_CLIENT_MAX_BODY_SIZE = 524288000;
+
+ServerConfig::ServerConfig(void) : host("0.0.0.0"), port(-1), clientMaxBodySize(DEFAULT_CLIENT_MAX_BODY_SIZE)
 {
 	std::cout << GRN "the ServerConfig ";
 	std::cout << UCYN "has been created" DEF << std::endl;
@@ -26,6 +29,7 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 	{
 		this->port = source.port;
 		this->host = source.host;
+		this->listenAddr = source.listenAddr;
 		this->serverNames = source.serverNames;
 		this->clientMaxBodySize = source.clientMaxBodySize;
 		this->errorPages = source.errorPages;
@@ -39,6 +43,7 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "  [Server Block]\n";
 	out << "    Host: " << source.host << "\n";
 	out << "    Port: " << source.port << "\n";
+	out << "    Listen adress: " << source.listenAddr << "\n";
 	out << "    Client Max Body Size: " << source.clientMaxBodySize << "\n";
 
 	out << "    Server Names: ";

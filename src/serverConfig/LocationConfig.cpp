@@ -1,7 +1,7 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
 #include "../../inc/requests/HTTP.hpp"
 
-LocationConfig::LocationConfig(void)
+LocationConfig::LocationConfig(void) : index("index.html"), autoindex(false), returnCode(0)
 {
 	std::cout << GRN "the LocationConfig ";
 	std::cout << UCYN "has been created" DEF << std::endl;

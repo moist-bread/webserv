@@ -16,8 +16,6 @@
  * into a sequence of tokens. It handles keywords, symbols ({, }, ;), and comments (#).
  * This is a utility class with only static methods and cannot be instantiated.
  * 
- * @note Thread-safe (no shared state)
- * @note C++98 compliant
  */
 class Lexer
 {

@@ -27,24 +27,6 @@ Parser::Parser(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens)
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-// !! Needed?
-// Parser::Parser(void) : _tokens()
-// {
-// 	std::cout << GRN "the Parser ";
-// 	std::cout << UCYN "has been created" DEF << std::endl;
-// }
-
-/**
- * @brief Copy constructor.
- * @param source Parser instance to copy from.
- */
-Parser::Parser(Parser const &source) : _cursor(0), _tokens(source._tokens)
-{
-	*this = source;
-	std::cout << GRN "the Parser ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
-
 /**
  * @brief Destroy parser instance.
  */
@@ -52,37 +34,6 @@ Parser::~Parser(void)
 {
 	std::cout << GRN "the Parser ";
 	std::cout << URED "has been deleted" DEF << std::endl;
-}
-
-/**
- * @brief Copy assignment.
- * @param source Parser instance to copy mutable state from.
- * @return Reference to this parser.
- */
-Parser &Parser::operator=(Parser const &source)
-{
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
-	if (this != &source)
-	{
-		this->_cursor = source._cursor;
-		this->_serverHandlers = source._serverHandlers;
-		this->_locationHandlers = source._locationHandlers;
-	}
-	return (*this);
-}
-
-/**
- * @brief Stream insertion helper for debug output.
- * @param out Output stream.
- * @param source Parser instance.
- * @return Output stream reference.
- */
-std::ostream &operator<<(std::ostream &out, Parser const &source)
-{
-	(void)source;
-	out << BLU "Parser";
-	out << DEF << std::endl;
-	return (out);
 }
 
 /**
@@ -98,7 +49,6 @@ void Parser::parse(std::vector<ServerConfig> &servers)
 			_advanceToken();
 			ServerConfig newServer = _parseServerBlock();
 			servers.push_back(newServer);
-			// std::cout << "SERVER_BLOCK -> port = " << servers[0].port << "\n";
 		}
 		else
 			throw std::runtime_error("Syntax error at line " /* + line number */ ": Expected 'server' block");
@@ -180,11 +130,13 @@ void Parser::_serverListen(ServerConfig &server)
 	size_t colonPos = listen.find(':');
 	if (colonPos != std::string::npos)
 	{
+		server.listenAddr = listen;
 		server.host = listen.substr(0, colonPos);
 		server.port = std::atoi(listen.substr(colonPos + 1).c_str());
 	}
 	else
 	{
+		server.listenAddr = "0.0.0.0:" + listen;
 		server.host = "0.0.0.0";
 		server.port = std::atoi(listen.c_str());
 	}
@@ -211,10 +163,14 @@ void Parser::_serverMaxBodySize(ServerConfig &server)
 {
 	std::string sizeValue;
 	_extractSingleKeyword(sizeValue);
+	bool isMegaByte = false;
 	if (!sizeValue.empty() && sizeValue[sizeValue.size() - 1] == 'M')
+	{
+		isMegaByte = true;
 		sizeValue.erase(sizeValue.size() - 1);
+	}
 	server.clientMaxBodySize = std::strtoul(sizeValue.c_str(), NULL, 10);
-	if (!sizeValue.empty() && sizeValue[sizeValue.size() - 1] == 'M')
+	if (isMegaByte)
 		server.clientMaxBodySize *= 1048576;
 	_expect(TOKEN_SEMICOLON);
 }
