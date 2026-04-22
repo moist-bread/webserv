@@ -1,7 +1,7 @@
 #include "../../inc/requests/HTTP.hpp"
 
-const std::string HTTP::_method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH"};
-const std::string HTTP::_protocol_names[] = {"HTTP/1.0", "HTTP/1.1"};
+const std::string HTTP::_method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", "UNSUPPORTED_METHOD"};
+const std::string HTTP::_protocol_names[] = {"HTTP/1.0", "HTTP/1.1", "UNSUPPORTED_PROTOCOL"};
 
 HTTP::HTTP(void)
 {
@@ -32,7 +32,8 @@ HTTP &HTTP::operator=(HTTP const &source)
 
 t_method HTTP::getMethod(const std::string &strMethod)
 {
-	for (size_t i = 0; i < _method_names->size();i++)
+	size_t number_methods = (sizeof(_method_names) / sizeof(_method_names[0]));
+	for (size_t i = 0; i < number_methods;i++)
 	{
 		if (!strMethod.compare(_method_names[i]))
 			return (static_cast<t_method>(i));
@@ -47,7 +48,8 @@ std::string HTTP::stringMethod(const t_method Method)
 
 t_protocol HTTP::getProtocol(const std::string &strProtocol)
 {
-	for (size_t i = 0; i < _method_names->size();i++)
+	size_t number_protocols = (sizeof(_protocol_names) / sizeof(_protocol_names[0]));
+	for (size_t i = 0; i < number_protocols; i++)
 	{
 		if (!strProtocol.compare(_protocol_names[i]))
 			return (static_cast<t_protocol>(i));
