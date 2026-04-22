@@ -49,8 +49,11 @@ void Response::process(Request &src)
 	case POST:
 		method_post(src);
 		break;
-	// DELETE 204 NO_CONTENT
+	case DELETE:
+		method_delete(src);
+		break;
 	default:
+		status_code = METHOD_NOT_ALLOWED;
 		method_get(src);
 		break;
 	}
@@ -359,6 +362,45 @@ std::string Response::random_name_generator(void) const
 		}
 	}
 	return (name);
+}
+
+void Response::method_delete(Request &src)
+{
+	(void)src;
+	// assemble the content path to delete
+	std::string file_name = "www" + src.path_uri; // -- adapt to config
+
+	// check if i can delete that file
+	
+	// check if the resource exists (404)
+	struct stat sb;
+    if (stat(file_name.c_str(), &sb) == -1)
+    {
+		status_code = NOT_FOUND;
+		return (method_get(src));
+    }
+
+	// check if its a folder
+	if ((sb.st_mode & S_IFMT) == S_IFDIR)
+	{
+		// DO SOMETHING ELSE IN THIS CASE
+		status_code = NOT_FOUND;
+		return (method_get(src));
+	}
+	// -- CAN I EVEN USE REMOVE??
+	int res = remove(file_name.c_str());
+    if (res == 0)
+	{
+		std::cout << "File deleted" << std::endl;
+		status_code = NO_CONTENT; // success
+	}
+	else
+	{
+		std::cout << "No deletion" << std::endl;
+		status_code = INTERNAL_SERVER_ERROR;
+		return (method_get(src));
+	}
+	// 
 }
 
 std::string Response::get_reason_phrase(t_status_code status_code)

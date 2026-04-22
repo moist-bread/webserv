@@ -2,6 +2,9 @@
 
 // ==┊ needed libs by class
 #include "HTTP.hpp"
+#include <sys/sysmacros.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 // =====>┊( RESPONSE )┊
 
@@ -27,6 +30,8 @@ public:
 	void handle_multipart_form(Request &src);
 	std::string random_name_generator(void) const;
 	
+	void method_delete(Request &src);
+
 	static std::string get_reason_phrase(t_status_code status_code);
 	const char *define_content_type(std::string extension) const;
 	static std::string date_generate(void);
