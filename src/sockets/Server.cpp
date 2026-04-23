@@ -201,25 +201,45 @@ int Server::responder(int clientFd, const std::string &data)
 	return write(clientFd, data.c_str(), data.size());
 }
 
+
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
-	int clientFd = -1;
-	clientFd = _cgiMap[fd];
-
+	int clientFd = _cgiMap[fd];
+ 
 	_clients[clientFd].cgi.time_started = -1;
+ 
+	//Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
+	if (_pollfds[*pollfds_idx].revents & POLLERR)
+	{
+		std::cerr << "[CGI] POLLERR no pipe — a gerar resposta de erro\n";
+		close(fd);
+		_cgiMap.erase(fd);
+		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
+		(*pollfds_idx)--;
+		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
+		_clients[clientFd].response.process(_clients[clientFd].request);
+		for (size_t j = 0; j < _pollfds.size(); j++)
+			if (_pollfds[j].fd == clientFd)
+				{
+					_pollfds[j].events = POLLOUT;
+					 break;
+				}
+		return;
+	}
+ 
 	//  Ler do tubo
 	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
 	char buffer[4096];
 	int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
-
+ 
 	if (bytesRead > 0)
 	{
 		_clients[clientFd].response.full_response += std::string(buffer, bytesRead);
 	}
-	else if (bytesRead == 0 || (bytesRead < 0 && errno != EAGAIN)) // EOF // CANT USE ERRNO
+	else if (bytesRead <= 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
 	{
 		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
-
+ 
 		//  Fechar e limpar o tubo
 		close(fd);
 		_cgiMap.erase(fd);
@@ -229,7 +249,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		/*Fix
 			Erro de antes como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
 			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
-
+ 
 			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script falhou no puro silencio shhhh e ainda recebe um 500 banger
 		*/
 		if (_clients[clientFd].response.full_response.empty())
@@ -238,7 +258,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
             _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
             _clients[clientFd].response.process(_clients[clientFd].request);
         }
-
+ 
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
 		for (size_t j = 0; j < _pollfds.size(); j++)
 		{
@@ -250,6 +270,8 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		}
 	}
 }
+
+
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 {
