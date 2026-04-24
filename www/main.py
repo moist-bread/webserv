@@ -1,6 +1,5 @@
 import sys
 import os
-sleep(29)
 content_length = int(os.environ.get("CONTENT_LENGTH", 0))
 request = os.environ.get("REQUEST_METHOD", "(empty)")
 query_string = os.environ.get("QUERY_STRING", "(empty)")
