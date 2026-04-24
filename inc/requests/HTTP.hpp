@@ -10,7 +10,12 @@
 #include <stdlib.h>
 #include <cmath>
 #include <algorithm>
+#include <vector>
 #include <ctime>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "../ansi_color_codes.h"
 
 // == defines
@@ -18,6 +23,13 @@
 #define CRLF "\r\n"
 class Request;
 typedef std::map<std::string, std::string> map_strings;
+
+struct MultiForm
+{
+	map_strings content_disposition;
+	std::string content_type;
+	std::string data;
+};
 
 // == enums
 

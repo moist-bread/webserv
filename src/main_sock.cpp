@@ -6,6 +6,7 @@ int main(int ac, char **av)
         return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
     (void)av;
 
+    srand(time(NULL));
     std::signal(SIGINT, sigint_handler);
     try
     {

@@ -9,6 +9,9 @@
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
+// [x] directory GET (auto indexing)
+// [x] DELETE method
+// [x] PROBLEM WITH CGI POST!!!
 
 // =====>┊( REQUEST )┊
 
@@ -23,6 +26,12 @@ public:
 
 	void process(std::string request);
 	void clear(void);
+	void parse_request_line(std::string &request);
+	void parse_body(std::string &request);
+	void parse_forms(void);
+	void format_application_form(void);
+	void format_multipart_form(std::string type);
+
 	int extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const;
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
 	// bool detect_cgi(void) const;
@@ -41,6 +50,9 @@ public:
 	t_protocol protocol;
 	map_strings headers;
 	std::string body;
+	std::string json;
+	std::vector<MultiForm> multi_form;
+	bool missing_request_part;
 };
 
-std::ostream &operator<<(std::ostream &out, Request &source);
+std::ostream &operator<<(std::ostream &out, Request &src);

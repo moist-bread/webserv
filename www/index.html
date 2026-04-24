@@ -1,27 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/index.css" type="text/css">
-    <title>Banana</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>Banana</title>
 </head>
 <body>
- <div class="text yellow-mark">this is important</div>
-<div class="text green-mark">wait, this is also important</div>
-<div class="text red-mark">wow, almost forgot this</div>
-<br>
-<br>
-<form action="/main.py" method="GET">
-  <label for="fname">Query GET request:</label>
-  <input type="text" id="query" name="query"><br><br>
-  <input type="submit" value="Submit">
-</form>
-<br><br><br>
-<form action="/main.py" method="Post">
-  <label for="fname">Body POST request:</label>
-  <input type="text" id="body" name="body"><br><br>
-  <input type="submit" value="Submit">
-</form>
+	<div class="text yellow-mark">this is important</div>
+	<div class="text green-mark">wait, this is also important</div>
+	<div class="text red-mark">wow, almost forgot this</div>
+	<br>
+	<br>
+	<form action="/main.py" method="GET">
+		<label for="fname">Query GET request:</label>
+		<input type="text" id="query" name="query"><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	<br><br><br>
+	<form action="/main.py" method="POST">
+		<label for="fname">Script w/ Body POST request:</label>
+		<input type="text" id="body" name="body"><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	<br><br><br>
+	<form action="/" method="POST">
+		<p>Store Body in location POST request:</p>
+		<label for="username">username:</label>
+		<input type="text" id="username" name="username"><br><br>
+		<label for="notes">notes:</label>
+		<input type="text" id="notes" name="notes"><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	<form action="/" method="POST" enctype="multipart/form-data">
+		<p>Send us a File:</p>
+		<label for="file">file:</label>
+		<input type="file" id="fileInput" name="media" required>
+		<input type="text" id="title" name="title"><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	<div class="text yellow-mark">uploads</div>
+	<div id="file-list">Loading files...</div>
+	
+	<script>
+		async function loadFiles()
+		{
+			try
+			{
+				const response = await fetch("/uploads");
+				const text = await response.text();
+
+				if (!response.ok) {
+					throw error("❌ Folder not found!");
+				}
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(text, "text/html");
+				const links = Array.from(doc.querySelectorAll("li > a"));
+
+				const listContainer = document.getElementById("file-list");
+				listContainer.innerHTML = "";
+				links.forEach((link) => {
+					const href = link.getAttribute("href");
+					const name = link.textContent;
+					
+					if (href !== ".." && name !== "..") {
+						const card = document.createElement("div");
+						console.log(href);
+						card.className = "file-card";
+						card.innerHTML = `
+						<span>${name}</span>
+						<div class="actions">
+							<a href="${href}" target="_blank">Preview</a>
+							<button onclick="deleteFile('${href}')" 
+							style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
+								Delete
+							</button>
+						</div>`;
+						listContainer.appendChild(card);
+					}
+				});
+			}
+			catch (error)
+			{
+				console.error("Error loading files:", error);
+				document.getElementById("file-list").innerHTML =
+					"Couldn't load the files.";
+			}
+		}
+
+		async function deleteFile(fileName)
+		{
+			if (!confirm(`do you want to delete the following file? \"${fileName}\"`))
+				return;
+
+			try
+			{
+				const response = await fetch(`${fileName}`, {method: "DELETE"});
+
+				if (response.ok)
+				{
+					alert("File deleted successfully");
+					loadFiles();
+				}
+				else
+				{
+					const errorText = await response.text();
+					alert("Error on delete: " + response.status);
+					console.error("Error details:", errorText);
+				}
+			}
+			catch (error)
+			{
+				console.error("Error on DELETE request:", error);
+				alert("Couldn't connect with the server to delete");
+			}
+		}
+
+		loadFiles();
+	</script>
 </body>
 </html>

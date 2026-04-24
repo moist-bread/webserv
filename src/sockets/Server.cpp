@@ -245,12 +245,13 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_cgiMap.erase(fd);
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
-		
+
 		/*Fix
 			Erro de antes como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
 			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
- 
-			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script falhou no puro silencio shhhh e ainda recebe um 500 banger
+
+			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script
+			falhou no puro silencio shhhh e ainda recebe um 500 banger
 		*/
 		if (_clients[clientFd].response.full_response.empty())
         {
@@ -258,7 +259,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
             _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
             _clients[clientFd].response.process(_clients[clientFd].request);
         }
- 
+
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
 		for (size_t j = 0; j < _pollfds.size(); j++)
 		{
@@ -302,8 +303,17 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		_clients[fd].response.status_code = e.request_status;
 	}
 
+	if (_clients[fd].request.missing_request_part) 
+	{
+		// will probably change this when i implement chuncked requests
+		std::cout << RED "WE ARE MISSING SOMETHING\n" DEF;
+		return ;
+	}
+
+	std::cout << BLU "file extension: " DEF << _clients[fd].request.file_extension << std::endl;
 	if (_clients[fd].request.file_extension == "py")
 	{
+		std::cout << BLU "THIS IS A CGI!!!!!!!\n" DEF;
 		try
 		{
 			_clients[fd].cgi.process(_clients[fd].request);
@@ -328,7 +338,6 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
-	std::cout << "send client response" << std::endl;
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
@@ -350,9 +359,9 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 
 void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
-
-	if (_clients[fd].response.headers["connection"] == "close")
-		return (removeClient(fd, *pollfds_idx));
+	if (_clients[fd].response.headers.find("connection") != _clients[fd].response.headers.end())
+		if (_clients[fd].response.headers["connection"] == "close")
+			return (removeClient(fd, *pollfds_idx));
 
 	// Chegámos ao fim do processamento deste FD nesta volta.
 	// Vamos verificar se ele está "morto" há demasiado tempo.
