@@ -238,36 +238,31 @@ void Response::method_post(Request &src)
 	// -- later get "www" replacement from config
 	std::string path = "www" + src.path_uri + "database";
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
-
+	
 	if (!output.is_open())
+		return ((status_code = INTERNAL_SERVER_ERROR), method_get(src));
+	
+	try
 	{
-		status_code = INTERNAL_SERVER_ERROR;
-		method_get(src);
-	}
-	else
-	{
-		try
+		if (!src.json.empty())
+			handle_application_form(src);
+		else if (!src.multi_form.empty())
+			handle_multipart_form(src);
+		else
 		{
-			if (!src.json.empty())
-				handle_application_form(src);
-			else if (!src.multi_form.empty())
-				handle_multipart_form(src);
-			else
-			{
-				body = src.body;
-				src.file_extension = "html";
-			}
+			body = src.body;
+			src.file_extension = "html";
+		}
 
-			output << body;
-			output.close();
-			headers["Location"] = src.path_uri;
-		}
-		catch (const std::exception &e)
-		{
-			// std::cerr << RED << e.what() << std::endl;
-			status_code = INTERNAL_SERVER_ERROR;
-			return (body.clear(), method_get(src));
-		}
+		output << body;
+		output.close();
+		headers["Location"] = src.path_uri;
+	}
+	catch (const std::exception &e)
+	{
+		// std::cerr << RED << e.what() << std::endl;
+		status_code = INTERNAL_SERVER_ERROR;
+		return (body.clear(), method_get(src));
 	}
 }
 
@@ -290,15 +285,14 @@ void Response::handle_multipart_form(Request &src)
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
-			// generate random name
+			// -- adapt to config
 			std::string path = "www" + src.path_uri + "uploads/" + random_name_generator();
+			
 			size_t len;
 			len = (*f_name).second.rfind(".");
 			if (len != std::string::npos)
 				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
-			// create a file in an uploads folder
-			// make sure that the uploads folder exists
 			// -- CAN I EVEN USE MKDIR????
 			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) && mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(std::runtime_error("Internal Server Error"));
@@ -311,17 +305,12 @@ void Response::handle_multipart_form(Request &src)
 		}
 		else
 		{
-			// save it into the "database" file as i would for json??
-			// RETHINK THIS PLEASE
-			// maybe turn it into json?
-			// json_values[] = ;
+			// !! should this be in the database file? 
 			map_strings::iterator elem_name = (*it).content_disposition.find("name");
 			std::string name = "name";
 			if (elem_name != (*it).content_disposition.end())
 				name = (*elem_name).second;
-
 			json_values[name] = (*it).data;
-			// body += (*it).data + CRLF;
 		}
 	}
 	if (!json_values.empty())
@@ -366,41 +355,29 @@ std::string Response::random_name_generator(void) const
 
 void Response::method_delete(Request &src)
 {
-	(void)src;
 	// assemble the content path to delete
 	std::string file_name = "www" + src.path_uri; // -- adapt to config
 
-	// check if i can delete that file
-	
-	// check if the resource exists (404)
 	struct stat sb;
-    if (stat(file_name.c_str(), &sb) == -1)
-    {
-		status_code = NOT_FOUND;
-		return (method_get(src));
-    }
+    if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
+		return ((status_code = NOT_FOUND), method_get(src));
 
-	// check if its a folder
-	if ((sb.st_mode & S_IFMT) == S_IFDIR)
-	{
-		// DO SOMETHING ELSE IN THIS CASE
-		status_code = NOT_FOUND;
-		return (method_get(src));
-	}
+	if ((sb.st_mode & S_IFMT) == S_IFDIR) // don't allow folder DELETE
+		return ((status_code = FORBIDDEN), method_get(src));
+
 	// -- CAN I EVEN USE REMOVE??
-	int res = remove(file_name.c_str());
+	int res = std::remove(file_name.c_str());
     if (res == 0)
 	{
 		std::cout << "File deleted" << std::endl;
 		status_code = NO_CONTENT; // success
+		// can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
 	{
 		std::cout << "No deletion" << std::endl;
-		status_code = INTERNAL_SERVER_ERROR;
-		return (method_get(src));
+		return ((status_code = INTERNAL_SERVER_ERROR), method_get(src));
 	}
-	// 
 }
 
 std::string Response::get_reason_phrase(t_status_code status_code)

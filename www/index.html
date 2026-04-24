@@ -45,7 +45,8 @@
 	<script>
 		async function loadFiles()
 		{
-			try {
+			try
+			{
 				const response = await fetch("/uploads");
 				const text = await response.text();
 
@@ -70,17 +71,48 @@
 						<span>${name}</span>
 						<div class="actions">
 							<a href="${href}" target="_blank">Preview</a>
-							<button onclick="deleteFile('${href}')" style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
+							<button onclick="deleteFile('${href}')" 
+							style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
 								Delete
 							</button>
 						</div>`;
 						listContainer.appendChild(card);
 					}
 				});
-			} catch (error) {
+			}
+			catch (error)
+			{
 				console.error("Error loading files:", error);
 				document.getElementById("file-list").innerHTML =
 					"Couldn't load the files.";
+			}
+		}
+
+		async function deleteFile(fileName)
+		{
+			if (!confirm(`do you want to delete the following file? \"${fileName}\"`))
+				return;
+
+			try
+			{
+				const response = await fetch(`${fileName}`, {method: "DELETE"});
+
+				if (response.ok)
+				{
+					alert("File deleted successfully");
+					loadFiles();
+				}
+				else
+				{
+					const errorText = await response.text();
+					alert("Error on delete: " + response.status);
+					console.error("Error details:", errorText);
+				}
+			}
+			catch (error)
+			{
+				console.error("Error on DELETE request:", error);
+				alert("Couldn't connect with the server to delete");
 			}
 		}
 

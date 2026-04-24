@@ -54,6 +54,7 @@ void Request::process(std::string request)
 	parse_body(request);
 
 	// !! check if method is valid for the locations in config !!
+	// !! see if DELETE has body, if so PARSEERROR
 	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
 
 	std::cout << *this << std::endl;
@@ -168,7 +169,8 @@ void Request::format_application_form (void)
 			json += ",";
 	}
 	json += "}";
-	file_extension = "json";
+	if (file_extension == "html") // to avoid overwriting other f_ext
+		file_extension = "json";
 }
 void Request::format_multipart_form(std::string type)
 {

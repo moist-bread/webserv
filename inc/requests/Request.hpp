@@ -10,7 +10,8 @@
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
 // [x] directory GET (auto indexing)
-// [ ] DELETE method!!!
+// [x] DELETE method
+// [x] PROBLEM WITH CGI POST!!!
 
 // =====>┊( REQUEST )┊
 

@@ -288,8 +288,10 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		return ;
 	}
 
+	std::cout << BLU "file extension: " DEF << _clients[fd].request.file_extension << std::endl;
 	if (_clients[fd].request.file_extension == "py")
 	{
+		std::cout << BLU "THIS IS A CGI!!!!!!!\n" DEF;
 		try
 		{
 			_clients[fd].cgi.process(_clients[fd].request);
