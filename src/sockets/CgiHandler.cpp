@@ -1,8 +1,9 @@
 #include "../../inc/sockets/CgiHandler.hpp"
 #include <ctime>
+#include <fstream>
 
-extern std::string method_names[];
-extern std::string protocol_names[];
+// extern std::string method_names[];
+// extern std::string protocol_names[];
 
 CgiHandler::CgiHandler(void) : time_started(-1) {}
 
@@ -69,11 +70,11 @@ void CgiHandler::update_info(Request &src)
 	std::string empty;
 	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
 	_env.push_back("SERVER_NAME=" + empty); // -------------------------
-	_env.push_back("SERVER_PROTOCOL=" + protocol_names[src.protocol]);
+	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(src.protocol));
 	_env.push_back("SERVER_PORT=" + empty); // -------------------------
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
-	_env.push_back("REQUEST_METHOD=" + method_names[src.method]);
+	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(src.method));
 	_env.push_back("PATH_INFO=" + extract_path_info(src.path_uri));
 	_env.push_back("QUERY_STRING=" + src.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);

@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+class Request;
+
 // =====>┊( RESPONSE )┊
 
 class Response

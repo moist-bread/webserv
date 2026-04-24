@@ -2,6 +2,13 @@
 #include "../Network.hpp"
 #include "CgiHandler.hpp"
 
+#include <ctime>
+#include <iostream>
+#include <string>
+
+#include "../requests/Request.hpp"
+#include "../requests/Response.hpp"
+
 class Client
 {
 private:

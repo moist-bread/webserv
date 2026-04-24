@@ -1,8 +1,6 @@
 #pragma once
 
 // == libs
-#include <fstream>
-#include <sstream>
 #include <iostream>
 #include <string>
 #include <map>
@@ -16,12 +14,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sstream>
 #include "../ansi_color_codes.h"
 
 // == defines
-
 #define CRLF "\r\n"
-class Request;
+
 typedef std::map<std::string, std::string> map_strings;
 
 struct MultiForm
@@ -32,7 +30,6 @@ struct MultiForm
 };
 
 // == enums
-
 enum t_method
 {
 	GET,
@@ -105,6 +102,22 @@ std::string to_str(const T &value)
 };
 
 // == classes
+class HTTP
+{
+	public:
+		static t_method getMethod(const std::string &strMethod);		// returns the Method Enum from string
+		static std::string stringMethod(const t_method Method);			// returns the string from Method Enum
+		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
+		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
+		static t_status_code getStatusCode();
 
-#include "Response.hpp"
-#include "Request.hpp"
+	private:
+		HTTP(void); 				// default constructor
+		HTTP(HTTP const &source);	// copy constructor
+		~HTTP(void);				// destructor
+
+		HTTP &operator=(HTTP const &source); // copy assignment operator overload
+
+		static const std::string _method_names[];
+		static const std::string _protocol_names[];
+};

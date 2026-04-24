@@ -1,8 +1,9 @@
 #include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Response.hpp"
 
-std::string method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", ""};
-std::string protocol_names[] = {"HTTP/1.0", "HTTP/1.1", ""};
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <cctype>
 
 Request::Request(void)
 {
@@ -79,7 +80,7 @@ void Request::parse_request_line(std::string &request)
 	size_t len;
 	
 	// -- GET METHOD
-	method = static_cast<t_method>(extract_cmp_verify(&request, " ", method_names));
+	method = HTTP::getMethod(extract(&request, " "));
 
 	// -- GET URI
 	len = request.find(" ");
@@ -109,7 +110,7 @@ void Request::parse_request_line(std::string &request)
 		file_extension = "html";
 
 	// -- GET PROTOCOL
-	protocol = static_cast<t_protocol>(extract_cmp_verify(&request, CRLF, protocol_names));
+	protocol = HTTP::getProtocol(extract(&request, CRLF));
 	// protocol = static_cast<t_protocol>(extract_cmp_verify(&request, "\n", protocol_names)); // testing with text
 }
 
@@ -266,8 +267,7 @@ void Request::format_multipart_form(std::string type)
 
 }
 
-
-int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *cmp) const
+std::string Request::extract(std::string *src, const char *sep) const
 {
 	size_t len = (*src).find(sep);
 	if (len == std::string::npos)
@@ -276,10 +276,12 @@ int Request::extract_cmp_verify(std::string *src, const char *sep, std::string *
 	std::string segment = (*src).substr(0, len);
 	(*src).erase(0, len + (static_cast<std::string>(sep)).length());
 
-	for (int i = 0; !cmp[i].empty(); i++)
-		if (!segment.compare(cmp[i]))
-			return (i);
-	throw(Request::ParseError("Unsupported parameter", BAD_REQUEST));
+	return (segment);
+
+	//	* PREVIOUS VERSION *
+	// for (int i = 0; !cmp[i].empty(); i++)
+	// 	if (!segment.compare(cmp[i]))
+	// 		return (i);
 }
 
 map_strings Request::extract_key_value(std::string *src, std::string sep, std::string delim) const
@@ -322,7 +324,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 	out << BLU "-- Request Information --";
 	out << DEF << std::endl
 		<< std::endl;
-	out << BLU "Method: " DEF << method_names[src.method] << std::endl;
+	out << BLU "Method: " DEF << HTTP::stringMethod(src.method) << std::endl;
 	out << BLU "URI: " DEF << src.path_uri << std::endl;
 	out << BLU "file extension... " DEF << src.file_extension << std::endl;
 	out << BLU "missing request part... " DEF << src.missing_request_part << std::endl;
@@ -331,7 +333,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 		out << BLU "    Query..." DEF << std::endl;
 		out << BLU "        [" << src.query << "]" DEF << std::endl;
 	}
-	out << BLU "PROTOCOL: " DEF << protocol_names[src.protocol] << std::endl;
+	out << BLU "PROTOCOL: " DEF << HTTP::stringProtocol(src.protocol) << std::endl;
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;

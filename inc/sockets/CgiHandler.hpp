@@ -5,6 +5,9 @@
 #include <vector>
 #include <cstring>
 
+#include "../../inc/requests/Request.hpp"
+class Response;
+
 class CgiHandler
 {
 private:
