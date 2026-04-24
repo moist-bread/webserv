@@ -1,4 +1,12 @@
 #include "../../inc/sockets/Server.hpp"
+#include "../../inc/sockets/Client.hpp"
+
+#include "fcntl.h"
+#include <stdio.h>
+
+#include "../../inc/ansi_color_codes.h"
+
+#define TIMEOUT_TIME 120
 
 extern bool running;
 

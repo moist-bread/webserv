@@ -1,4 +1,5 @@
 #pragma once
+
 #include "BindingSocket.hpp"
 
 class ListeningSocket : public BindingSocket
@@ -8,6 +9,8 @@ protected:
 
 private:
 	int listening;
+	// -- MISSING DEFAULT CONSTRUCTOR
+	// ListeningSocket(void) {}; // default constructor
 
 public:
 	ListeningSocket(int domain, int type, int protocol, int port, u_long ip, int backlog); // default constructor
@@ -18,5 +21,3 @@ public:
 
 	ListeningSocket &operator=(ListeningSocket const &source); // copy assignment operator overload
 };
-
-std::ostream &operator<<(std::ostream &out, ListeningSocket const &source);

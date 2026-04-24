@@ -1,5 +1,5 @@
 #pragma once
-#include "../requests/HTTP.hpp"
+
 #include <unistd.h>
 #include <sstream>
 #include <vector>
@@ -19,7 +19,6 @@ private:
 	std::string _compiler;
 	std::string _scriptPath;
 	std::vector<std::string> _env;
-
 
 	void clear();
 	void update_info(Request &src);

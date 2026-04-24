@@ -1,8 +1,9 @@
 #pragma once
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <iostream>
+
 #include "../../inc/sockets/FileDescriptor.hpp"
+
+#include <netinet/in.h>
+#include <iostream>
 
 class SocketController
 {
@@ -11,6 +12,7 @@ protected:
     struct sockaddr_in _address;
 
 public:
+    SocketController(void);
     SocketController(int domain, int type, int protocol, int port, u_long ip);
     SocketController(SocketController const &source); // copy constructor
     virtual ~SocketController(void);                  // destructor

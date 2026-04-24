@@ -1,10 +1,11 @@
 #include "../../inc/sockets/Client.hpp"
 
+#include <iostream>
+#include <ctime>
+
 Client::Client(void)
 {
 	updateLastActivity();
-	std::cout << GRN "the Client ";
-	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
 Client::Client(int fd) : _ClientFd(fd)
@@ -12,23 +13,6 @@ Client::Client(int fd) : _ClientFd(fd)
 	updateLastActivity();
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-}
-
-// Getter
-
-int Client::GetClientFd() const
-{
-	return _ClientFd;
-}
-
-time_t Client::GetLastActivity() const
-{
-	return _lastActivity;
-}
-
-void Client::updateLastActivity()
-{
-	this->_lastActivity = std::time(NULL);
 }
 
 Client::Client(Client const &source)
@@ -46,7 +30,6 @@ Client::~Client(void)
 
 Client &Client::operator=(Client const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 	{
 		this->_ClientFd = source._ClientFd;
@@ -59,10 +42,17 @@ Client &Client::operator=(Client const &source)
 	return (*this);
 }
 
-std::ostream &operator<<(std::ostream &out, Client const &source)
+int Client::GetClientFd() const
 {
-	(void)source;
-	out << BLU "Client";
-	out << DEF << std::endl;
-	return (out);
+	return _ClientFd;
+}
+
+time_t Client::GetLastActivity() const
+{
+	return _lastActivity;
+}
+
+void Client::updateLastActivity()
+{
+	this->_lastActivity = std::time(NULL);
 }

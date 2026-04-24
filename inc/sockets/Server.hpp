@@ -1,5 +1,13 @@
 #pragma once
-#include "../Network.hpp"
+
+#include "ASimpleServer.hpp"
+
+#include <map>
+#include <vector>
+#include <iostream>
+#include <poll.h>
+
+class Client;
 
 enum ConnectionStatus
 {

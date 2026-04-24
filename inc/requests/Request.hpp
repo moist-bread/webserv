@@ -1,8 +1,9 @@
 #pragma once
 
 // ==┊ needed libs by class
-#include <stdexcept>
 #include "HTTP.hpp"
+
+#include <stdexcept>
 
 // TO-DO
 //
@@ -10,9 +11,6 @@
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
-// [x] directory GET (auto indexing)
-// [x] DELETE method
-// [x] PROBLEM WITH CGI POST!!!
 
 // =====>┊( REQUEST )┊
 

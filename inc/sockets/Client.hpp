@@ -1,37 +1,33 @@
 #pragma once
-#include "../Network.hpp"
+
 #include "CgiHandler.hpp"
 
-#include <ctime>
-#include <iostream>
-#include <string>
-
-#include "../requests/Request.hpp"
+// #include "../requests/Request.hpp"
 #include "../requests/Response.hpp"
+
+class Request;
+// class Response;
 
 class Client
 {
 private:
-    int _ClientFd;
-    time_t _lastActivity;
-
+	int _ClientFd;
+	time_t _lastActivity;
+	
 public:
-    Client(void);                 // default constructor
-    Client(int fd);               // default constructor
-    Client(Client const &source); // copy constructor
-    ~Client(void);                // destructor
+	Client(void);					// default constructor
+	Client(int fd);			   		// int constructor
+	Client(Client const &source);	// copy constructor
+	~Client(void);					// destructor
+	Client &operator=(Client const &source); // copy assignment operator overload
 
-    Request request;
-    Response response;
-    CgiHandler cgi;
+	Request request;
+	Response response;
+	CgiHandler cgi;
 
-    // Getters
-    time_t GetLastActivity() const;
-    int GetClientFd() const;
+	time_t GetLastActivity() const;
+	int GetClientFd() const;
 
-    void updateLastActivity();
+	void updateLastActivity();
 
-    Client &operator=(Client const &source); // copy assignment operator overload
 };
-
-std::ostream &operator<<(std::ostream &out, Client const &source);

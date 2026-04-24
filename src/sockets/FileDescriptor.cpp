@@ -1,5 +1,10 @@
 #include "../../inc/sockets/FileDescriptor.hpp"
 
+#include <iostream>
+#include <unistd.h>
+
+#include "../../inc/ansi_color_codes.h"
+
 FileDescriptor::FileDescriptor(void) : _fd(-1)
 {
 	std::cout << GRN "the FileDescriptor ";
@@ -19,16 +24,16 @@ FileDescriptor::~FileDescriptor(void)
 		close(_fd);
 		std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
 	}
-	std::cout << GRN "the FileDescriptor ";
-	std::cout << URED "has been deleted" DEF << std::endl;
 }
-
-std::ostream &operator<<(std::ostream &out, FileDescriptor const &source)
+FileDescriptor::FileDescriptor(FileDescriptor const &src)
 {
-	(void)source;
-	out << BLU "FileDescriptor";
-	out << DEF << std::endl;
-	return (out);
+	*this = src;
+}
+FileDescriptor &FileDescriptor::operator=(FileDescriptor const &src)
+{
+	if (this != &src)
+		setFd(_fd);
+	return (*this);
 }
 
 int FileDescriptor::getFd() const
@@ -43,5 +48,5 @@ void FileDescriptor::setFd(int fd)
 
 FileDescriptor::operator int() const
 {
-	return _fd;
+	return (_fd);
 }

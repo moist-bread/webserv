@@ -1,9 +1,7 @@
 #include "../../inc/sockets/CgiHandler.hpp"
+
 #include <ctime>
 #include <fstream>
-
-// extern std::string method_names[];
-// extern std::string protocol_names[];
 
 CgiHandler::CgiHandler(void) : time_started(-1) {}
 
