@@ -1,7 +1,7 @@
 #pragma once
 
 #include <netinet/in.h>
-#include <sys/types.h>       
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <iostream>
 #include <stdio.h>
@@ -25,8 +25,8 @@
 #include "sockets/BindingSocket.hpp"
 #include "sockets/ListeningSocket.hpp"
 #include "sockets/ASimpleServer.hpp"
-#include "sockets/Client.hpp"
 #include "sockets/CgiHandler.hpp"
+#include "sockets/Client.hpp"
 #include "ansi_color_codes.h"
 
-#define TIMEOUT_TIME 120
+#define TIMEOUT_TIME 50

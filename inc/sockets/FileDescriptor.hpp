@@ -5,22 +5,22 @@
 #include <unistd.h>
 #include "../../inc/ansi_color_codes.h"
 
-
 // =====>┊( CLASS )┊
 
 class FileDescriptor
 {
 private:
-    int _fd;
+	int _fd;
 	FileDescriptor(FileDescriptor const &source);
 	FileDescriptor &operator=(FileDescriptor const &source);
+
 public:
 	FileDescriptor(int fd);
 	FileDescriptor(void);
 	~FileDescriptor(void);
 
-    int getFd() const;
-    void setFd(int fd);
+	int getFd() const;
+	void setFd(int fd);
 	operator int() const;
 };
 

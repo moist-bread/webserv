@@ -1,27 +1,49 @@
 #pragma once
-#include "../Network.hpp"
+#include "../requests/HTTP.hpp"
+#include <unistd.h>
 #include <sstream>
+#include <vector>
+#include <cstring>
 
 class CgiHandler
 {
 private:
-    int _pipeIn[2];  // Tubo 1: O C++ escreve (1), o Python lê (0 - STDIN)
-    int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
-    int _pid;
+	int _pipeIn[2];	 // Tubo 1: O C++ escreve (1), o Python lê (0 - STDIN)
+	int _pipeOut[2]; // Tubo 2: O Python escreve (1 - STDOUT), o C++ lê (0)
+	int _pid;
 
-    std::map<std::string, std::string> _query;
-    // std::string _body;
-    std::string _scriptPath;
-    std::string _method;
-    std::string _compiler;
+	std::string _body;
+	std::string _compiler;
+	std::string _scriptPath;
+	std::vector<std::string> _env;
 
-    int writeBodyToCgiInput();
+
+	void clear();
+	void update_info(Request &src);
+	int executeCgi();
+	int InitPipes();
+	int writeBodyToCgiInput() const;
+	char **create_execve_env(void) const;
+	static std::string extract_script_filename(std::string full_path);
+	static std::string extract_path_info(std::string full_path);
 
 public:
-    CgiHandler(const std::string& ScriptPath, const  std::map<std::string, std::string>& query, const std::string& method);
-    int InitPipe();
-    int getPipeOutReadFd() const;
-    int executeCgi();
+	CgiHandler(void);
+	CgiHandler(CgiHandler const &source);
+	~CgiHandler(void);
+	CgiHandler &operator=(CgiHandler const &source);
 
-    ~CgiHandler();
+	CgiHandler(Request &src);
+
+	void process(Request &src);
+	int getPipeOutReadFd() const;
+	time_t getCgiActivityStart(void) const;
+
+	time_t time_started; // use to detect CGI timeout
+	
+	class CgiExecutionFail : public std::exception
+	{
+	public:
+		const char *what(void) const throw() { return ("execution failure"); }
+	};
 };

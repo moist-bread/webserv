@@ -9,8 +9,8 @@
 class Class
 {
 public:
-	Class(void); 				// default constructor
-	Class(Class const &source);	// copy constructor
+	Class(void);				// default constructor
+	Class(Class const &source); // copy constructor
 	~Class(void);				// destructor
 
 	Class &operator=(Class const &source); // copy assignment operator overload

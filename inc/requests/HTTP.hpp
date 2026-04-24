@@ -10,15 +10,14 @@
 #include <stdlib.h>
 #include <cmath>
 #include <algorithm>
+#include <ctime>
 #include "../ansi_color_codes.h"
-
 
 // == defines
 
 #define CRLF "\r\n"
 class Request;
-typedef std::map<std::string, std::string>	map_strings;
-
+typedef std::map<std::string, std::string> map_strings;
 
 // == enums
 
@@ -83,6 +82,15 @@ enum t_status_code
 	HTTP_VERSION_NOT_SUPPORTED
 };
 
+// == template
+
+template <typename T>
+std::string to_str(const T &value)
+{
+	std::stringstream ss;
+	ss << value;
+	return ss.str();
+};
 
 // == classes
 
