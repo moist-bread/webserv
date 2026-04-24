@@ -1,6 +1,4 @@
-#include "../inc/Class.hpp"
-#include "../inc/Network.hpp"
-#include "../inc/serverConfig/Config.hpp"
+#include "../inc/Webserv.hpp"
 
 int main(int ac, char **av)
 {

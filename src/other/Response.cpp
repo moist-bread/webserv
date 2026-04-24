@@ -69,7 +69,7 @@ void Response::process(Request &src)
 
 	// putting together the full response
 	std::stringstream ss;
-	ss << HTTP::stringProtocol(src.protocol) << " " << status_code << " " << get_reason_phrase(status_code) << CRLF;
+	ss << HTTP::stringProtocol(src.protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code) << CRLF;
 	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
 		ss << (*it).first << ": " << (*it).second << CRLF;
 	ss << CRLF;
@@ -139,15 +139,15 @@ std::string Response::create_autoindexing_page(Request &src)
 	ss << "	<body>" << std::endl;
 
 	ss << "	<div id=\"wrapper\">" << std::endl;
-	
+
 	ss << "		<h1>";
-	ss << "<a href=\""<< "http://localhost:8080/" << "\">~</a> / "; // -- CHANGE locahost TO NEW CONFIG
+	ss << "<a href=\"" << "http://localhost:8080/" << "\">~</a> / "; // -- CHANGE locahost TO NEW CONFIG
 	std::string folders = src.path_uri;
 	folders.erase(0, 1);
 	while (!folders.empty())
 	{
 		size_t pin = folders.find("/");
-		std::cout << RED << folders <<std::endl;
+		std::cout << RED << folders << std::endl;
 		if (pin != std::string::npos) // -- CHANGE locahost TO NEW CONFIG
 			ss << "<a href=\"" << "http://localhost:8080/" << "\">" << folders.substr(0, pin - 1) << "</a> / ";
 		else
@@ -166,10 +166,10 @@ std::string Response::create_autoindexing_page(Request &src)
 		if (elem->d_type == DT_DIR)
 		{
 			elem = readdir(d);
-			continue ;
+			continue;
 		}
-		ss << "			<li>" << std::endl;  // -- CHANGE locahost TO NEW CONFIG
-		ss << "				<a href=\"" << "http://localhost:8080" << src.path_uri << "/" << elem->d_name << "\""<< std::endl;
+		ss << "			<li>" << std::endl; // -- CHANGE locahost TO NEW CONFIG
+		ss << "				<a href=\"" << "http://localhost:8080" << src.path_uri << "/" << elem->d_name << "\"" << std::endl;
 		ss << "				title=\"" << elem->d_name << "\">" << std::endl;
 		ss << "				<span>" << elem->d_name << "</span>" << std::endl;
 		ss << "				</a>" << std::endl;
@@ -184,7 +184,6 @@ std::string Response::create_autoindexing_page(Request &src)
 	ss << "</html>" << std::endl;
 	return (ss.str());
 }
-
 
 std::string Response::assemble_content_path(Request &src, t_status_code status_code)
 {
@@ -204,7 +203,7 @@ std::string Response::assemble_content_path(Request &src, t_status_code status_c
 		// (later) consider locations from config
 		if (src.file_extension == "html")
 		{
-			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location  
+			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location
 			if (!(*(src.path_uri.end() - 1) == '/'))
 				src.path_uri.append("/");
 			if (src.path_uri != "/uploads") // remove when config added
@@ -224,11 +223,11 @@ std::string Response::backup_error_page(t_status_code status_code)
 	ss << "<head>" << std::endl;
 	ss << "	<meta charset=\"UTF-8\">" << std::endl;
 	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
-	ss << "	<title>" << status_code << " " << get_reason_phrase(status_code) << "</title>" << std::endl;
+	ss << "	<title>" << status_code << " " << HTTP::getReasonPhrase(status_code) << "</title>" << std::endl;
 	ss << " <link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
 	ss << "</head>" << std::endl;
 	ss << "<body>" << std::endl;
-	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << get_reason_phrase(status_code) << "</div>" << std::endl;
+	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << HTTP::getReasonPhrase(status_code) << "</div>" << std::endl;
 	ss << "</body>" << std::endl;
 	ss << "</html>" << std::endl;
 	return (ss.str());
@@ -242,10 +241,10 @@ void Response::method_post(Request &src)
 	// -- later get "www" replacement from config
 	std::string path = "www" + src.path_uri + "database";
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
-	
+
 	if (!output.is_open())
 		return ((status_code = INTERNAL_SERVER_ERROR), method_get(src));
-	
+
 	try
 	{
 		if (!src.json.empty())
@@ -291,7 +290,7 @@ void Response::handle_multipart_form(Request &src)
 		{
 			// -- adapt to config
 			std::string path = "www" + src.path_uri + "uploads/" + random_name_generator();
-			
+
 			size_t len;
 			len = (*f_name).second.rfind(".");
 			if (len != std::string::npos)
@@ -309,7 +308,7 @@ void Response::handle_multipart_form(Request &src)
 		}
 		else
 		{
-			// !! should this be in the database file? 
+			// !! should this be in the database file?
 			map_strings::iterator elem_name = (*it).content_disposition.find("name");
 			std::string name = "name";
 			if (elem_name != (*it).content_disposition.end())
@@ -363,7 +362,7 @@ void Response::method_delete(Request &src)
 	std::string file_name = "www" + src.path_uri; // -- adapt to config
 
 	struct stat sb;
-    if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
+	if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
 		return ((status_code = NOT_FOUND), method_get(src));
 
 	if ((sb.st_mode & S_IFMT) == S_IFDIR) // don't allow folder DELETE
@@ -371,11 +370,11 @@ void Response::method_delete(Request &src)
 
 	// -- CAN I EVEN USE REMOVE??
 	int res = std::remove(file_name.c_str());
-    if (res == 0)
+	if (res == 0)
 	{
 		std::cout << "File deleted" << std::endl;
 		status_code = NO_CONTENT; // success
-		// can also be 200 OK if i want to send an html describing the outcome
+								  // can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
 	{
@@ -384,96 +383,7 @@ void Response::method_delete(Request &src)
 	}
 }
 
-std::string Response::get_reason_phrase(t_status_code status_code)
-{
-	switch (status_code)
-	{
-	case CONTINUE:
-		return ("Continue");
-	case SWITCHING_PROTOCOL:
-		return ("Switching Protocols");
-	case OK:
-		return ("OK");
-	case CREATED:
-		return ("Created");
-	case ACCEPTED:
-		return ("Accepted");
-	case NON_AUTHORITATIVE_INFO:
-		return ("Non-authoritative Information");
-	case NO_CONTENT:
-		return ("No Content");
-	case RESET_CONTENT:
-		return ("Reset Content");
-	case PARTIAL_CONTENT:
-		return ("Partial Content");
-	case MULTIPLE_CHOICES:
-		return ("Multiple Choices");
-	case MOVED_PERMANENTLY:
-		return ("Moved Permanently");
-	case FOUND:
-		return ("Found");
-	case SEE_OTHER:
-		return ("See Other");
-	case NOT_MODIFIED:
-		return ("Not Modified");
-	case TEMPORARY_REDIRECT:
-		return ("Temporary Redirect");
-	case PERMANENT_REDIRECT:
-		return ("Permanent Redirect");
-	case BAD_REQUEST:
-		return ("Bad Request");
-	case UNAUTHORIZED:
-		return ("Unauthorized");
-	case PAYMENT_REQUIRED:
-		return ("Payment Required");
-	case FORBIDDEN:
-		return ("Forbidden");
-	case NOT_FOUND:
-		return ("Not Found");
-	case METHOD_NOT_ALLOWED:
-		return ("Method Not Allowed");
-	case NOT_ACCEPTABLE:
-		return ("Not Acceptable");
-	case PROXY_AUTHENTICATION_REQUIRED:
-		return ("Proxy Authentication Required");
-	case REQUEST_TIMEOUT:
-		return ("Request Timeout");
-	case CONFLICT:
-		return ("Conflict");
-	case GONE:
-		return ("Gone");
-	case LENGTH_REQUIRED:
-		return ("Length Required");
-	case PRECONDITION_FAILED:
-		return ("Precondition Failed");
-	case REQUEST_ENTITY_TOO_LARGE:
-		return ("Request Entity Too Large");
-	case REQUEST_URL_TOO_LONG:
-		return ("Request-url Too Long");
-	case UNSUPPORTED_MEDIA_TYPE:
-		return ("Unsupported Media Type");
-	case REQUESTED_RANGE_NOT_SATISFIABLE:
-		return ("Requested Range Not Satisfiable");
-	case EXPECTATION_FAILED:
-		return ("Expectation Failed");
-	case INTERNAL_SERVER_ERROR:
-		return ("Internal Server Error");
-	case NOT_IMPLEMENTED:
-		return ("Not Implemented");
-	case BAD_GATEWAY:
-		return ("Bad Gateway");
-	case SERVICE_UNAVAILABLE:
-		return ("Service Unavailable");
-	case GATEWAY_TIMEOUT:
-		return ("Gateway Timeout");
-	case HTTP_VERSION_NOT_SUPPORTED:
-		return ("HTTP Version Not Supported");
-	default:
-		return ("OK");
-	}
-}
-
-const char *Response::define_content_type(std::string extension) const
+const char *Response::define_content_type(std::string &extension) const
 {
 	// text types
 	if (extension == "html")
@@ -551,10 +461,11 @@ void Response::eraseWritten(int start, int idx)
 std::ostream &operator<<(std::ostream &out, Response &source)
 {
 	out << YEL "-- Response Information --";
-	out << DEF << std::endl << std::endl;
+	out << DEF << std::endl
+		<< std::endl;
 	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(source.protocol) << std::endl;
 	out << YEL "Status Code: " DEF << source.status_code << std::endl;
-	out << YEL "Reason Phrase: " DEF << source.get_reason_phrase(source.status_code) << std::endl;
+	out << YEL "Reason Phrase: " DEF << HTTP::getReasonPhrase(source.status_code) << std::endl;
 	out << YEL "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = source.headers.begin(); it != source.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;

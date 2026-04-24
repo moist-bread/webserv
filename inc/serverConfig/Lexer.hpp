@@ -1,12 +1,11 @@
 #pragma once
 
 // ==┊ needed libs by class
+# include "token.h" 
 # include <iostream>
 # include <vector>
-# include "../ansi_color_codes.h"
-# include "token.h" 
 
-// =====>┊( CLASS )┊
+// =====>┊( LEXER )┊
 
 /**
  * @class Lexer
@@ -23,11 +22,10 @@ class Lexer
 		static std::vector<t_token> tokenizeFile(const std::string &filePath);
 
 	private:
-		// Private constructor - class cannot be instantiated
 		Lexer(void);
-		Lexer(Lexer const &source);
+		Lexer(Lexer const &src);
 		~Lexer(void);
-		Lexer &operator=(Lexer const &source);
+		Lexer &operator=(Lexer const &src);
 		
 		static void _tokenizeLine(const std::string &line,  size_t lineNumber, std::vector<t_token> &outTokens);
 		static void _skipSpaces(const std::string &line, size_t &cursor);
@@ -36,4 +34,4 @@ class Lexer
 		static void _pushEOF(size_t lineNumber, std::vector<t_token> &outTokens);
 };
 
-std::ostream &operator<<(std::ostream &out, const std::vector<t_token> &source);
+std::ostream &operator<<(std::ostream &out, const std::vector<t_token> &src);

@@ -1,5 +1,8 @@
 #include "../inc/Webserv.hpp"
 
+#include <csignal>
+void sigint_handler(int sig);
+
 int main(int ac, char **av)
 {
     if (ac != 2)

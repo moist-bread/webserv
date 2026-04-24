@@ -109,7 +109,7 @@ class HTTP
 		static std::string stringMethod(const t_method Method);			// returns the string from Method Enum
 		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
 		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
-		static t_status_code getStatusCode();
+		static std::string getReasonPhrase(t_status_code status_code);	// returns the string from Status Code Enum
 
 	private:
 		HTTP(void); 				// default constructor
