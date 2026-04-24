@@ -1,12 +1,8 @@
 #pragma once
 
-#include "CgiHandler.hpp"
-
-// #include "../requests/Request.hpp"
+#include "../requests/Request.hpp"
 #include "../requests/Response.hpp"
-
-class Request;
-// class Response;
+#include "CgiHandler.hpp"
 
 class Client
 {
@@ -29,5 +25,4 @@ public:
 	int GetClientFd() const;
 
 	void updateLastActivity();
-
 };

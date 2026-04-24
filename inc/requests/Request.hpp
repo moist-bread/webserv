@@ -4,6 +4,7 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
+#include <vector>
 
 // TO-DO
 //

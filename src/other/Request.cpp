@@ -1,33 +1,17 @@
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/ansi_color_codes.h"
 
-#include <algorithm>
-#include <cmath>
-#include <cstdlib>
-#include <cctype>
+#include <algorithm>	// transform, strtod
+#include <cmath>		// HUGE_VAL
 
-Request::Request(void)
-{
-	clear();
-	std::cout << GRN "the Request ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+Request::Request(void) { clear(); }
 
-Request::Request(Request const &source)
-{
-	*this = source;
-	std::cout << GRN "the Request ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
+Request::Request(Request const &source) { *this = source; }
 
-Request::~Request(void)
-{
-	std::cout << GRN "the Request ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+Request::~Request(void) {}
 
 Request &Request::operator=(Request const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 	{
 		this->method = source.method;
@@ -48,9 +32,7 @@ void Request::process(std::string request)
 		clear();
 		parse_request_line(request);
 		headers = extract_key_value(&request, ":", CRLF);
-		// headers = extract_key_value(&request, ":", "\n"); // testing with text
 		request.erase(0, 2);
-		// request.erase(0, 1); // testing with text
 	}
 	parse_body(request);
 
@@ -111,7 +93,6 @@ void Request::parse_request_line(std::string &request)
 
 	// -- GET PROTOCOL
 	protocol = HTTP::getProtocol(extract(&request, CRLF));
-	// protocol = static_cast<t_protocol>(extract_cmp_verify(&request, "\n", protocol_names)); // testing with text
 }
 
 void Request::parse_body(std::string &request)

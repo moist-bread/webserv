@@ -1,33 +1,25 @@
 #include "../../inc/requests/Response.hpp"
 #include "../../inc/requests/Request.hpp"
 
-#include <cstdio>
-#include <ctime>
-#include <fstream>
-#include <sstream>
+#include "../../inc/ansi_color_codes.h"
 
-Response::Response(void) : protocol(UNSUPPORTED_PROTOCOL), status_code(OK)
-{
-	std::cout << GRN "the Response ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+#include <ctime>		// time, localtime, strftime
+#include <fstream>		// remove, fstream, ifstream, ofstream
+#include <dirent.h>		// opendir, readdir, closedir, DIR
+#include <stdlib.h>		// rand
+#include <sys/stat.h>	// mkdir, stat
+
+Response::Response(void) : protocol(UNSUPPORTED_PROTOCOL), status_code(OK) {}
 
 Response::Response(Response const &source)
 {
 	*this = source;
-	std::cout << GRN "the Response ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
 
-Response::~Response(void)
-{
-	std::cout << GRN "the Response ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+Response::~Response(void) {}
 
 Response &Response::operator=(Response const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 	{
 		this->protocol = source.protocol;
@@ -374,7 +366,7 @@ void Response::method_delete(Request &src)
 	{
 		std::cout << "File deleted" << std::endl;
 		status_code = NO_CONTENT; // success
-								  // can also be 200 OK if i want to send an html describing the outcome
+		// can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
 	{

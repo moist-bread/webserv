@@ -1,7 +1,10 @@
 #include "../../inc/sockets/CgiHandler.hpp"
+#include "../../inc/requests/Request.hpp"
 
-#include <ctime>
-#include <fstream>
+#include <unistd.h>		// close, fork, pipe
+#include <ctime>		// time
+#include <fstream>		// fstream, perror
+#include <algorithm>	// transform, EXIT_FAILURE
 
 CgiHandler::CgiHandler(void) : time_started(-1) {}
 

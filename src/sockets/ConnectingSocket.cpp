@@ -1,4 +1,5 @@
 #include "../../inc/sockets/ConnectingSocket.hpp"
+
 #include "../../inc/ansi_color_codes.h"
 
 ConnectingSocket::ConnectingSocket(int domain, int type, int protocol, int port, u_long ip) : SocketController(domain, type, protocol, port, ip)

@@ -1,9 +1,9 @@
 #include "../../inc/sockets/SocketController.hpp"
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "../../inc/ansi_color_codes.h"
+
+#include <stdio.h>	// perror
+#include <stdlib.h>	// exit
 
 /*
 

@@ -2,9 +2,6 @@
 
 // ==┊ needed libs by class
 #include "HTTP.hpp"
-#include <sys/sysmacros.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 class Request;
 

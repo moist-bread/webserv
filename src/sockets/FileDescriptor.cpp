@@ -1,9 +1,9 @@
 #include "../../inc/sockets/FileDescriptor.hpp"
 
-#include <iostream>
-#include <unistd.h>
-
 #include "../../inc/ansi_color_codes.h"
+
+#include <iostream> // cout, endl
+#include <unistd.h> // close
 
 FileDescriptor::FileDescriptor(void) : _fd(-1)
 {

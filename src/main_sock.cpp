@@ -1,15 +1,12 @@
 #include "../inc/Webserv.hpp"
 
-#include <csignal>
-void sigint_handler(int sig);
-
 int main(int ac, char **av)
 {
     if (ac != 2)
         return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
     (void)av;
 
-    srand(time(NULL));
+    srand(std::time(NULL));
     std::signal(SIGINT, sigint_handler);
     try
     {

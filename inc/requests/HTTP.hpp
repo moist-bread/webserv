@@ -4,18 +4,6 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include <exception>
-#include <stdlib.h>
-#include <cmath>
-#include <algorithm>
-#include <vector>
-#include <ctime>
-#include <sys/types.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sstream>
-#include "../ansi_color_codes.h"
 
 // == defines
 #define CRLF "\r\n"
@@ -92,6 +80,7 @@ enum t_status_code
 };
 
 // == template
+#include <sstream>
 
 template <typename T>
 std::string to_str(const T &value)

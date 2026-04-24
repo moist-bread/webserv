@@ -1,10 +1,12 @@
 #include "../../inc/sockets/Server.hpp"
 #include "../../inc/sockets/Client.hpp"
 
-#include "fcntl.h"
-#include <stdio.h>
-
 #include "../../inc/ansi_color_codes.h"
+
+#include <unistd.h>	// close, read
+#include <ctime>	// time, difftime
+#include <stdio.h>	// perror
+#include <fcntl.h>	// fcntl
 
 #define TIMEOUT_TIME 120
 

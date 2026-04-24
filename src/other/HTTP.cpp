@@ -3,28 +3,14 @@
 const std::string HTTP::_method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", "UNSUPPORTED_METHOD"};
 const std::string HTTP::_protocol_names[] = {"HTTP/1.0", "HTTP/1.1", "UNSUPPORTED_PROTOCOL"};
 
-HTTP::HTTP(void)
-{
-	std::cout << GRN "the HTTP ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+HTTP::HTTP(void) {}
 
-HTTP::HTTP(HTTP const &source)
-{
-	*this = source;
-	std::cout << GRN "the HTTP ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
+HTTP::HTTP(HTTP const &source) { *this = source; }
 
-HTTP::~HTTP(void)
-{
-	std::cout << GRN "the HTTP ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+HTTP::~HTTP(void) {}
 
 HTTP &HTTP::operator=(HTTP const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 		(void)source;
 	return (*this);

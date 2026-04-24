@@ -1,4 +1,5 @@
 #pragma once
+
 #include "SocketController.hpp"
 
 class ConnectingSocket : public SocketController

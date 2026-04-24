@@ -1,12 +1,10 @@
 #pragma once
 
-#include <unistd.h>
-#include <sstream>
+#include <string>
 #include <vector>
-#include <cstring>
+#include <exception>
 
-#include "../../inc/requests/Request.hpp"
-class Response;
+class Request;
 
 class CgiHandler
 {
