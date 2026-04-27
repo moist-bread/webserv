@@ -1,9 +1,13 @@
 #include "../../inc/serverConfig/Config.hpp"
 #include "../../inc/serverConfig/Lexer.hpp"
 #include "../../inc/serverConfig/Parser.hpp"
-#include "../../inc/requests/HTTP.hpp"
+#include "../../inc/serverConfig/ServerConfig.hpp"
+
+#include "../../inc/ansi_color_codes.h"
+
 #include <sstream>
 #include <algorithm>
+#include <map>
 
 Config::Config(void)
 {
@@ -11,9 +15,9 @@ Config::Config(void)
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-Config::Config(Config const &source)
+Config::Config(Config const &src)
 {
-	*this = source;
+	*this = src;
 	std::cout << GRN "the Config ";
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
@@ -24,11 +28,11 @@ Config::~Config(void)
 	std::cout << URED "has been deleted" DEF << std::endl;
 }
 
-Config &Config::operator=(Config const &source)
+Config &Config::operator=(Config const &src)
 {
 	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
-	if (this != &source)
-		(void)source;
+	if (this != &src)
+		_servers = src._servers;
 	return (*this);
 }
 
@@ -50,13 +54,13 @@ const std::vector<ServerConfig>& Config::getServers(void) const
 	return (this->_servers);
 }
 
-std::ostream &operator<<(std::ostream &out, Config const &source)
+std::ostream &operator<<(std::ostream &out, Config const &src)
 {
 	out << "========================================\n";
 	out << "         WEBSERV CONFIGURATION          \n";
 	out << "========================================\n";
 	
-	const std::vector<ServerConfig>& servers = source.getServers(); 
+	const std::vector<ServerConfig>& servers = src.getServers(); 
 	
 	for (size_t i = 0; i < servers.size(); ++i) {
 		out << servers[i];

@@ -6,8 +6,16 @@ int main(int ac, char **av)
         return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
     (void)av;
 
+    srand(std::time(NULL));
     std::signal(SIGINT, sigint_handler);
-    Server t;
-    
+    try
+    {
+        Server t;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return (1);
+    }
     return (0);
 }

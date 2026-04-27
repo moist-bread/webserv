@@ -1,74 +1,58 @@
 #pragma once
-#include "../Network.hpp"
 
+#include "ASimpleServer.hpp"
 
-/*
+#include <map>
+#include <vector>
+#include <iostream>
+#include <poll.h>
 
-1)
-    [X] Importar biblotecas
-    [X] criar vetor fds em
-    [X] criar funcao para nao bloquear o servidor
+class Client;
 
-
-    Tenho de fazer  Nonblocking Sockets
-
-    Sockets normais vao congelar quando um cliente demora a enviar dados e isso faz com que a socket para de processar ficando assim a dormir
-    also o subject diz que temos de ter Nonblocking 
-
-2)Loop principal
-    [X] Chamar funcao de anti bloqueio dentro do launch
-    [X] Pupular a estrutura do poll
-
-*/
+enum ConnectionStatus
+{
+	IO_ERROR,
+	IO_CLOSED,
+	IO_DATA_READY,
+	IO_DATA_OUT
+};
 
 class Server : public ASimpleServer
 {
 private:
-    std::map<int,Client>_clients;
-    std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
+	std::map<int, Client> _clients;
+	std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
 
-    std::vector<int> _serverPorts;//Fds de todas as portas abertas
-    std::vector<ListeningSocket*> _extraListeners;
-    std::vector<int> _listeningFds;
+	std::vector<int> _serverPorts; // Fds de todas as portas abertas
+	std::vector<ListeningSocket *> _extraListeners;
+	std::vector<int> _listeningFds;
 
-    std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
+	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-    void  SetNonblocking(int fd);
-    void accepter(int listenFd);
-    void handler(std::string buffer);
-    int responder(int clientFd,const std::string& data);
+	void SetupPorts();
+	void SetNonblocking(int fd);
+
+	void PopulatePollInfo(int fd);
+	void removeClient(int fd, size_t &index);
+
+	void launch();
+	bool isServerSocket(int fd);
+	ConnectionStatus getStatus(int ret);
+
+	void accepter(int listenFd);
+	int responder(int clientFd, const std::string &data);
+
+	void recieveCgiOutput(int fd, size_t *pollfds_idx);
+	void recieveClientRequest(int fd, size_t *pollfds_idx);
+	void sendClientResponse(int fd, size_t *pollfds_idx);
+	void inactivityTimeout(int fd, size_t *pollfds_idx);
 
 public:
-	Server(void); 				// default constructor
-	Server(Server const &source);	// copy constructor
-	~Server(void);				// destructor
+	Server(void);				  // default constructor
+	Server(Server const &source); // copy constructor
+	~Server(void);				  // destructor
 
-
-    void removeClient(int fd, size_t& index);
-
-    void launch();
-    
-    //Setup Servers Ports
-    void SetupPorts();
-
-    //Opens a file 
-    std::string OpenFile(const std::string& path);
-
-    //
-    bool isServerSocket(int fd);
-
-    void PopulatePollInfo(int fd);
 	Server &operator=(Server const &source); // copy assignment operator overload
 };
 
-enum ConnectionStatus {
-    IO_ERROR,
-    IO_CLOSED,
-    IO_DATA_READY,
-    IO_DATA_OUT
-};
-
-extern bool running;
-
 std::ostream &operator<<(std::ostream &out, Server const &source);
-ConnectionStatus getStatus(int ret);

@@ -1,12 +1,13 @@
 #include "../../inc/sockets/ConnectingSocket.hpp"
+
 #include "../../inc/ansi_color_codes.h"
 
-ConnectingSocket::ConnectingSocket(int domain,int type,int protocol,int port,u_long ip): SocketController(domain,type,protocol,port,ip)
+ConnectingSocket::ConnectingSocket(int domain, int type, int protocol, int port, u_long ip) : SocketController(domain, type, protocol, port, ip)
 {
 	std::cout << GRN "the ConnectingSocket ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-    
-	this->_connectSocket = connect_to_network(getSocketfd(),getStructAdress());
+
+	this->_connectSocket = connect_to_network(getSocketfd(), getStructAdress());
 	test_connection(_connectSocket);
 }
 
@@ -25,10 +26,10 @@ ConnectingSocket &ConnectingSocket::operator=(ConnectingSocket const &source)
 	return (*this);
 }
 
-int ConnectingSocket::connect_to_network(int sock,struct sockaddr_in address)
+int ConnectingSocket::connect_to_network(int sock, struct sockaddr_in address)
 {
-    return connect(sock,(struct sockaddr *)&address,sizeof(address));
-} 
+	return connect(sock, (struct sockaddr *)&address, sizeof(address));
+}
 
 std::ostream &operator<<(std::ostream &out, ConnectingSocket const &source)
 {

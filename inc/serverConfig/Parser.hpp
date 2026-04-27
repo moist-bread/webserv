@@ -8,6 +8,7 @@
 
 #include "../ansi_color_codes.h"
 #include "token.h"
+#include "../requests/HTTP.hpp"
 
 class ServerConfig;
 class LocationConfig;

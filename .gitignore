@@ -8,3 +8,8 @@
 *.env
 webserv
 *.DS_Store
+/www/*/database
+/www/database
+*/.nfs*
+*/*/.nfs*
+www/uploads/*

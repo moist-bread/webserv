@@ -3,22 +3,18 @@
 // ==┊ needed libs by class
 #include <iostream>
 #include <vector>
-#include <map>
-#include <set>
 
-#include "../ansi_color_codes.h"
-#include "ServerConfig.hpp"
+class ServerConfig;
 
-// =====>┊( CLASS )┊
+// =====>┊( CONFIG )┊
 
 class Config
 {
 	public:
-		Config(void); 					// default constructor
-		Config(const Config &source);	// copy constructor
-		~Config(void);					// destructor
-
-		Config &operator=(Config const &source); // copy assignment operator overload
+		Config(void);
+		Config(const Config &src);
+		~Config(void);
+		Config &operator=(Config const &src);
 
 		void load(const std::string &filePath);
 		const std::vector<ServerConfig> &getServers(void) const;
@@ -28,4 +24,4 @@ class Config
 
 };
 
-std::ostream &operator<<(std::ostream &out, Config const &source);
+std::ostream &operator<<(std::ostream &out, Config const &src);

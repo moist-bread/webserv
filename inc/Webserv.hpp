@@ -1,13 +1,13 @@
 #pragma once
 
-// ==┊ headers
-#include "../inc/Class.hpp"
-#include "../inc/Network.hpp"
-#include "../inc/sockets/Server.hpp"
+// ==┊ all headers
+#include "serverConfig/Config.hpp"
+#include "sockets/Server.hpp"
 
-// ==┊ libs
-#include <csignal>
+// ==┊ libs for main
+#include <stdlib.h>	// srand
+#include <csignal>	// signal
+#include <ctime>	// time
 
-// ==┊ other funcs
-
+// ==┊ aux funcs
 void sigint_handler(int sig);

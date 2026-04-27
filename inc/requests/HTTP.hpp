@@ -4,12 +4,18 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include "../ansi_color_codes.h"
 
 // == defines
 #define CRLF "\r\n"
-class Request;
-typedef std::map<std::string, std::string>	map_strings;
+
+typedef std::map<std::string, std::string> map_strings;
+
+struct MultiForm
+{
+	map_strings content_disposition;
+	std::string content_type;
+	std::string data;
+};
 
 // == enums
 enum t_method
@@ -73,6 +79,17 @@ enum t_status_code
 	HTTP_VERSION_NOT_SUPPORTED
 };
 
+// == template
+#include <sstream>
+
+template <typename T>
+std::string to_str(const T &value)
+{
+	std::stringstream ss;
+	ss << value;
+	return ss.str();
+};
+
 // == classes
 class HTTP
 {
@@ -81,7 +98,7 @@ class HTTP
 		static std::string stringMethod(const t_method Method);			// returns the string from Method Enum
 		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
 		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
-		static t_status_code getStatusCode();
+		static std::string getReasonPhrase(t_status_code status_code);	// returns the string from Status Code Enum
 
 	private:
 		HTTP(void); 				// default constructor

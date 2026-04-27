@@ -1,5 +1,10 @@
 #include "../../inc/sockets/FileDescriptor.hpp"
 
+#include "../../inc/ansi_color_codes.h"
+
+#include <iostream> // cout, endl
+#include <unistd.h> // close
+
 FileDescriptor::FileDescriptor(void) : _fd(-1)
 {
 	std::cout << GRN "the FileDescriptor ";
@@ -14,32 +19,34 @@ FileDescriptor::FileDescriptor(int fd) : _fd(fd)
 
 FileDescriptor::~FileDescriptor(void)
 {
-    if (this->_fd >= 2)
-    {
-        close(_fd);
-        std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
-    }
-	std::cout << GRN "the FileDescriptor ";
-	std::cout << URED "has been deleted" DEF << std::endl;
+	if (this->_fd >= 2)
+	{
+		close(_fd);
+		std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
+	}
 }
-
-std::ostream &operator<<(std::ostream &out, FileDescriptor const &source)
+FileDescriptor::FileDescriptor(FileDescriptor const &src)
 {
-	(void)source;
-	out << BLU "FileDescriptor";
-	out << DEF << std::endl;
-	return (out);
+	*this = src;
+}
+FileDescriptor &FileDescriptor::operator=(FileDescriptor const &src)
+{
+	if (this != &src)
+		setFd(_fd);
+	return (*this);
 }
 
-int FileDescriptor::getFd() const {
-    return _fd;
+int FileDescriptor::getFd() const
+{
+	return _fd;
 }
 
 void FileDescriptor::setFd(int fd)
 {
-    this->_fd = fd;
+	this->_fd = fd;
 }
 
-FileDescriptor::operator int() const {
-    return _fd;
+FileDescriptor::operator int() const
+{
+	return (_fd);
 }

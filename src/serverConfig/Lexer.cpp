@@ -1,4 +1,7 @@
 # include "../../inc/serverConfig/Lexer.hpp"
+
+# include "../../inc/ansi_color_codes.h"
+
 # include <fstream>
 # include <string>
 # include <stdexcept>
@@ -9,29 +12,15 @@
  * This constructor is private to prevent instantiation of the Lexer class.
  * Since all methods are static, creating instances is unnecessary and prevented.
  */
-Lexer::Lexer(void)
-{
-	std::cout << GRN "the Lexer ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+Lexer::Lexer(void) {}
 
-Lexer::Lexer(Lexer const &source)
-{
-	(void)source;
-	std::cout << GRN "the Lexer ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
+Lexer::Lexer(Lexer const &src) { (void)src; }
 
-Lexer::~Lexer(void)
-{
-	std::cout << GRN "the Lexer ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+Lexer::~Lexer(void) {}
 
-Lexer &Lexer::operator=(Lexer const &source)
+Lexer &Lexer::operator=(Lexer const &src)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
-	(void)source;
+	(void)src;
 	return (*this);
 }
 
@@ -232,15 +221,15 @@ static std::string getTokenTypeName(e_token_type tokenType)
  * "Line: <line_number> [<TYPE>] '<content>'"
  * 
  * @param out Output stream
- * @param source Vector of tokens to display
+ * @param src Vector of tokens to display
  * @return Reference to output stream for chaining
  * 
  * @note Useful for debugging and visualization of tokenization results
  */
-std::ostream &operator<<(std::ostream &out, const std::vector<t_token> &source)
+std::ostream &operator<<(std::ostream &out, const std::vector<t_token> &src)
 {
 	std::vector<t_token>::const_iterator it;
-	for (it = source.begin(); it != source.end(); it++)
+	for (it = src.begin(); it != src.end(); it++)
 		out << "Line: " << it->line << " [" << getTokenTypeName(it->type) << "] '" << it->content << "'\n";
 	return (out);
 }
