@@ -58,6 +58,20 @@ class Parser
 		void _locationCgi(LocationConfig &location);
 		void _locationUploadStore(LocationConfig &location);
 
+
+		//	ServerHandler Validation functions
+		static void _validate_Listen(const std::string &host, const int port);
+		static void _validate_ServerNames(const std::vector<std::string> &serverNames);
+		static void _validate_MaxBodySize(const size_t clientMaxBodySize);
+		static void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
+		static void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
+
+		//	LocationHandler Validation functions
+		static void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
+	
+		static void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
+		
+
 		//	Helpers
 		t_token _expect(e_token_type expected_type);
 		const t_token &_currentToken(void) const;

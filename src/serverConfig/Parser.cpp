@@ -141,6 +141,7 @@ void Parser::_serverListen(ServerConfig &server)
 		server.port = std::atoi(listen.c_str());
 	}
 	_expect(TOKEN_SEMICOLON);
+	_validate_Listen(server.host, server.port);
 }
 
 /**
@@ -151,8 +152,8 @@ void Parser::_serverName(ServerConfig &server)
 {
 	_extractKeywordVector(server.serverNames);
 	_expect(TOKEN_SEMICOLON);
-	if (server.serverNames.empty())
-		throw std::runtime_error("Syntax error: server_name directive is empty");
+	_validate_ServerNames(server.serverNames);
+	//	*	ADD: _validate_NameServer_collision();
 }
 
 /**
@@ -173,6 +174,7 @@ void Parser::_serverMaxBodySize(ServerConfig &server)
 	if (isMegaByte)
 		server.clientMaxBodySize *= 1048576;
 	_expect(TOKEN_SEMICOLON);
+	_validate_MaxBodySize(server.clientMaxBodySize);
 }
 
 /**
@@ -193,6 +195,7 @@ void Parser::_serverErrorPage(ServerConfig &server)
 		int errorCode = std::atoi(tempArgs[i].c_str());
 		server.errorPages[static_cast <t_status_code>(errorCode)] = uri;
 	}
+	_validate_ErrorPages(server.errorPages);
 }
 
 /**
@@ -255,8 +258,7 @@ void Parser::_locationAllowMethods(LocationConfig &location)
 		_advanceToken();
 	}
 	_expect(TOKEN_SEMICOLON);
-	if (location.allowedMethods.empty())
-		throw std::runtime_error("Syntax error: allow_methods directive is empty");
+	_validate_AllowedMethods(location.allowedMethods);
 }
 
 /**
@@ -362,4 +364,108 @@ void Parser::_extractKeywordVector(std::vector<std::string> &destination)
 		destination.push_back(_currentToken().content);
 		_advanceToken();
 	}
+}
+
+
+//*	----- Server Validation ----- */
+
+void Parser::_validate_Listen(const std::string &host, const int port)
+{
+	if (port < 1 || port > 65535)
+		throw std::runtime_error("Config error: IP"); // ! Write error
+	if (std::count(host.begin(), host.end(), '.') != 3)
+		throw std::runtime_error("Config error: IP"); // ! Write error
+	if (host == "localhost" || host == "0.0.0.0")
+		return ;
+
+	std::string octet;
+	std::stringstream ss(host);
+	while (std::getline(ss, octet, '.'))
+	{
+		if (octet.empty())
+			throw std::runtime_error("Config error: IP"); // ! Write error
+		for (size_t i = 0; i < octet.length(); i++)
+		{
+			if (!std::isdigit(octet[i]))
+				throw std::runtime_error("Config error: IP"); // ! Write error
+		}
+		int octet_value = std::atoi(octet.c_str());
+		if (octet_value < 0 || octet_value > 255)
+			throw std::runtime_error("Config error: IP"); // ! Write error
+	}	
+}
+
+void Parser::_validate_ServerNames(const std::vector<std::string> &serverNames)
+{
+	if (serverNames.empty())
+		throw std::runtime_error("Syntax error: server_name directive is empty");
+	for (size_t i = 0; i < serverNames.size(); ++i)
+	{
+		const std::string &currentName = serverNames[i];
+		if (currentName == "_")
+			continue ;
+		if (currentName[0] == '.' || currentName[0] == '-' || 
+				currentName[currentName.length() - 1] == '.' ||
+				currentName[currentName.length() - 1] == '-')
+			throw std::runtime_error("Config error: Server Names"); // ! Write error
+		for (size_t j = 0; j < currentName.length(); ++j)
+		{
+			char c = currentName[j];
+			if (!std::isalnum(c) && c != '.' && c != '-')
+				throw std::runtime_error("Config error: Server Names"); // ! Write error
+			if (c == '.' && currentName[j - 1] == '.')
+				throw std::runtime_error("Config error: Server Names"); // ! Write error
+		}
+	}
+}
+
+void Parser::_validate_MaxBodySize(const size_t clientMaxBodySize)
+{
+	if (clientMaxBodySize < 1 || clientMaxBodySize > ServerConfig::MAX_CLIENT_MAX_BODY_SIZE)
+		throw std::runtime_error("Config error: Client Max Body Size"); // ! Write error
+}
+
+void Parser::_validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages)
+{
+	std::map<t_status_code, std::string>::const_iterator it;
+	for (it = errorPages.begin(); it != errorPages.end(); ++it)
+	{
+		int code = it->first;
+		if (code < 400 || code > 599)
+			throw std::runtime_error("Config error: Client Max Body Size"); // ! Write error
+	}
+}
+
+void Parser::_validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames)
+{
+	for (size_t i = 0; i < claimedNames.size(); i++)
+	{
+		const std::string &name = claimedNames[i];
+		for (size_t j = 0; j < server.serverNames.size(); ++j)
+		{
+			if (name == server.serverNames[j])
+				throw std::runtime_error("Config error: Name Server Collision"); // ! Write error
+		}
+	}
+}
+
+//*	----- Location Validation ----- */
+
+void Parser::_validate_AllowedMethods(const std::vector<t_method> &allowedMethods)
+{
+	// * CHECK REPEATED METHODS
+	if (allowedMethods.empty())
+		throw std::runtime_error("Syntax error: allow_methods directive is empty"); // ! Write error
+	for (size_t i = 0; i < allowedMethods.size(); ++i)	
+	{
+		const t_method &currentMethod = allowedMethods[i];
+		if (currentMethod == UNSUPPORTED_METHOD)
+			throw std::runtime_error("Config error: Location - Allowed Methods"); // ! Write error
+	}
+}
+
+
+void Parser::_add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest)
+{
+	dest.insert(dest.end(), server.serverNames.begin(), server.serverNames.end());
 }
