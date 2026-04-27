@@ -41,6 +41,8 @@ public:
 	map_strings headers;
 	std::string body;
 
+	std::string cgi_reply;
+
 	std::string full_response;
 };
 

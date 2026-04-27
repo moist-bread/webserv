@@ -23,7 +23,5 @@ html_response = f"""<html>
 
 print("HTTP/1.1 200 OK\r")
 print(f"Content-Length: {len(html_response)}\r")
-
-print(os.environ)
 print("\r")
 print(html_response, end="")

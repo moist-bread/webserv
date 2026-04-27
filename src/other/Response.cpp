@@ -26,6 +26,7 @@ Response &Response::operator=(Response const &source)
 		this->status_code = source.status_code;
 		this->headers = source.headers;
 		this->body = source.body;
+		this->cgi_reply = source.cgi_reply;
 		this->full_response = source.full_response;
 	}
 	return (*this);
@@ -33,6 +34,13 @@ Response &Response::operator=(Response const &source)
 
 void Response::process(Request &src)
 {
+	if (!cgi_reply.empty())
+	{
+		std::string tmp = cgi_reply;
+		clear(src);
+		full_response = tmp;
+		return;
+	}
 	clear(src);
 
 	if (status_code != OK)
@@ -80,6 +88,7 @@ void Response::clear(Request &src)
 		protocol = H1_0;
 	headers.clear();
 	body.clear();
+	cgi_reply.clear();
 	full_response.clear();
 }
 
@@ -452,9 +461,7 @@ void Response::eraseWritten(int start, int idx)
 
 std::ostream &operator<<(std::ostream &out, Response &source)
 {
-	out << YEL "-- Response Information --";
-	out << DEF << std::endl
-		<< std::endl;
+	out << YEL "-- Response Information --" DEF "\n\n";
 	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(source.protocol) << std::endl;
 	out << YEL "Status Code: " DEF << source.status_code << std::endl;
 	out << YEL "Reason Phrase: " DEF << HTTP::getReasonPhrase(source.status_code) << std::endl;

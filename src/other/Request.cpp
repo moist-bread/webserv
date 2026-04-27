@@ -21,16 +21,25 @@ Request &Request::operator=(Request const &source)
 		this->protocol = source.protocol;
 		this->headers = source.headers;
 		this->body = source.body;
+		this->json = source.json;
+		this->multi_form = source.multi_form;
+		this->missing_request_part = source.missing_request_part;
+		this->content_length = source.content_length;
+		this->content_read = source.content_read;
+		this->state = source.state;
 	}
 	return (*this);
 }
 
 void Request::process(std::string request)
 {
+	// while request !empty()
+	// switchcase state
 	if (!missing_request_part)
 	{
 		clear();
 		parse_request_line(request);
+		state = HEADERS;
 		headers = extract_key_value(&request, ":", CRLF);
 		request.erase(0, 2);
 	}
@@ -54,12 +63,19 @@ void Request::clear(void)
 	body.clear();
 	json.clear();
 	multi_form.clear();
+
 	missing_request_part = false;
+
+	content_length = CONTENT_LEN_NOT_SET;
+	content_read = 0;
+	state = BEGIN;
 }
 
 void Request::parse_request_line(std::string &request)
 {
 	size_t len;
+
+	state = LINE;
 	
 	// -- GET METHOD
 	method = HTTP::getMethod(extract(&request, " "));
@@ -97,33 +113,84 @@ void Request::parse_request_line(std::string &request)
 
 void Request::parse_body(std::string &request)
 {
-	// -- GET BODY
-	if (headers.find("content-length") != headers.end())
-	{
-		char *end = NULL;
-		double value = HUGE_VAL;
-		if (!headers["content-length"].empty())
-			value = std::strtod(headers["content-length"].c_str(), &end);
-		
-		if (*end || value == HUGE_VAL || value == -HUGE_VAL)
-			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
-		
-		// Cache-Control: max-age=0
-		if (value != request.size() && headers.find("cache-control") != headers.end() && headers["cache-control"] == "max-age=0")
-		{
-			std::cout << "remaining request: " << request.size() << " actual len: " << value << std::endl;
-			missing_request_part = true; // -- THROW SOMETHING SPECIFIC FOR THIS
-			return ;
-		}
-		else if (value != request.size())
-			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
-	}
-	else if (request.size())
-		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+	state = BODY;
+
+	// -- GET CONTENT LENGTH/CHUNCK
+	update_content_length(request);
+
+	// !! Content-Length > Actual Length
+	// If the Content-Length is larger than the actual length,
+	// after reading to the end of the message, the server/client
+	// will wait for the next byte,
+	// naturally leading to no response until timeout.
+
+	// !! Content-Length < Actual Length
+	// If this length is less than the actual length,
+	// the first request’s message will be truncated
+
+	// -- how to do it
+	// - have a state of parse to know where it was left off
+	// - store the amount of read_bytes to be able to keep track
+	// - when theres no content length guide by Transfer-Encoding: chunked
 	
+	
+	// Cache-Control: max-age=0
+	if (content_length != request.size() && headers.find("cache-control") != headers.end() && headers["cache-control"] == "max-age=0")
+	{
+		std::cout << "remaining request: " << request.size() << " actual len: " << content_length << std::endl;
+		missing_request_part = true; // -- THROW SOMETHING SPECIFIC FOR THIS
+		return ;
+	}
+	else if (content_length != request.size())
+	{
+
+		std::cout << "remaining request: " << request.size() << " actual len: " << content_length << std::endl;
+		throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+	}
+	
+	// -- GET BODY
 	body = request.substr(0, request.size());
 	parse_forms();	
 	missing_request_part = false;
+	state = END;
+}
+
+void Request::update_content_length(std::string &request)
+{
+	// if content length hasn't been read before, update it
+	// throw in case of:
+	//	-> the content-length is not a number
+	//	-> the request has length but no content-length header
+	//     AND the Transfer-Econding header is not Chuncked
+	
+	if (content_length != CONTENT_LEN_NOT_SET)
+		return;
+	
+	content_length = 0;
+	if (headers.find("content-length") != headers.end())
+	{
+		char *end = NULL;
+		content_length = HUGE_VAL;
+		if (!headers["content-length"].empty())
+			content_length = std::strtod(headers["content-length"].c_str(), &end);
+		
+		if (*end || content_length == HUGE_VAL || content_length == -HUGE_VAL)
+			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+	}
+	else if (request.size())
+	{
+		if (headers.find("transfer-encoding") != headers.end())
+		{
+			std::string encoding = headers["transfer-encoding"];
+			std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
+			if (encoding == "chuncked")
+			{
+				state = CHUNCK;
+				return;
+			}
+		}
+		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+	}
 }
 
 void Request::parse_forms(void)

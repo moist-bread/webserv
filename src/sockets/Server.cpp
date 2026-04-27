@@ -230,10 +230,10 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_clients[clientFd].response.process(_clients[clientFd].request);
 		for (size_t j = 0; j < _pollfds.size(); j++)
 			if (_pollfds[j].fd == clientFd)
-				{
-					_pollfds[j].events = POLLOUT;
-					 break;
-				}
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
 		return;
 	}
  
@@ -244,7 +244,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
  
 	if (bytesRead > 0)
 	{
-		_clients[clientFd].response.full_response += std::string(buffer, bytesRead);
+		_clients[clientFd].response.cgi_reply += std::string(buffer, bytesRead);
 	}
 	else if (bytesRead <= 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
 	{
@@ -263,7 +263,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script
 			falhou no puro silencio shhhh e ainda recebe um 500 banger
 		*/
-		if (_clients[clientFd].response.full_response.empty())
+		if (_clients[clientFd].response.cgi_reply.empty())
         {
             std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
             _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
@@ -271,6 +271,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
         }
 
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
+		// -- deve de dar para faezr um find ou algo assim????
 		for (size_t j = 0; j < _pollfds.size(); j++)
 		{
 			if (_pollfds[j].fd == clientFd)
@@ -279,6 +280,9 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 				break;
 			}
 		}
+		std::cout << YEL "-- CGI Response --" DEF "\n\n";
+		std::cout << YEL "Body..." DEF << std::endl;
+		std::cout << _clients[clientFd].response.cgi_reply << std::endl;
 	}
 }
 
@@ -340,7 +344,6 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
 	}
-	_clients[fd].response.process(_clients[fd].request);
 	// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 	_clients[fd].updateLastActivity();
 	_pollfds[*pollfds_idx].events = POLLOUT;
@@ -348,6 +351,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
+	_clients[fd].response.process(_clients[fd].request);
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
