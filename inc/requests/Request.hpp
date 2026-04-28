@@ -20,9 +20,10 @@ enum t_request_state
 };
 
 // TO-DO
-// [ ] separate response creation from request reading
-// [ ] only switch to POLLOUT when the reading is complete and accoring to content length
-// [ ] DO CHUNCKED REQUESTS AND RESPONSES
+// [x] separate response creation from request reading
+// [x] only switch to POLLOUT when the reading is complete and accoring to content length
+// [x] do partial REQUESTS
+// [ ] do chuncked RESPONSES
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
@@ -40,8 +41,14 @@ public:
 
 	void process(std::string request);
 	void clear(void);
+
 	void parse_request_line(std::string &request);
+	void parse_request_headers(std::string &request);
 	void parse_body(std::string &request);
+	void parse_chunck(std::string &request);
+	
+	void validade_request(void);
+	
 	void update_content_length(std::string &request);
 	void parse_forms(void);
 	void format_application_form(void);
@@ -50,6 +57,10 @@ public:
 	std::string extract(std::string *src, const char *sep) const;
 	
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
+
+	// state machine
+	void set_state(t_request_state new_state);
+	t_request_state get_state(void) const;
 
 	class ParseError : public std::runtime_error
 	{
@@ -68,11 +79,12 @@ public:
 	std::string json;
 	std::vector<MultiForm> multi_form;
 	
-	bool missing_request_part;
-
 	double content_length;
 	size_t content_read;
+
+private:
 	t_request_state state;
+
 };
 
 std::ostream &operator<<(std::ostream &out, Request &src);

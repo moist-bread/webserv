@@ -23,32 +23,42 @@ Request &Request::operator=(Request const &source)
 		this->body = source.body;
 		this->json = source.json;
 		this->multi_form = source.multi_form;
-		this->missing_request_part = source.missing_request_part;
 		this->content_length = source.content_length;
 		this->content_read = source.content_read;
-		this->state = source.state;
+		set_state(source.get_state());
 	}
 	return (*this);
 }
 
 void Request::process(std::string request)
 {
-	// while request !empty()
-	// switchcase state
-	if (!missing_request_part)
+	while (!request.empty())
 	{
-		clear();
-		parse_request_line(request);
-		state = HEADERS;
-		headers = extract_key_value(&request, ":", CRLF);
-		request.erase(0, 2);
+		std::cout << CYN "looping request state: " DEF << get_state() << std::endl;
+		switch (get_state())
+		{
+		case BEGIN:
+			clear();
+			set_state(LINE);
+			break;
+		case LINE:
+			parse_request_line(request);
+			break;
+		case HEADERS:
+			parse_request_headers(request);
+			break;
+		case BODY:
+			parse_body(request);
+			break;
+		case CHUNCK:
+			parse_chunck(request);
+			break;
+		default:
+			request.clear();
+		}
 	}
-	parse_body(request);
-
-	// !! check if method is valid for the locations in config !!
-	// !! see if DELETE has body, if so PARSEERROR
-	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
-
+	
+	validade_request();
 	std::cout << *this << std::endl;
 }
 
@@ -64,19 +74,15 @@ void Request::clear(void)
 	json.clear();
 	multi_form.clear();
 
-	missing_request_part = false;
-
 	content_length = CONTENT_LEN_NOT_SET;
 	content_read = 0;
-	state = BEGIN;
+	set_state(BEGIN);
 }
 
 void Request::parse_request_line(std::string &request)
 {
 	size_t len;
 
-	state = LINE;
-	
 	// -- GET METHOD
 	method = HTTP::getMethod(extract(&request, " "));
 
@@ -109,59 +115,70 @@ void Request::parse_request_line(std::string &request)
 
 	// -- GET PROTOCOL
 	protocol = HTTP::getProtocol(extract(&request, CRLF));
+	
+	set_state(HEADERS);
+}
+
+void Request::parse_request_headers(std::string &request)
+{
+	headers = extract_key_value(&request, ":", CRLF);
+	request.erase(0, 2);
+	set_state(BODY);
+	update_content_length(request);
 }
 
 void Request::parse_body(std::string &request)
 {
-	state = BODY;
-
-	// -- GET CONTENT LENGTH/CHUNCK
-	update_content_length(request);
-
 	// !! Content-Length > Actual Length
 	// If the Content-Length is larger than the actual length,
 	// after reading to the end of the message, the server/client
 	// will wait for the next byte,
-	// naturally leading to no response until timeout.
+	// if there's no response, it will timeout.
+
+	// -- store body and do another loop to get missing bytes
+	if (content_length - content_read > request.size())
+	{
+		body += request.substr(0, request.size());
+		content_read += request.size();
+		return (request.clear());
+	}
 
 	// !! Content-Length < Actual Length
-	// If this length is less than the actual length,
-	// the first request’s message will be truncated
+	// If the content-length is less than the actual length,
+	// the request’s message will be truncated
 
-	// -- how to do it
-	// - have a state of parse to know where it was left off
-	// - store the amount of read_bytes to be able to keep track
-	// - when theres no content length guide by Transfer-Encoding: chunked
-	
-	
-	// Cache-Control: max-age=0
-	if (content_length != request.size() && headers.find("cache-control") != headers.end() && headers["cache-control"] == "max-age=0")
-	{
-		std::cout << "remaining request: " << request.size() << " actual len: " << content_length << std::endl;
-		missing_request_part = true; // -- THROW SOMETHING SPECIFIC FOR THIS
-		return ;
-	}
-	else if (content_length != request.size())
-	{
+	// -- has enough bytes (truncates in case of too many bytes)
+	body += request.substr(0, content_length - content_read);
+	content_read += content_length - content_read;
+	request.clear();
 
-		std::cout << "remaining request: " << request.size() << " actual len: " << content_length << std::endl;
-		throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
-	}
-	
-	// -- GET BODY
-	body = request.substr(0, request.size());
+	// -- parse the body
 	parse_forms();	
-	missing_request_part = false;
-	state = END;
+	set_state(END);
+}
+
+void Request::parse_chunck(std::string &request)
+{
+	// !! The terminating block is a regular chunk except for its length being 0
+
+	request.clear();
+	set_state(END);
+}
+
+void Request::validade_request(void)
+{
+	// !! check if method is valid for the locations in config !!
+	// !! see if DELETE has body, if so PARSEERROR
+	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
 }
 
 void Request::update_content_length(std::string &request)
 {
-	// if content length hasn't been read before, update it
+	// !! if content length hasn't been registered before, update it
 	// throw in case of:
-	//	-> the content-length is not a number
-	//	-> the request has length but no content-length header
-	//     AND the Transfer-Econding header is not Chuncked
+	// -- the content-length is not a number
+	// -- the request has body but no content-length header
+	// -- AND the Transfer-Econding header is not Chuncked
 	
 	if (content_length != CONTENT_LEN_NOT_SET)
 		return;
@@ -184,13 +201,14 @@ void Request::update_content_length(std::string &request)
 			std::string encoding = headers["transfer-encoding"];
 			std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
 			if (encoding == "chuncked")
-			{
-				state = CHUNCK;
-				return;
-			}
+				return (set_state(CHUNCK));
 		}
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
 	}
+
+	// there no request body, skip to end
+	if (!request.size() && content_length == 0)
+		return (set_state(END));
 }
 
 void Request::parse_forms(void)
@@ -218,7 +236,7 @@ void Request::format_application_form (void)
 			json += ",";
 	}
 	json += "}";
-	if (file_extension == "html") // to avoid overwriting other f_ext
+	if (file_extension == "html") // to avoid overwriting other file extentions
 		file_extension = "json";
 }
 void Request::format_multipart_form(std::string type)
@@ -367,6 +385,10 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 	return (map);
 }
 
+void Request::set_state(t_request_state new_state) { state = new_state; }
+
+t_request_state Request::get_state(void) const { return(state); }
+
 std::ostream &operator<<(std::ostream &out, Request &src)
 {
 	out << BLU "-- Request Information --";
@@ -375,7 +397,6 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 	out << BLU "Method: " DEF << HTTP::stringMethod(src.method) << std::endl;
 	out << BLU "URI: " DEF << src.path_uri << std::endl;
 	out << BLU "file extension... " DEF << src.file_extension << std::endl;
-	out << BLU "missing request part... " DEF << src.missing_request_part << std::endl;
 	if (!src.query.empty())
 	{
 		out << BLU "    Query..." DEF << std::endl;

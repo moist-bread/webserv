@@ -317,7 +317,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		_clients[fd].response.status_code = e.request_status;
 	}
 
-	if (_clients[fd].request.missing_request_part) 
+	if (_clients[fd].request.get_state() != END) 
 	{
 		// will probably change this when i implement chuncked requests
 		std::cout << RED "WE ARE MISSING SOMETHING\n" DEF;

@@ -34,6 +34,7 @@ Response &Response::operator=(Response const &source)
 
 void Response::process(Request &src)
 {
+	src.set_state(BEGIN);
 	if (!cgi_reply.empty())
 	{
 		std::string tmp = cgi_reply;
