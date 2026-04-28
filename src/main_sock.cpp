@@ -10,7 +10,14 @@ int main(int ac, char **av)
     std::signal(SIGINT, sigint_handler);
     try
     {
-        Server t;
+        Config config;
+
+        //Criar um config e dar lhe a porta
+        
+        //ServerConfig config;
+
+        // config.port = 8080;
+        // Server t(config);
     }
     catch (const std::exception &e)
     {

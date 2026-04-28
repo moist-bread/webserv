@@ -1,7 +1,8 @@
 #pragma once
 
 #include "ASimpleServer.hpp"
-
+#include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/serverConfig/Config.hpp"
 #include <map>
 #include <vector>
 #include <iostream>
@@ -29,7 +30,8 @@ private:
 
 	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-	void SetupPorts();
+	void SetupPorts(Config config);
+
 	void SetNonblocking(int fd);
 
 	void PopulatePollInfo(int fd);
@@ -48,7 +50,7 @@ private:
 	void inactivityTimeout(int fd, size_t *pollfds_idx);
 
 public:
-	Server(void);				  // default constructor
+	Server(Config config);				  // default constructor
 	Server(Server const &source); // copy constructor
 	~Server(void);				  // destructor
 

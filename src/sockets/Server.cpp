@@ -19,12 +19,12 @@ static int getPrimaryPort()
 	return ports[0];
 }
 
-Server::Server(void) : ASimpleServer(AF_INET, SOCK_STREAM, 0, getPrimaryPort(), INADDR_ANY, 10)
+Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, getPrimaryPort(), INADDR_ANY, 10)
 {
 	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 
-	SetupPorts();
+	SetupPorts(config);
 	launch();
 }
 
@@ -51,24 +51,33 @@ Server &Server::operator=(Server const &source)
 	return (*this);
 }
 
-void Server::SetupPorts()
+
+void Server::SetupPorts(Config	config)
 {
+
 	// Portas hardcoded para testar
-	static const int ports[] = {8080, 9090, 9094};
-	const int arraySize = sizeof(ports) / sizeof(ports[0]);
+	const std::vector<ServerConfig>& servers = config.getServers(); 
+	std::vector <int> ports;
+	for (size_t i = 0; i < servers.size(); i++)
+	{
+		
+		ports.push_back(servers[i].port);
+		
+	}
+	
 
 	_serverPorts.clear();
 	_extraListeners.clear();
 	_listeningFds.clear();
 
 	std::cout << "Showing off my ports" << std::endl;
-	for (int i = 0; i < arraySize; i++)
+	for (size_t i = 0; i < ports.size(); i++)
 	{
 		_serverPorts.push_back(ports[i]);
 		std::cout << "Index: " << i << " Port Number: " << ports[i] << std::endl;
 	}
 
-	for (int i = 0; i < arraySize; i++)
+	for (size_t i = 0; i < ports.size(); i++)
 	{
 		// Sou a primeira socket aka first Listener
 		if (i == 0)

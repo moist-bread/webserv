@@ -29,6 +29,7 @@ class Config
 		static void _validate_ErrorPages(const ServerConfig &server);
 		static void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
 		static void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
+		
 };
 
 std::ostream &operator<<(std::ostream &out, Config const &src);
