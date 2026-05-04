@@ -1,8 +1,8 @@
 #include "../../inc/requests/Request.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <algorithm>	// transform, strtod
-#include <cmath>		// HUGE_VAL
+#include <algorithm> // transform, strtod
+#include <cmath>	 // HUGE_VAL
 
 Request::Request(void) { clear(); }
 
@@ -25,6 +25,8 @@ Request &Request::operator=(Request const &source)
 		this->multi_form = source.multi_form;
 		this->content_length = source.content_length;
 		this->content_read = source.content_read;
+		this->chuncked_body = source.chuncked_body;
+		this->wanted_ranges = source.wanted_ranges;
 		set_state(source.get_state());
 	}
 	return (*this);
@@ -59,7 +61,7 @@ void Request::process(std::string request)
 			request.clear();
 		}
 	}
-	
+
 	validade_request();
 	std::cout << *this << std::endl;
 }
@@ -76,8 +78,13 @@ void Request::clear(void)
 	json.clear();
 	multi_form.clear();
 
-	content_length = CONTENT_LEN_NOT_SET;
+	content_length = VALUE_NOT_SET;
 	content_read = 0;
+
+	chuncked_body = false;
+
+	wanted_ranges.clear();
+
 	set_state(BEGIN);
 }
 
@@ -117,7 +124,7 @@ void Request::parse_request_line(std::string &request)
 
 	// -- GET PROTOCOL
 	protocol = HTTP::getProtocol(extract(&request, CRLF));
-	
+
 	set_state(HEADERS);
 }
 
@@ -127,6 +134,7 @@ void Request::parse_request_headers(std::string &request)
 	request.erase(0, 2);
 	set_state(BODY);
 	update_content_length(request);
+	parse_range_header();
 }
 
 void Request::parse_body(std::string &request)
@@ -155,7 +163,7 @@ void Request::parse_body(std::string &request)
 	request.clear();
 
 	// -- parse the body
-	parse_forms();	
+	parse_forms();
 	set_state(END);
 }
 
@@ -183,10 +191,10 @@ void Request::update_content_length(std::string &request)
 	// -- the content-length is not a number
 	// -- the request has body but no content-length header
 	// -- AND the Transfer-Econding header is not Chuncked
-	
-	if (content_length != CONTENT_LEN_NOT_SET)
+
+	if (content_length != VALUE_NOT_SET)
 		return;
-	
+
 	content_length = 0;
 	if (headers.find("content-length") != headers.end())
 	{
@@ -194,33 +202,97 @@ void Request::update_content_length(std::string &request)
 		content_length = HUGE_VAL;
 		if (!headers["content-length"].empty())
 			content_length = std::strtod(headers["content-length"].c_str(), &end);
-		
+
 		if (*end || content_length == HUGE_VAL || content_length == -HUGE_VAL)
 			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
 	}
+	else if (headers.find("transfer-encoding") != headers.end())
+	{
+		// when the request has transfer encoding chuncked
+		// request body will have to be read differently?
+		if (protocol != H1_1)
+			throw(Request::ParseError("Transfer-Encoding not supported for specified HTTP version", BAD_REQUEST));
+		if (headers["transfer-encoding"] == "chuncked")
+			chuncked_body = true;
+		else
+			throw(Request::ParseError("Unsupported Transfer-Encoding directive", BAD_REQUEST));
+	}
 	else if (request.size())
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
-	else
-	{
-		/*
-		// what to actually do:
-		// when the request has transfer encoding chuncked (only when there's no content-length)
-		// keep that in mind for the response
-	
-		if (headers.find("transfer-encoding") != headers.end())
-		{
-			std::string encoding = headers["transfer-encoding"];
-			std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
-			if (encoding == "chuncked")
-				return (set_state(CHUNCK));
-		}
-		*/
-		;
-	}
 
 	// there no request body, skip to end
 	if (!request.size() && content_length == 0)
 		return (set_state(END));
+}
+
+void Request::parse_range_header(void)
+{
+	if (headers.find("range") == headers.end())
+		return;
+	std::string value = headers["range"];
+	if (value.compare(0, 6, "bytes="))
+		throw(Request::ParseError("Incorrect Range header value", BAD_REQUEST));
+	value.erase(0, 6);
+
+	// Range syntax options
+	// ->	<unit>=<range-start>-
+	// 		ex: 500-
+	// ->	<unit>=<range-start>-<range-end>
+	// 		ex: 500-600
+	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
+	// 		ex: 500-600,700-800, 900-1000
+	// ->	<unit>=-<suffix-length>
+	// 		ex: -600
+
+	std::cout << RED "STARTING RANGE HEADER PARSING" DEF << std::endl;
+	std::cout << RED "VALUE: " DEF << value << std::endl;
+	while (!value.empty())
+	{
+		size_t sep = value.find("-");
+		if (sep == std::string::npos)
+		{
+			wanted_ranges.clear();
+			break;
+		}
+		std::cout << RED "STARTING POINT: " DEF << sep << std::endl;
+		std::cout << RED "REMAINING VALUE: " DEF << value << std::endl;
+		
+		double range_start = RANGE_NOT_SET;
+		double range_end = RANGE_NOT_SET;
+		char *end;
+		
+		if (sep != 0)
+		{
+			end = NULL;
+			std::cout << RED "range start string: " DEF << value.substr(0, sep) << std::endl;
+			range_start = std::strtod(value.substr(0, sep).c_str(), &end);
+			if (*end || range_start == HUGE_VAL || range_start == -HUGE_VAL)
+			{
+				wanted_ranges.clear();
+				break;
+			}
+		}
+		value.erase(0, sep + 1);
+		sep = value.find(",");
+		if (sep == std::string::npos)
+			sep = value.size();
+		if (sep != 0)
+		{
+			end = NULL;
+			std::cout << RED "range end string: " DEF << value.substr(0, sep) << std::endl;
+			range_end = std::strtod(value.substr(0, sep).c_str(), &end);
+			if (*end || range_end == HUGE_VAL || range_end == -HUGE_VAL)
+			{
+				wanted_ranges.clear();
+				break;
+			}
+		}
+		value.erase(0, sep + 1);
+		std::cout << RED "start: " DEF << range_start << RED " end: " DEF << range_end << std::endl;
+		wanted_ranges[range_start] = range_end;
+	}
+	if (wanted_ranges.empty())
+		throw(Request::ParseError("Incorrect Range header value", BAD_REQUEST));
 }
 
 void Request::parse_forms(void)
@@ -234,8 +306,7 @@ void Request::parse_forms(void)
 		format_multipart_form((*type).second);
 }
 
-
-void Request::format_application_form (void)
+void Request::format_application_form(void)
 {
 	// turn body into json format...
 	std::string remaining_body = body;
@@ -251,6 +322,7 @@ void Request::format_application_form (void)
 	if (file_extension == "html") // to avoid overwriting other file extentions
 		file_extension = "json";
 }
+
 void Request::format_multipart_form(std::string type)
 {
 	// -- boundary string
@@ -260,7 +332,7 @@ void Request::format_multipart_form(std::string type)
 	// extract boundary string from the content type header
 	size_t pin = type.find("boundary=");
 	if (pin == std::string::npos)
-		throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 	std::string boundary_str = "--" + type.substr(pin + 9, type.length() - pin);
 
 	// std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
@@ -275,13 +347,13 @@ void Request::format_multipart_form(std::string type)
 		// std::cout << RED "STARTING POINT: " DEF << pin << std::endl;
 		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
 		if (pin == std::string::npos)
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			throw(Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
 		part.data = remaining_body.substr(pin + boundary_str.size() + 2);
 		pin = part.data.find(boundary_str);
 		// std::cout << RED "END: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
-		
+			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+
 		part.data.erase(pin - 2, part.data.size() - pin + 4);
 		remaining_body.erase(0, boundary_str.size() + 3 + part.data.size());
 		// std::cout << RED "PART: \n" DEF << "|" << part.data << "|" << std::endl;
@@ -294,20 +366,20 @@ void Request::format_multipart_form(std::string type)
 			pin = part.data.find("content-disposition: ");
 		if (pin != std::string::npos)
 		{
-			int comp = part.data.compare(pin + 21, 11,"form-data; ");
+			int comp = part.data.compare(pin + 21, 11, "form-data; ");
 			// std::cout << "compare: " << comp << std::endl;
 			if (comp)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
-			
+				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+
 			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 32);
-			//std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
-			//std::cout << RED "cont dis line: \n" DEF << line << std::endl;
-			part.content_disposition = extract_key_value(&line, "=", "; " );
+			// std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
+			// std::cout << RED "cont dis line: \n" DEF << line << std::endl;
+			part.content_disposition = extract_key_value(&line, "=", "; ");
 		}
 
 		// see if it has content-type
@@ -318,18 +390,18 @@ void Request::format_multipart_form(std::string type)
 		{
 			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 14);
-			//std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
-			//std::cout << RED "cont type line: \n" DEF << line << std::endl;
+			// std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
+			// std::cout << RED "cont type line: \n" DEF << line << std::endl;
 			part.content_type = line;
 		}
 		if (!part.data.compare(0, 2, CRLF))
 			part.data.erase(0, 2);
 		else
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 
 		multi_form.push_back(part);
 
@@ -338,11 +410,10 @@ void Request::format_multipart_form(std::string type)
 		// std::cout << RED "finding: " DEF << boundary_str + "--" << std::endl;
 		// std::cout << RED "LASTPART: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
-			throw (Request::ParseError("Miss formated request", BAD_REQUEST));
+			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
 		if (pin == 0)
 			break;
 	}
-
 }
 
 std::string Request::extract(std::string *src, const char *sep) const
@@ -355,11 +426,6 @@ std::string Request::extract(std::string *src, const char *sep) const
 	(*src).erase(0, len + (static_cast<std::string>(sep)).length());
 
 	return (segment);
-
-	//	* PREVIOUS VERSION *
-	// for (int i = 0; !cmp[i].empty(); i++)
-	// 	if (!segment.compare(cmp[i]))
-	// 		return (i);
 }
 
 map_strings Request::extract_key_value(std::string *src, std::string sep, std::string delim) const
@@ -399,7 +465,7 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 
 void Request::set_state(t_request_state new_state) { state = new_state; }
 
-t_request_state Request::get_state(void) const { return(state); }
+t_request_state Request::get_state(void) const { return (state); }
 
 std::ostream &operator<<(std::ostream &out, Request &src)
 {
@@ -444,6 +510,13 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 			out << BLU "Data..." DEF << std::endl;
 			out << "|" << (*it).data << "|" << std::endl;
 		}
+	}
+	if (!src.wanted_ranges.empty())
+	{
+		out << BLU "Wanted ranges from header..." DEF << std::endl;
+		for (std::map<double, double>::iterator it = src.wanted_ranges.begin(); it != src.wanted_ranges.end(); it++)
+			out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+		sleep (10);
 	}
 	return (out);
 }

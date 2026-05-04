@@ -22,6 +22,7 @@ public:
 	void method_get(Request &src);
 	std::string create_autoindexing_page(Request &src);
 	static std::string assemble_content_path(Request &src, t_status_code status_code);
+	std::string create_range_response_body();
 	std::string backup_error_page(t_status_code status_code);
 
 	void method_post(Request &src);

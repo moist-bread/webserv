@@ -6,8 +6,11 @@
 #include <stdexcept>
 #include <vector>
 
+#include <unistd.h> // !! sleep for debug
+
 // ==┊ defines
-#define CONTENT_LEN_NOT_SET -1
+#define VALUE_NOT_SET -1
+#define RANGE_NOT_SET HUGE_VAL
 
 enum t_request_state
 {
@@ -19,13 +22,16 @@ enum t_request_state
 };
 
 // TO-DO
-// [x] separate response creation from request reading
-// [x] only switch to POLLOUT when the reading is complete and accoring to content length
-// [x] do partial REQUESTS
-// [ ] do chuncked RESPONSES
+// [ ] do range!!!!! RESPONSES
+// [ ] do chuncked RESPONSES (e.g., dynamically generated content like streaming APIs)
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
+
+// request header for range:
+// Range: bytes=0-
+// response header for range:
+// Content-Range: bytes 0-1023/146515 (206 Partial Content)
 
 // =====>┊( REQUEST )┊
 
@@ -45,16 +51,17 @@ public:
 	void parse_request_headers(std::string &request);
 	void parse_body(std::string &request);
 	void parse_chunck(std::string &request);
-	
+
 	void validade_request(void);
-	
+
 	void update_content_length(std::string &request);
+	void parse_range_header(void);
 	void parse_forms(void);
 	void format_application_form(void);
 	void format_multipart_form(std::string type);
 
 	std::string extract(std::string *src, const char *sep) const;
-	
+
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
 
 	// state machine
@@ -77,13 +84,16 @@ public:
 	std::string body;
 	std::string json;
 	std::vector<MultiForm> multi_form;
-	
+
 	double content_length;
 	size_t content_read;
 
+	bool chuncked_body;
+
+	std::map<double, double> wanted_ranges;
+
 private:
 	t_request_state state;
-
 };
 
 std::ostream &operator<<(std::ostream &out, Request &src);

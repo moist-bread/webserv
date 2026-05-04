@@ -46,6 +46,12 @@ void Response::process(Request &src)
 
 	if (status_code != OK)
 		src.method = GET;
+
+	// check if the path is actually a redirection 
+	// HTTP redirect PERMANENT_REDIRECT
+	// Location header to thet new url
+	// no body
+
 	switch (src.method)
 	{
 	case GET:
@@ -93,6 +99,11 @@ void Response::clear(Request &src)
 	full_response.clear();
 }
 
+size_t getMaxRequestBodySize(void)
+{
+	return (4096);
+}
+
 void Response::method_get(Request &src)
 {
 	// get the requested content
@@ -113,10 +124,49 @@ void Response::method_get(Request &src)
 		file.open(assemble_content_path(src, status_code).c_str());
 	}
 
+	
 	if (file.is_open())
-		body = to_str(file.rdbuf());
+	{
+		
+		
+		// seeing if response needs to be sent in a range
+		// get length of file:
+		file.seekg (0, file.end);
+		int file_len = file.tellg();
+		file.seekg (0, file.beg);
+		std::cout << BLU "size of file for the body: " DEF << file_len << std::endl;
+		// get content differently??
+		if (!src.wanted_ranges.empty() || file_len > getMaxRequestBodySize())
+		{
+			body = create_range_response_body();
+			headers["Content-Range"] = " ";
+		}
+		else
+			body = to_str(file.rdbuf());
+		file.close();
+	}
 	else
 		body = backup_error_page(status_code);
+}
+
+std::string Response::create_range_response_body()
+{
+	// char buffer[4096];
+	// file.read(buffer, getMaxRequestBodySize());
+	// -- read: rdbuf vs. read
+	// !! add Content-Range header here
+
+	// Content-Range syntax:
+	
+	//	-> <unit> <range>/<size>
+	//		ex: bytes 0-1023/146515
+
+	//	-> <unit> <range>/*
+	//		ex: bytes 67589/*
+
+	//	-> <unit> */<size>
+	//		ex: bytes */67589
+	return (" ");
 }
 
 std::string Response::create_autoindexing_page(Request &src)

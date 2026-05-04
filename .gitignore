@@ -13,3 +13,4 @@ webserv
 */.nfs*
 */*/.nfs*
 www/uploads/*
+www/assets/test_video.mp4
