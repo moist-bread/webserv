@@ -35,6 +35,15 @@ enum t_protocol
 	UNSUPPORTED_PROTOCOL
 };
 
+enum t_transfer_encoding
+{
+	CHUNKED,
+	COMPRESS,
+	DEFLATE,
+	GZIP,
+	INVALID_ENCODING
+};
+
 enum t_status_code
 {
 	CONTINUE = 100,

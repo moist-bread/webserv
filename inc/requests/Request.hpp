@@ -15,7 +15,6 @@ enum t_request_state
 	LINE,
 	HEADERS,
 	BODY,
-	CHUNCK,
 	END
 };
 

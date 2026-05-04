@@ -50,9 +50,11 @@ void Request::process(std::string request)
 		case BODY:
 			parse_body(request);
 			break;
+		/*
 		case CHUNCK:
 			parse_chunck(request);
 			break;
+		*/
 		default:
 			request.clear();
 		}
@@ -157,6 +159,7 @@ void Request::parse_body(std::string &request)
 	set_state(END);
 }
 
+/*
 void Request::parse_chunck(std::string &request)
 {
 	// !! The terminating block is a regular chunk except for its length being 0
@@ -164,6 +167,7 @@ void Request::parse_chunck(std::string &request)
 	request.clear();
 	set_state(END);
 }
+*/
 
 void Request::validade_request(void)
 {
@@ -195,7 +199,14 @@ void Request::update_content_length(std::string &request)
 			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
 	}
 	else if (request.size())
+		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+	else
 	{
+		/*
+		// what to actually do:
+		// when the request has transfer encoding chuncked (only when there's no content-length)
+		// keep that in mind for the response
+	
 		if (headers.find("transfer-encoding") != headers.end())
 		{
 			std::string encoding = headers["transfer-encoding"];
@@ -203,7 +214,8 @@ void Request::update_content_length(std::string &request)
 			if (encoding == "chuncked")
 				return (set_state(CHUNCK));
 		}
-		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
+		*/
+		;
 	}
 
 	// there no request body, skip to end
