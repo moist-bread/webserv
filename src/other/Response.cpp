@@ -3,11 +3,12 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <ctime>		// time, localtime, strftime
-#include <fstream>		// remove, fstream, ifstream, ofstream
-#include <dirent.h>		// opendir, readdir, closedir, DIR
-#include <stdlib.h>		// rand
-#include <sys/stat.h>	// mkdir, stat
+#include <ctime>	  // time, localtime, strftime
+#include <fstream>	  // remove, fstream, ifstream, ofstream
+#include <dirent.h>	  // opendir, readdir, closedir, DIR
+#include <stdlib.h>	  // rand
+#include <sys/stat.h> // mkdir, stat
+#include <algorithm>  // sort, max, min
 
 Response::Response(void) : protocol(UNSUPPORTED_PROTOCOL), status_code(OK) {}
 
@@ -47,26 +48,35 @@ void Response::process(Request &src)
 	if (status_code != OK)
 		src.method = GET;
 
-	// check if the path is actually a redirection 
+	// check if the path is actually a redirection
 	// HTTP redirect PERMANENT_REDIRECT
 	// Location header to thet new url
 	// no body
-
-	switch (src.method)
+	try
 	{
-	case GET:
+		switch (src.method)
+		{
+		case GET:
+			method_get(src);
+			break;
+		case POST:
+			method_post(src);
+			break;
+		case DELETE:
+			method_delete(src);
+			break;
+		default:
+			status_code = METHOD_NOT_ALLOWED;
+			method_get(src);
+			break;
+		}
+	}
+	catch (const Response::CreationError &e)
+	{
+		status_code = e.response_status;
+		body.clear();
+		src.wanted_ranges.clear();
 		method_get(src);
-		break;
-	case POST:
-		method_post(src);
-		break;
-	case DELETE:
-		method_delete(src);
-		break;
-	default:
-		status_code = METHOD_NOT_ALLOWED;
-		method_get(src);
-		break;
 	}
 
 	headers["Content-Length"] = to_str(body.size());
@@ -124,22 +134,24 @@ void Response::method_get(Request &src)
 		file.open(assemble_content_path(src, status_code).c_str());
 	}
 
-	
 	if (file.is_open())
 	{
-		
-		
+
 		// seeing if response needs to be sent in a range
 		// get length of file:
-		file.seekg (0, file.end);
-		int file_len = file.tellg();
-		file.seekg (0, file.beg);
+		file.seekg(0, file.end);
+		size_t file_len = file.tellg();
+		file.seekg(0, file.beg);
 		std::cout << BLU "size of file for the body: " DEF << file_len << std::endl;
-		// get content differently??
-		if (!src.wanted_ranges.empty() || file_len > getMaxRequestBodySize())
+
+		if (src.wanted_ranges.empty() && file_len > getMaxRequestBodySize()) // idk what to do about this case yet
+			src.wanted_ranges.push_back(std::pair<int, int>(0, getMaxRequestBodySize()));
+
+		// get content part by part
+		if (!src.wanted_ranges.empty())
 		{
-			body = create_range_response_body();
-			headers["Content-Range"] = " ";
+			body = create_range_response_body(file, file_len, src.wanted_ranges);
+			headers["Content-Range"] = "bytes " + to_str(" ") + "/" + to_str(" ");
 		}
 		else
 			body = to_str(file.rdbuf());
@@ -149,15 +161,20 @@ void Response::method_get(Request &src)
 		body = backup_error_page(status_code);
 }
 
-std::string Response::create_range_response_body()
+std::string Response::create_range_response_body(std::ifstream &file, size_t file_len, vector2 &ranges)
 {
+	// validate ranges
+	if (!range_valid(file_len, ranges))
+		throw(Response::CreationError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
+	(void)file;
 	// char buffer[4096];
 	// file.read(buffer, getMaxRequestBodySize());
+
 	// -- read: rdbuf vs. read
 	// !! add Content-Range header here
 
 	// Content-Range syntax:
-	
+
 	//	-> <unit> <range>/<size>
 	//		ex: bytes 0-1023/146515
 
@@ -167,6 +184,58 @@ std::string Response::create_range_response_body()
 	//	-> <unit> */<size>
 	//		ex: bytes */67589
 	return (" ");
+}
+
+bool Response::range_valid(size_t file_len, vector2 &ranges)
+{
+	// Range syntax options
+	// ->	<unit>=<range-start>-<range-end>
+	// 		ex: 500-600 (from x to y)
+	// ->	<unit>=<range-start>-
+	// 		ex: 500- (from x to the end of file)
+	// ->	<unit>=-<suffix-length>
+	// 		ex: -600 (the last x bytes, from end - x to end of file)
+	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
+	// 		ex: 500-600,700-800, 900-1000 (multiple ranges that cant overlap)
+	// 			response works like a multipart form, using boundary strings
+	//			and each section having it's own headers
+	// 			Content-Type: multipart/byteranges; boundary=STRING
+
+	// -- step 1: translate all syntaxes to work the same way
+
+	for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
+	{
+		if ((*it).first != VALUE_NOT_SET && (*it).second == VALUE_NOT_SET)
+			(*it).second = file_len; // (from x to the end of file)
+		else if ((*it).first == VALUE_NOT_SET && (*it).second != VALUE_NOT_SET)
+		{
+			(*it).first = file_len - (*it).second; // (the last x bytes, from end - x to end of file)
+			(*it).second = file_len;
+		}
+		if ((*it).first >= (*it).second || (*it).second > static_cast<int>(file_len) || (*it).first < 0)
+				return (std::cout << (*it).first << " " << (*it).second << std::endl, false);
+	}
+
+	// -- step 2: copy map into a vector, sort and then loop to compare one to the next
+
+	vector2 copy_range(ranges.begin(), ranges.end());
+	size_t size_limit = copy_range.size() - 1;
+	std::sort(copy_range.begin(), copy_range.end());
+
+	// for (vector2::iterator it = copy_range.begin(); it != copy_range.end(); it++)
+		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+	for (size_t i = 0; i < size_limit; i++)
+	{
+		if (std::max(copy_range[i].first, copy_range[i + 1].first) <= std::min(copy_range[i].second, copy_range[i + 1].second))
+		{
+			std::cout << copy_range[i].first << " " << copy_range[i].second << " overlaping range...\n";
+			return (false);
+		}
+	}
+	// for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
+		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+
+	return (true);
 }
 
 std::string Response::create_autoindexing_page(Request &src)
@@ -295,30 +364,21 @@ void Response::method_post(Request &src)
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
-		return ((status_code = INTERNAL_SERVER_ERROR), method_get(src));
+		throw(Response::CreationError("Was unable to open database file", INTERNAL_SERVER_ERROR));
 
-	try
+	if (!src.json.empty())
+		handle_application_form(src);
+	else if (!src.multi_form.empty())
+		handle_multipart_form(src);
+	else
 	{
-		if (!src.json.empty())
-			handle_application_form(src);
-		else if (!src.multi_form.empty())
-			handle_multipart_form(src);
-		else
-		{
-			body = src.body;
-			src.file_extension = "html";
-		}
+		body = src.body;
+		src.file_extension = "html";
+	}
 
-		output << body;
-		output.close();
-		headers["Location"] = src.path_uri;
-	}
-	catch (const std::exception &e)
-	{
-		// std::cerr << RED << e.what() << std::endl;
-		status_code = INTERNAL_SERVER_ERROR;
-		return (body.clear(), method_get(src));
-	}
+	output << body;
+	output.close();
+	headers["Location"] = src.path_uri;
 }
 
 void Response::handle_application_form(Request &src)
@@ -350,10 +410,10 @@ void Response::handle_multipart_form(Request &src)
 
 			// -- CAN I EVEN USE MKDIR????
 			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) && mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
-				throw(std::runtime_error("Internal Server Error"));
+				throw(Response::CreationError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
-				throw(std::runtime_error("Internal Server Error"));
+				throw(Response::CreationError("Was unable to upload file", INTERNAL_SERVER_ERROR));
 
 			output << (*it).data << CRLF;
 			output.close();
@@ -426,7 +486,7 @@ void Response::method_delete(Request &src)
 	{
 		std::cout << "File deleted" << std::endl;
 		status_code = NO_CONTENT; // success
-		// can also be 200 OK if i want to send an html describing the outcome
+								  // can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
 	{

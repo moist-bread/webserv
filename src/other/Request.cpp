@@ -235,17 +235,17 @@ void Request::parse_range_header(void)
 	value.erase(0, 6);
 
 	// Range syntax options
-	// ->	<unit>=<range-start>-
-	// 		ex: 500-
 	// ->	<unit>=<range-start>-<range-end>
 	// 		ex: 500-600
-	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
-	// 		ex: 500-600,700-800, 900-1000
+	// ->	<unit>=<range-start>-
+	// 		ex: 500-
 	// ->	<unit>=-<suffix-length>
 	// 		ex: -600
+	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
+	// 		ex: 500-600,700-800, 900-1000
 
-	std::cout << RED "STARTING RANGE HEADER PARSING" DEF << std::endl;
-	std::cout << RED "VALUE: " DEF << value << std::endl;
+	// std::cout << RED "STARTING RANGE HEADER PARSING" DEF << std::endl;
+	// std::cout << RED "VALUE: " DEF << value << std::endl;
 	while (!value.empty())
 	{
 		size_t sep = value.find("-");
@@ -254,23 +254,25 @@ void Request::parse_range_header(void)
 			wanted_ranges.clear();
 			break;
 		}
-		std::cout << RED "STARTING POINT: " DEF << sep << std::endl;
-		std::cout << RED "REMAINING VALUE: " DEF << value << std::endl;
-		
-		double range_start = RANGE_NOT_SET;
-		double range_end = RANGE_NOT_SET;
-		char *end;
-		
+		// std::cout << RED "STARTING POINT: " DEF << sep << std::endl;
+		// std::cout << RED "REMAINING VALUE: " DEF << value << std::endl;
+
+		int range_start = VALUE_NOT_SET;
+		int range_end = VALUE_NOT_SET;
+		double tmp = HUGE_VAL;
+		char *end = NULL;
+
 		if (sep != 0)
 		{
 			end = NULL;
-			std::cout << RED "range start string: " DEF << value.substr(0, sep) << std::endl;
-			range_start = std::strtod(value.substr(0, sep).c_str(), &end);
-			if (*end || range_start == HUGE_VAL || range_start == -HUGE_VAL)
+			// std::cout << RED "range start string: " DEF << value.substr(0, sep) << std::endl;
+			tmp = std::strtod(value.substr(0, sep).c_str(), &end);
+			if (*end || tmp == HUGE_VAL || tmp == -HUGE_VAL || tmp < 0)
 			{
 				wanted_ranges.clear();
 				break;
 			}
+			range_start = static_cast<int>(tmp);
 		}
 		value.erase(0, sep + 1);
 		sep = value.find(",");
@@ -279,20 +281,21 @@ void Request::parse_range_header(void)
 		if (sep != 0)
 		{
 			end = NULL;
-			std::cout << RED "range end string: " DEF << value.substr(0, sep) << std::endl;
-			range_end = std::strtod(value.substr(0, sep).c_str(), &end);
-			if (*end || range_end == HUGE_VAL || range_end == -HUGE_VAL)
+			// std::cout << RED "range end string: " DEF << value.substr(0, sep) << std::endl;
+			tmp = std::strtod(value.substr(0, sep).c_str(), &end);
+			if (*end || tmp == HUGE_VAL || tmp == -HUGE_VAL || tmp < 0)
 			{
 				wanted_ranges.clear();
 				break;
 			}
+			range_end = static_cast<int>(tmp);
 		}
 		value.erase(0, sep + 1);
-		std::cout << RED "start: " DEF << range_start << RED " end: " DEF << range_end << std::endl;
-		wanted_ranges[range_start] = range_end;
+		// std::cout << RED "start: " DEF << range_start << RED " end: " DEF << range_end << std::endl;
+		wanted_ranges.push_back(std::pair<int, int>(range_start, range_end));
 	}
 	if (wanted_ranges.empty())
-		throw(Request::ParseError("Incorrect Range header value", BAD_REQUEST));
+		throw(Request::ParseError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
 }
 
 void Request::parse_forms(void)
@@ -514,9 +517,9 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 	if (!src.wanted_ranges.empty())
 	{
 		out << BLU "Wanted ranges from header..." DEF << std::endl;
-		for (std::map<double, double>::iterator it = src.wanted_ranges.begin(); it != src.wanted_ranges.end(); it++)
+		for (vector2::iterator it = src.wanted_ranges.begin(); it != src.wanted_ranges.end(); it++)
 			out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-		sleep (10);
+		// sleep (10);
 	}
 	return (out);
 }

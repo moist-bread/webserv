@@ -3,6 +3,8 @@
 // ==┊ needed libs by class
 #include "HTTP.hpp"
 
+#include <stdexcept>
+
 class Request;
 
 // =====>┊( RESPONSE )┊
@@ -22,7 +24,9 @@ public:
 	void method_get(Request &src);
 	std::string create_autoindexing_page(Request &src);
 	static std::string assemble_content_path(Request &src, t_status_code status_code);
-	std::string create_range_response_body();
+	std::string create_range_response_body(std::ifstream &file, size_t file_len, vector2 &ranges);
+	bool range_valid(size_t file_len, vector2 &ranges);
+	
 	std::string backup_error_page(t_status_code status_code);
 
 	void method_post(Request &src);
@@ -36,6 +40,13 @@ public:
 	static std::string date_generate(void);
 
 	void eraseWritten(int start, int idx);
+
+	class CreationError : public std::runtime_error
+	{
+	public:
+		CreationError(const std::string &msg, t_status_code status) : runtime_error("Response creation error: " + msg), response_status(status) {};
+		t_status_code response_status;
+	};
 
 	t_protocol protocol;
 	t_status_code status_code;

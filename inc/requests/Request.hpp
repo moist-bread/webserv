@@ -4,13 +4,8 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
-#include <vector>
 
 #include <unistd.h> // !! sleep for debug
-
-// ==┊ defines
-#define VALUE_NOT_SET -1
-#define RANGE_NOT_SET HUGE_VAL
 
 enum t_request_state
 {
@@ -28,8 +23,6 @@ enum t_request_state
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
 
-// request header for range:
-// Range: bytes=0-
 // response header for range:
 // Content-Range: bytes 0-1023/146515 (206 Partial Content)
 
@@ -90,7 +83,7 @@ public:
 
 	bool chuncked_body;
 
-	std::map<double, double> wanted_ranges;
+	vector2 wanted_ranges;
 
 private:
 	t_request_state state;

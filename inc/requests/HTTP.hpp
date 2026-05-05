@@ -4,11 +4,14 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
 
 // == defines
 #define CRLF "\r\n"
+#define VALUE_NOT_SET -1
 
 typedef std::map<std::string, std::string> map_strings;
+typedef std::vector< std::pair<int, int> > vector2;
 
 struct MultiForm
 {
@@ -102,20 +105,20 @@ std::string to_str(const T &value)
 // == classes
 class HTTP
 {
-	public:
-		static t_method getMethod(const std::string &strMethod);		// returns the Method Enum from string
-		static std::string stringMethod(const t_method Method);			// returns the string from Method Enum
-		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
-		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
-		static std::string getReasonPhrase(t_status_code status_code);	// returns the string from Status Code Enum
+public:
+	static t_method getMethod(const std::string &strMethod);	   // returns the Method Enum from string
+	static std::string stringMethod(const t_method Method);		   // returns the string from Method Enum
+	static t_protocol getProtocol(const std::string &strProtocol); // returns the Protocol Enum from string
+	static std::string stringProtocol(const t_protocol Protocol);  // returns the string from Protocol Enum
+	static std::string getReasonPhrase(t_status_code status_code); // returns the string from Status Code Enum
 
-	private:
-		HTTP(void); 				// default constructor
-		HTTP(HTTP const &source);	// copy constructor
-		~HTTP(void);				// destructor
+private:
+	HTTP(void);				  // default constructor
+	HTTP(HTTP const &source); // copy constructor
+	~HTTP(void);			  // destructor
 
-		HTTP &operator=(HTTP const &source); // copy assignment operator overload
+	HTTP &operator=(HTTP const &source); // copy assignment operator overload
 
-		static const std::string _method_names[];
-		static const std::string _protocol_names[];
+	static const std::string _method_names[];
+	static const std::string _protocol_names[];
 };
