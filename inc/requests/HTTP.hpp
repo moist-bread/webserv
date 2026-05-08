@@ -5,10 +5,13 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <stdio.h>
+#include <stdint.h>	  // size_max
 
 // == defines
 #define CRLF "\r\n"
 #define VALUE_NOT_SET -1
+#define SIZE_NOT_SET SIZE_MAX
 
 typedef std::map<std::string, std::string> map_strings;
 typedef std::vector< std::pair<int, int> > vector2;
@@ -21,6 +24,17 @@ struct MultiForm
 };
 
 // == enums
+
+enum t_http_state
+{
+	BEGIN,
+	LINE,
+	HEADERS,
+	//CHUNCK,
+	BODY,
+	END
+};
+
 enum t_method
 {
 	GET,

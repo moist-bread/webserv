@@ -57,6 +57,9 @@
 				const doc = parser.parseFromString(text, "text/html");
 				const links = Array.from(doc.querySelectorAll("li > a"));
 
+				if (links.length === 0)
+					throw any("❌ No files inside uploads!");
+
 				const listContainer = document.getElementById("file-list");
 				listContainer.innerHTML = "";
 				links.forEach((link) => {

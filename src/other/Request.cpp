@@ -6,28 +6,28 @@
 
 Request::Request(void) { clear(); }
 
-Request::Request(Request const &source) { *this = source; }
+Request::Request(Request const &src) { *this = src; }
 
 Request::~Request(void) {}
 
-Request &Request::operator=(Request const &source)
+Request &Request::operator=(Request const &src)
 {
-	if (this != &source)
+	if (this != &src)
 	{
-		this->method = source.method;
-		this->path_uri = source.path_uri;
-		this->query = source.query;
-		this->file_extension = source.file_extension;
-		this->protocol = source.protocol;
-		this->headers = source.headers;
-		this->body = source.body;
-		this->json = source.json;
-		this->multi_form = source.multi_form;
-		this->content_length = source.content_length;
-		this->content_read = source.content_read;
-		this->chuncked_body = source.chuncked_body;
-		this->wanted_ranges = source.wanted_ranges;
-		set_state(source.get_state());
+		this->method = src.method;
+		this->path_uri = src.path_uri;
+		this->query = src.query;
+		this->file_extension = src.file_extension;
+		this->protocol = src.protocol;
+		this->headers = src.headers;
+		this->body = src.body;
+		this->json = src.json;
+		this->multi_form = src.multi_form;
+		this->content_length = src.content_length;
+		this->content_read = src.content_read;
+		this->chuncked_body = src.chuncked_body;
+		this->wanted_ranges = src.wanted_ranges;
+		set_state(src.get_state());
 	}
 	return (*this);
 }
@@ -466,9 +466,9 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 	return (map);
 }
 
-void Request::set_state(t_request_state new_state) { state = new_state; }
+void Request::set_state(t_http_state new_state) { state = new_state; }
 
-t_request_state Request::get_state(void) const { return (state); }
+t_http_state Request::get_state(void) const { return (state); }
 
 std::ostream &operator<<(std::ostream &out, Request &src)
 {

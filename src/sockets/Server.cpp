@@ -356,14 +356,11 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 	if (bytesWritten > 0)
 	{
 		_clients[fd].updateLastActivity();
-		_clients[fd].response.eraseWritten(0, bytesWritten);
 
 		// ??? shouldnt the case of the buffer not being fully sent
 		// handled by chunk responses????
 
-		// Buffer vazio, vamos voltar a escutar para input
-		if (_clients[fd].response.full_response.empty())
-			_pollfds[*pollfds_idx].events = POLLIN;
+		_pollfds[*pollfds_idx].events = POLLIN;
 	}
 	else if (bytesWritten < 0)
 	{

@@ -3,32 +3,42 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <ctime>	  // time, localtime, strftime
 #include <fstream>	  // remove, fstream, ifstream, ofstream
 #include <dirent.h>	  // opendir, readdir, closedir, DIR
-#include <stdlib.h>	  // rand
 #include <sys/stat.h> // mkdir, stat
-#include <algorithm>  // sort, max, min
 
-Response::Response(void) : protocol(UNSUPPORTED_PROTOCOL), status_code(OK) {}
+namespace response_utils {
 
-Response::Response(Response const &source)
+	std::string backup_error_page(t_status_code status);
+	bool range_valid(size_t file_len, vector2 &ranges);
+	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, size_t size);
+	const char *define_content_type(std::string &extension);
+	std::string random_name_generator(void);
+	std::string date_generate(void);
+
+}
+
+Response::Response(void) { clear(); }
+
+Response::Response(Response const &src)
 {
-	*this = source;
+	*this = src;
 }
 
 Response::~Response(void) {}
 
-Response &Response::operator=(Response const &source)
+Response &Response::operator=(Response const &src)
 {
-	if (this != &source)
+	if (this != &src)
 	{
-		this->protocol = source.protocol;
-		this->status_code = source.status_code;
-		this->headers = source.headers;
-		this->body = source.body;
-		this->cgi_reply = source.cgi_reply;
-		this->full_response = source.full_response;
+		this->protocol = src.protocol;
+		this->boundary = src.boundary;
+		this->status_code = src.status_code;
+		this->headers = src.headers;
+		this->body = src.body;
+		this->cgi_reply = src.cgi_reply;
+		this->full_response = src.full_response;
+		set_state(src.get_state());
 	}
 	return (*this);
 }
@@ -36,14 +46,40 @@ Response &Response::operator=(Response const &source)
 void Response::process(Request &src)
 {
 	src.set_state(BEGIN);
+	
+
+	/* while (full_response.empty())
+	{
+		// plan: make responses work in a state machine just like the requests
+		std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
+		switch (get_state())
+		{
+		case BEGIN:
+			clear();
+			set_state(BODY);
+			break;
+		case BODY:
+			//parse_body(request);
+			break;
+		case HEADERS:
+			//set_response_headers(src);
+			break;
+		case END:
+			//assemble_full_response(src);
+			break;
+		default:
+			return;
+		}
+	} */
+
 	if (!cgi_reply.empty())
 	{
 		std::string tmp = cgi_reply;
-		clear(src);
+		clear();
 		full_response = tmp;
 		return;
 	}
-	clear(src);
+	clear();
 
 	if (status_code != OK)
 		src.method = GET;
@@ -71,43 +107,40 @@ void Response::process(Request &src)
 			break;
 		}
 	}
-	catch (const Response::CreationError &e)
+	catch (const Response::CreateError &e)
 	{
+		std::cerr << e.what() << std::endl;
 		status_code = e.response_status;
 		body.clear();
 		src.wanted_ranges.clear();
 		method_get(src);
 	}
 
-	headers["Content-Length"] = to_str(body.size());
-	headers["Content-Type"] = define_content_type(src.file_extension);
-	headers["Connection"] = src.headers["connection"];
-	headers["Date"] = date_generate();
-
-	// putting together the full response
-	std::stringstream ss;
-	ss << HTTP::stringProtocol(src.protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code) << CRLF;
-	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
-		ss << (*it).first << ": " << (*it).second << CRLF;
-	ss << CRLF;
-	ss << body;
-	full_response = ss.str();
-
+	set_response_headers(src);
+	assemble_full_response(src);
+	
 	std::cout << GRN "New Response ";
 	std::cout << UYEL "has been processed" DEF << std::endl;
 	std::cout << *this << std::endl;
 }
 
-void Response::clear(Request &src)
+void Response::clear(void)
 {
-	protocol = src.protocol;
-	if (protocol == UNSUPPORTED_PROTOCOL)
-		protocol = H1_0;
+	file_length = SIZE_NOT_SET;
+	boundary.clear();
+	
+	protocol = H1_0;
 	headers.clear();
 	body.clear();
 	cgi_reply.clear();
 	full_response.clear();
+	set_state(BEGIN);
 }
+
+
+void Response::set_state(t_http_state new_state) { state = new_state; }
+
+t_http_state Response::get_state(void) const { return (state); }
 
 size_t getMaxRequestBodySize(void)
 {
@@ -116,13 +149,14 @@ size_t getMaxRequestBodySize(void)
 
 void Response::method_get(Request &src)
 {
+	// !! IF ERROR GO IN A DIFF ROUTE
 	// get the requested content
 	if (src.path_uri == "/uploads") // IN CASE OF AUTO INDEXING
 	{
 		body = create_autoindexing_page(src);
 		return;
 	}
-	std::ifstream file(assemble_content_path(src, status_code).c_str());
+	std::fstream file(assemble_content_path(src, status_code).c_str());
 	if (!file.is_open())
 	{
 		perror("File does not exist");
@@ -137,105 +171,112 @@ void Response::method_get(Request &src)
 	if (file.is_open())
 	{
 
-		// seeing if response needs to be sent in a range
+		// seeing if response overflows body limit
 		// get length of file:
 		file.seekg(0, file.end);
-		size_t file_len = file.tellg();
+		file_length = file.tellg();
 		file.seekg(0, file.beg);
-		std::cout << BLU "size of file for the body: " DEF << file_len << std::endl;
+		std::cout << BLU "size of file for the body: " DEF << file_length << std::endl;
 
-		if (src.wanted_ranges.empty() && file_len > getMaxRequestBodySize()) // idk what to do about this case yet
-			src.wanted_ranges.push_back(std::pair<int, int>(0, getMaxRequestBodySize()));
+		//if (src.wanted_ranges.empty() && file_length > getMaxRequestBodySize())
+			//src.wanted_ranges.push_back(std::pair<int, int>(0, getMaxRequestBodySize()));
+			// idk what to do about this case yet
 
 		// get content part by part
 		if (!src.wanted_ranges.empty())
-		{
-			body = create_range_response_body(file, file_len, src.wanted_ranges);
-			headers["Content-Range"] = "bytes " + to_str(" ") + "/" + to_str(" ");
-		}
+			body = create_range_response_body(file, file_length, src.file_extension, src.wanted_ranges);
 		else
-			body = to_str(file.rdbuf());
+		{
+			char buffer[40960]; // --- BAD
+			file.read(buffer, static_cast<int>(file_length));
+			body = to_str(buffer);
+			//body = to_str(file.rdbuf());
+		}
 		file.close();
 	}
 	else
-		body = backup_error_page(status_code);
+		body = response_utils::backup_error_page(status_code);
 }
 
-std::string Response::create_range_response_body(std::ifstream &file, size_t file_len, vector2 &ranges)
+std::string Response::create_range_response_body(std::fstream &file, size_t file_len, std::string ext, vector2 &ranges)
 {
-	// validate ranges
-	if (!range_valid(file_len, ranges))
-		throw(Response::CreationError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
-	(void)file;
+	if (!response_utils::range_valid(file_len, ranges))
+		throw(Response::CreateError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
+
+	if (ranges.size() > 1)
+		return (multiple_range(file, file_len, ext, ranges));
+	else
+		return (single_range(file, *(ranges.begin())));
+}
+
+std::string Response::multiple_range(std::fstream &file, size_t file_len, std::string ext, vector2 &ranges)
+{
+	// !! MULTI RANGE
+	// -- step 1: create boundary string
+	// (translation: 1-70 digits, last can't be a space)
+
+	// boundary := 0*69<bchars> bcharsnospace
+	// bchars := bcharsnospace / " " 
+	// bcharsnospace :=    DIGIT / ALPHA / "'" / "(" / ")" / "+"  / "_" 
+	//			/ "," / "-" / "." / "/" / ":" / "=" / "?" 
+	boundary = response_utils::random_name_generator();
+	
+	// ... in a loop
+	// -- step 2: add "--boundary" and headers
+	// -- step 3: read and add selected range part of file until end of ranges
+	// ... end of loop
+	// -- step 4: finish with "--boundary--"
+
+	std::string content;
+
+	for (size_t i = 0; i < ranges.size(); i++)
+	{
+		content += "--" + boundary + CRLF;
+		content += "Content-Type: " + to_str(response_utils::define_content_type(ext));
+		content += "Content-Range: " + response_utils::create_header_content_range(ranges[i], OK, file_len);
+		content += single_range(file, ranges[i]);
+		content += CRLF;
+	}
+	content += "--" + boundary + "--";
+	return(content);
+}
+
+std::string Response::single_range(std::fstream &file, std::pair<int, int> range)
+{
+	// !! SINGLE RANGE
+	// (make this one a function that returns std::string so i can use it inside MULTI RANGE)
+	// -- step 1: read and add selected range part of file
+	// ... done
+	
+	char buffer[40960]; // ------------------------- NOT A GOOD SOLUTION...
+
 	// char buffer[4096];
 	// file.read(buffer, getMaxRequestBodySize());
-
 	// -- read: rdbuf vs. read
-	// !! add Content-Range header here
+	// rdbuf returns a pointer to the original buffer for the string
+	// so it cannot be used to send just a part of the content
+	std::cout << "first: " << range.first << std::endl;
+	std::cout << "last: " << range.second - range.first << std::endl;
+	//file.seekg(range.first);
 
-	// Content-Range syntax:
+	file.read(buffer, static_cast<int>(getMaxRequestBodySize()) - 1);
+	/* if (range.second - range.first > static_cast<int>(getMaxRequestBodySize()))
+		file.read(buffer, static_cast<int>(getMaxRequestBodySize()));
+	else
+		file.read(buffer, range.second - range.first); */
+	/* if (file)
+      std::cout << "all characters read successfully.";
+    else */
+    std::cout << "characters read: only " << file.gcount() << " could be read";
+	std::cout << RED "BUFFER SINGLE RANGE:\n" DEF;
+	std::cout << buffer;
+	std::cout << RED "\n--end of body buffer\n" DEF;
+	std::string content(buffer); //, range.second - range.first); // SEGMENTATION FAULT NOT WORKING DONR COMMIT PLEASE
+	std::cout << RED "BODY CONTENT SINGLE RANGE:\n" DEF;
+	std::cout << content;
+	std::cout << RED "\n--end of body content\n" DEF;
 
-	//	-> <unit> <range>/<size>
-	//		ex: bytes 0-1023/146515
-
-	//	-> <unit> <range>/*
-	//		ex: bytes 67589/*
-
-	//	-> <unit> */<size>
-	//		ex: bytes */67589
-	return (" ");
-}
-
-bool Response::range_valid(size_t file_len, vector2 &ranges)
-{
-	// Range syntax options
-	// ->	<unit>=<range-start>-<range-end>
-	// 		ex: 500-600 (from x to y)
-	// ->	<unit>=<range-start>-
-	// 		ex: 500- (from x to the end of file)
-	// ->	<unit>=-<suffix-length>
-	// 		ex: -600 (the last x bytes, from end - x to end of file)
-	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
-	// 		ex: 500-600,700-800, 900-1000 (multiple ranges that cant overlap)
-	// 			response works like a multipart form, using boundary strings
-	//			and each section having it's own headers
-	// 			Content-Type: multipart/byteranges; boundary=STRING
-
-	// -- step 1: translate all syntaxes to work the same way
-
-	for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
-	{
-		if ((*it).first != VALUE_NOT_SET && (*it).second == VALUE_NOT_SET)
-			(*it).second = file_len; // (from x to the end of file)
-		else if ((*it).first == VALUE_NOT_SET && (*it).second != VALUE_NOT_SET)
-		{
-			(*it).first = file_len - (*it).second; // (the last x bytes, from end - x to end of file)
-			(*it).second = file_len;
-		}
-		if ((*it).first >= (*it).second || (*it).second > static_cast<int>(file_len) || (*it).first < 0)
-				return (std::cout << (*it).first << " " << (*it).second << std::endl, false);
-	}
-
-	// -- step 2: copy map into a vector, sort and then loop to compare one to the next
-
-	vector2 copy_range(ranges.begin(), ranges.end());
-	size_t size_limit = copy_range.size() - 1;
-	std::sort(copy_range.begin(), copy_range.end());
-
-	// for (vector2::iterator it = copy_range.begin(); it != copy_range.end(); it++)
-		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-	for (size_t i = 0; i < size_limit; i++)
-	{
-		if (std::max(copy_range[i].first, copy_range[i + 1].first) <= std::min(copy_range[i].second, copy_range[i + 1].second))
-		{
-			std::cout << copy_range[i].first << " " << copy_range[i].second << " overlaping range...\n";
-			return (false);
-		}
-	}
-	// for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
-		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-
-	return (true);
+	return (content);
 }
 
 std::string Response::create_autoindexing_page(Request &src)
@@ -244,8 +285,9 @@ std::string Response::create_autoindexing_page(Request &src)
 	struct dirent *elem;
 	if (!d)
 	{
+		// ------------- maybe throw instead
 		status_code = NOT_FOUND;
-		return (backup_error_page(status_code));
+		return (response_utils::backup_error_page(status_code));
 	}
 
 	std::stringstream ss;
@@ -336,35 +378,17 @@ std::string Response::assemble_content_path(Request &src, t_status_code status_c
 	return (path);
 }
 
-std::string Response::backup_error_page(t_status_code status_code)
-{
-	std::stringstream ss;
-	ss << "<!DOCTYPE html>" << std::endl;
-	ss << "<html lang=\"en\">" << std::endl;
-	ss << "<head>" << std::endl;
-	ss << "	<meta charset=\"UTF-8\">" << std::endl;
-	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
-	ss << "	<title>" << status_code << " " << HTTP::getReasonPhrase(status_code) << "</title>" << std::endl;
-	ss << " <link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
-	ss << "</head>" << std::endl;
-	ss << "<body>" << std::endl;
-	ss << "<div class=\"text yellow-mark\"> Error: " << status_code << " " << HTTP::getReasonPhrase(status_code) << "</div>" << std::endl;
-	ss << "</body>" << std::endl;
-	ss << "</html>" << std::endl;
-	return (ss.str());
-}
-
 void Response::method_post(Request &src)
 {
-	// create a special default location path to dump all POST info into
-	// open the file and write to it
+	// create a special default location path to store all POST info into
+	// open the file/folder and write to it
 
 	// -- later get "www" replacement from config
 	std::string path = "www" + src.path_uri + "database";
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
-		throw(Response::CreationError("Was unable to open database file", INTERNAL_SERVER_ERROR));
+		throw(Response::CreateError("Was unable to open database file", INTERNAL_SERVER_ERROR));
 
 	if (!src.json.empty())
 		handle_application_form(src);
@@ -375,7 +399,6 @@ void Response::method_post(Request &src)
 		body = src.body;
 		src.file_extension = "html";
 	}
-
 	output << body;
 	output.close();
 	headers["Location"] = src.path_uri;
@@ -401,7 +424,7 @@ void Response::handle_multipart_form(Request &src)
 		if (f_name != (*it).content_disposition.end())
 		{
 			// -- adapt to config
-			std::string path = "www" + src.path_uri + "uploads/" + random_name_generator();
+			std::string path = "www" + src.path_uri + "uploads/" + response_utils::random_name_generator();
 
 			size_t len;
 			len = (*f_name).second.rfind(".");
@@ -409,11 +432,12 @@ void Response::handle_multipart_form(Request &src)
 				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
 			// -- CAN I EVEN USE MKDIR????
-			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) && mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
-				throw(Response::CreationError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
+			if (!opendir(("www" + src.path_uri + "uploads/").c_str()) \
+					&& mkdir(("www" + src.path_uri + "uploads/").c_str(), 0777) == -1)
+				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
-				throw(Response::CreationError("Was unable to upload file", INTERNAL_SERVER_ERROR));
+				throw(Response::CreateError("Was unable to upload file", INTERNAL_SERVER_ERROR));
 
 			output << (*it).data << CRLF;
 			output.close();
@@ -440,32 +464,7 @@ void Response::handle_multipart_form(Request &src)
 		body += "}" CRLF;
 	}
 	src.file_extension = "html";
-
 	status_code = FOUND;
-}
-
-std::string Response::random_name_generator(void) const
-{
-	std::string name;
-	int length = 12 + (rand() % 10);
-
-	for (int i = 0; i < length; i++)
-	{
-		const int type = rand() % 3;
-		switch (type)
-		{
-		case 0: // number
-			name += '0' + rand() % 10;
-			break;
-		case 1: // lower-case
-			name += 'a' + rand() % 26;
-			break;
-		default: // upper-case
-			name += 'A' + rand() % 26;
-			break;
-		}
-	}
-	return (name);
 }
 
 void Response::method_delete(Request &src)
@@ -475,10 +474,10 @@ void Response::method_delete(Request &src)
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
-		return ((status_code = NOT_FOUND), method_get(src));
+		throw(Response::CreateError("Could not find desired file", NOT_FOUND));
 
 	if ((sb.st_mode & S_IFMT) == S_IFDIR) // don't allow folder DELETE
-		return ((status_code = FORBIDDEN), method_get(src));
+		throw(Response::CreateError("Action not permited", FORBIDDEN));
 
 	// -- CAN I EVEN USE REMOVE??
 	int res = std::remove(file_name.c_str());
@@ -486,107 +485,63 @@ void Response::method_delete(Request &src)
 	{
 		std::cout << "File deleted" << std::endl;
 		status_code = NO_CONTENT; // success
-								  // can also be 200 OK if i want to send an html describing the outcome
+		// can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
-	{
-		std::cout << "No deletion" << std::endl;
-		return ((status_code = INTERNAL_SERVER_ERROR), method_get(src));
-	}
+		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
 }
 
-const char *Response::define_content_type(std::string &extension) const
+void Response::set_response_headers(Request &src)
 {
-	// text types
-	if (extension == "html")
-		return ("text/html");
-	else if (extension == "css")
-		return ("text/css");
-	else if (extension == "csv")
-		return ("text/csv");
-	else if (extension == "txt")
-		return ("text/plain");
+	if (src.wanted_ranges.size() == 1 || status_code == REQUESTED_RANGE_NOT_SATISFIABLE)
+		headers["Content-Range"] = response_utils::create_header_content_range(*(src.wanted_ranges.begin()), status_code, file_length);
 
-	// image types
-	else if (extension == ".jpeg" || extension == ".jpg")
-		return ("image/jpeg");
-	else if (extension == "png")
-		return ("image/png");
-	else if (extension == "gif")
-		return ("image/gif");
-	else if (extension == "svg")
-		return ("image/svg+xml");
-	else if (extension == "webp")
-		return ("image/webp");
-	else if (extension == "ico")
-		return ("image/vnd.microsoft.icon");
-
-	// video and audio types
-	else if (extension == "mp4")
-		return ("video/mp4");
-	else if (extension == "webm")
-		return ("video/webm");
-	else if (extension == "mpeg")
-		return ("audio/mpeg");
-	else if (extension == "wav")
-		return ("audio/wav");
-
-	// app types
-	else if (extension == "pdf")
-		return ("application/pdf");
-	else if (extension == "form") // --------------------
-		return ("application/x-www-form-urlencoded");
-	else if (extension == "json") // --------------------
-		return ("application/json");
-
-	// multipart types
-	else if (extension == "multiform") // --------------------
-		return ("multipart/form-data");
-	else if (extension == "byteranges") // --------------------
-		return ("multipart/byteranges");
-
+	headers["Content-Length"] = to_str(body.size());
+	
+	if (src.wanted_ranges.size() < 2) 
+		headers["Content-Type"] = response_utils::define_content_type(src.file_extension);
 	else
-		return ("application/octet-stream");
+		headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
+	
+	if (src.headers.find("connection") != src.headers.end())
+		headers["Connection"] = src.headers["connection"];
+	else
+		headers["Connection"] = "keep-alive";
+
+	// use stat() to get last modified header
+	headers["Date"] = response_utils::date_generate();
 }
 
-std::string Response::date_generate(void)
+void Response::assemble_full_response(Request &src)
 {
-	time_t timestamp = std::time(NULL);
-	struct tm datetime = *std::localtime(&timestamp);
-	char buff[30];
-	std::string buffer;
-
-	// example: Fri, 13 Mar 2026 17:32:50 GMT
-	if (std::strftime(buff, sizeof buff, "%a, %d %b %Y %T GMT", &datetime))
-		buffer = buff;
-	return (buffer);
+	std::stringstream ss;
+	
+	ss << HTTP::stringProtocol(src.protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
+	ss << CRLF;
+	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
+		ss << (*it).first << ": " << (*it).second << CRLF;
+	ss << CRLF;
+	ss << body;
+	full_response = ss.str();
 }
 
-void Response::eraseWritten(int start, int idx)
-{
-	if (start >= 0 && start + idx <= (int)full_response.size())
-	{
-		full_response.erase(start, idx);
-	}
-}
-
-std::ostream &operator<<(std::ostream &out, Response &source)
+std::ostream &operator<<(std::ostream &out, Response &src)
 {
 	out << YEL "-- Response Information --" DEF "\n\n";
-	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(source.protocol) << std::endl;
-	out << YEL "Status Code: " DEF << source.status_code << std::endl;
-	out << YEL "Reason Phrase: " DEF << HTTP::getReasonPhrase(source.status_code) << std::endl;
+	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(src.protocol) << std::endl;
+	out << YEL "Status Code: " DEF << src.status_code << std::endl;
+	out << YEL "Reason Phrase: " DEF << HTTP::getReasonPhrase(src.status_code) << std::endl;
 	out << YEL "Headers..." DEF << std::endl;
-	for (map_strings::iterator it = source.headers.begin(); it != source.headers.end(); it++)
+	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	out << YEL "Body..." DEF << std::endl;
-	if (source.headers["Content-Type"] == "image/vnd.microsoft.icon")
+	if (src.headers["Content-Type"] == "image/vnd.microsoft.icon")
 		out << "[PAGE ICON IMAGE]" << std::endl;
 	else
-		out << source.body << std::endl;
+		out << src.body << std::endl;
 	/*
-	if (!source.full_response.empty())
-		out << YEL "Full Response..." DEF << std::endl << source.full_response << std::endl;
+	if (!src.full_response.empty())
+		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl;
 	*/
 	out << std::endl;
 	return (out);
