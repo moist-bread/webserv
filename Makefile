@@ -77,6 +77,10 @@ val: all
 	$(M_VAL)
 	$(VAL) ./$(NAME) configfile
 
+main_test:
+	@$(CXX) $(CXXFLAGS) src/main_sock.cpp -o $(NAME)
+	./$(NAME) configfile
+
 # =====>┊( STANDARD RULES )┊
 clean:
 	$(M_REMOBJS)

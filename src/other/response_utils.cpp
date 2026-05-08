@@ -3,7 +3,8 @@
 #include "../../inc/ansi_color_codes.h"
 
 #include <algorithm>  // sort, max, min
-#include <ctime>	  // time, localtime, strftime
+#include <ctime>	  // localtime, strftime
+#include <sys/stat.h> // stat
 
 namespace response_utils {
 	
@@ -26,7 +27,7 @@ namespace response_utils {
 		return (ss.str());
 	}
 
-	bool range_valid(size_t file_len, vector2 &ranges)
+	bool range_valid(int file_len, vector2 &ranges)
 	{
 		// Range syntax options
 		// ->	<unit>=<range-start>-<range-end>
@@ -78,7 +79,9 @@ namespace response_utils {
 		return (true);
 	}
 
-	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, size_t size)
+	
+
+	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, int size)
 	{
 		// Content-Range syntax:
 
@@ -96,7 +99,7 @@ namespace response_utils {
 		else
 			value += to_str(range.first) + "-" + to_str(range.second);
 		value += "/";
-		if (size == SIZE_NOT_SET)
+		if (size == VALUE_NOT_SET)
 			value += "*";
 		else
 			value += to_str(size);
@@ -181,9 +184,8 @@ namespace response_utils {
 		return (name);
 	}
 
-	std::string date_generate(void)
+	std::string date_format(time_t timestamp)
 	{
-		time_t timestamp = std::time(NULL);
 		struct tm datetime = *std::localtime(&timestamp);
 		char buff[30];
 		std::string buffer;

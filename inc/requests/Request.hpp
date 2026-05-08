@@ -8,15 +8,12 @@
 #include <unistd.h> // !! sleep for debug
 
 // TO-DO
-// [ ] do singular range RESPONSES
-// [ ] do multi range RESPONSES
+// [x] do singular range RESPONSES
+// [x] do multi range RESPONSES
 // [ ] do chuncked RESPONSES (e.g., dynamically generated content like CGI, streaming APIs)
 // [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
-
-// response header for range:
-// Content-Range: bytes 0-1023/146515 (206 Partial Content)
 
 // =====>┊( REQUEST )┊
 

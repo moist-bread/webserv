@@ -11,7 +11,6 @@
 // == defines
 #define CRLF "\r\n"
 #define VALUE_NOT_SET -1
-#define SIZE_NOT_SET SIZE_MAX
 
 typedef std::map<std::string, std::string> map_strings;
 typedef std::vector< std::pair<int, int> > vector2;

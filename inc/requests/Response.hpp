@@ -12,13 +12,13 @@ class Request;
 class Response
 {
 public:
-	Response(void);
+	Response(Request &src);
 	Response(Response const &src);
 	~Response(void);
 
 	Response &operator=(Response const &src);
 
-	void process(Request &src);
+	void process(void);
 	void clear(void);
 
 	// state machine
@@ -28,21 +28,23 @@ public:
 	// getters for private vars
 
 //private:
-	void method_get(Request &src);
-	std::string create_autoindexing_page(Request &src);
-	static std::string assemble_content_path(Request &src, t_status_code status_code);
-	std::string create_range_response_body(std::fstream &file, size_t file_len, std::string ext, vector2 &ranges);
-	std::string single_range(std::fstream &file, std::pair<int, int> range);
-	std::string multiple_range(std::fstream &file, size_t file_len, std::string ext, vector2 &ranges);
+	void method_get(void);
+	std::string create_autoindexing_page(void);
+	std::string assemble_content_path(t_status_code status_code); // CAN BE AN UTILS
+	std::string create_range_response_body(std::ifstream &file, vector2 &ranges);
+	std::string multiple_range(std::ifstream &file, vector2 &ranges);
+	std::string single_range(std::ifstream &file, std::pair<int, int> range);
 	
-	void method_post(Request &src);
-	void handle_application_form(Request &src);
-	void handle_multipart_form(Request &src);
+	void method_post(void);
+	void handle_application_form(void);
+	void handle_multipart_form(void);
 
-	void method_delete(Request &src);
+	void method_delete(void);
 
-	void set_response_headers(Request &src);
-	void assemble_full_response(Request &src);
+	void preparations_for_response(void);
+	void execute_methods(void);
+	void set_response_headers(void);
+	void assemble_full_response(void);
 
 	class CreateError : public std::runtime_error
 	{
@@ -51,7 +53,9 @@ public:
 		t_status_code response_status;
 	};
 
-	size_t file_length;
+	Request *req;
+
+	int file_length;
 	std::string boundary;
 
 	t_protocol protocol;
@@ -64,6 +68,7 @@ public:
 	std::string full_response;
 
 private:
+	Response(void);
 	t_http_state state;
 };
 

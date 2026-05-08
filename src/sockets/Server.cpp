@@ -227,7 +227,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--;
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-		_clients[clientFd].response.process(_clients[clientFd].request);
+		_clients[clientFd].response.process();
 		for (size_t j = 0; j < _pollfds.size(); j++)
 			if (_pollfds[j].fd == clientFd)
 			{
@@ -267,7 +267,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
         {
             std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
             _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-            _clients[clientFd].response.process(_clients[clientFd].request);
+            _clients[clientFd].response.process();
         }
 
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
@@ -351,7 +351,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
-	_clients[fd].response.process(_clients[fd].request);
+	_clients[fd].response.process();
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
