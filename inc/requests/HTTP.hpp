@@ -37,6 +37,7 @@ enum t_protocol
 
 enum t_status_code
 {
+	NO_STATUS = 0,
 	CONTINUE = 100,
 	SWITCHING_PROTOCOL,
 	OK = 200,
@@ -99,6 +100,7 @@ class HTTP
 		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
 		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
 		static std::string getReasonPhrase(t_status_code status_code);	// returns the string from Status Code Enum
+		static t_status_code isValidReasonPhrase(const int status_code);
 
 	private:
 		HTTP(void); 				// default constructor

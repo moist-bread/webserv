@@ -34,8 +34,8 @@ class Parser
 		Parser(Parser const &source);	// copy constructor
 		Parser &operator=(Parser const &source); // copy assignment operator overload
 
-		ServerConfig _parseServerBlock(void);
-		LocationConfig _parseLocationBlock(const std::string &path);
+		void _parseServerBlock(ServerConfig &newServer);
+		void _parseLocationBlock(LocationConfig &newLocation);
 
 		typedef void (Parser::*ServerHandler)(ServerConfig &);		//	custom type called 'ServerHandler' -> pointer to a Parser method that takes a ServerConfig reference
 		typedef void (Parser::*LocationHandler)(LocationConfig &);	//	custom type called 'LocationHandler' -> pointer to a Parser method that takes a LocationConfig reference
@@ -61,16 +61,20 @@ class Parser
 
 
 		//	ServerHandler Validation functions
-		static void _validate_Listen(const std::string &host, const int port);
-		static void _validate_ServerNames(const std::vector<std::string> &serverNames);
-		static void _validate_MaxBodySize(const size_t clientMaxBodySize);
-		static void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
-		static void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
+		void _validate_Listen(const std::string &host, const int port);
+		void _validate_ServerNames(const std::vector<std::string> &serverNames);
+		void _validate_MaxBodySize(const size_t clientMaxBodySize);
+		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
+		void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
 
 		//	LocationHandler Validation functions
-		static void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
+		void _validate_Path(const std::string &path);
+		void _validate_Root(const std::string &root);
+		void _validate_Index(const std::vector<std::string> &index);
+		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
+		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
 	
-		static void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
+		void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
 		
 
 		//	Helpers
@@ -79,8 +83,24 @@ class Parser
 		void _advanceToken(void); 
 		void _extractSingleKeyword(std::string &destination);
 		void _extractKeywordVector(std::vector<std::string> &destination);
+		void _isValidURI(const std::string &uri) const;
+		void _isValidURL(const std::string &url) const;
+		void _isValidDirectory(const std::string &path) const;
 
 		size_t	_cursor;
 		const std::vector<t_token> &_tokens;
 
 };
+
+template <typename T>
+T stringToNumber(const std::string &str)
+{
+	std::stringstream ss(str);	
+	T out_number;
+
+	ss >> out_number;
+	if (ss.fail() || !ss.eof())
+		throw std::runtime_error("Parse Error: Invalid number convertion");
+	
+	return (out_number);
+}

@@ -1,10 +1,13 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
 #include "../../inc/requests/HTTP.hpp"
 
-LocationConfig::LocationConfig(void) : index("index.html"), autoindex(false), returnCode(0)
+LocationConfig::LocationConfig(void) : autoindex(false)
 {
 	std::cout << GRN "the LocationConfig ";
 	std::cout << UCYN "has been created" DEF << std::endl;
+
+	index.push_back("index.html");
+	allowedMethods.push_back(GET);
 }
 
 LocationConfig::LocationConfig(LocationConfig const &source)
@@ -42,7 +45,10 @@ std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 {
 	out << "    [Location] Path: " << source.path << "\n";
 	out << "      Root: " << source.root << "\n";
-	out << "      Index: " << source.index << "\n";
+	out << "      Index: ";
+	for (size_t i = 0; i < source.index.size(); ++i)
+		out << source.index[i] << " ";
+	out << "\n";
 	out << "      Autoindex: " << (source.autoindex ? "on" : "off") << "\n";
 	out << "      Upload Store: " << source.uploadStore << "\n";
 	

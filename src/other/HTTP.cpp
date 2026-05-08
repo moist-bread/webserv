@@ -136,3 +136,92 @@ std::string HTTP::getReasonPhrase(t_status_code status_code)
 		return ("OK");
 	}
 }
+
+t_status_code HTTP::isValidReasonPhrase(const int status_code)
+{
+	switch (status_code)
+	{
+	case CONTINUE:
+		return (CONTINUE);
+	case SWITCHING_PROTOCOL:
+		return (SWITCHING_PROTOCOL);
+	case OK:
+		return (OK);
+	case CREATED:
+		return (CREATED);
+	case ACCEPTED:
+		return (ACCEPTED);
+	case NON_AUTHORITATIVE_INFO:
+		return (NON_AUTHORITATIVE_INFO);
+	case NO_CONTENT:
+		return (NO_CONTENT);
+	case RESET_CONTENT:
+		return (RESET_CONTENT);
+	case PARTIAL_CONTENT:
+		return (PARTIAL_CONTENT);
+	case MULTIPLE_CHOICES:
+		return (MULTIPLE_CHOICES);
+	case MOVED_PERMANENTLY:
+		return (MOVED_PERMANENTLY);
+	case FOUND:
+		return (FOUND);
+	case SEE_OTHER:
+		return (SEE_OTHER);
+	case NOT_MODIFIED:
+		return (NOT_MODIFIED);
+	case TEMPORARY_REDIRECT:
+		return (TEMPORARY_REDIRECT);
+	case PERMANENT_REDIRECT:
+		return (PERMANENT_REDIRECT);
+	case BAD_REQUEST:
+		return (BAD_REQUEST);
+	case UNAUTHORIZED:
+		return (UNAUTHORIZED);
+	case PAYMENT_REQUIRED:
+		return (PAYMENT_REQUIRED);
+	case FORBIDDEN:
+		return (FORBIDDEN);
+	case NOT_FOUND:
+		return (NOT_FOUND);
+	case METHOD_NOT_ALLOWED:
+		return (METHOD_NOT_ALLOWED);
+	case NOT_ACCEPTABLE:
+		return (NOT_ACCEPTABLE);
+	case PROXY_AUTHENTICATION_REQUIRED:
+		return (PROXY_AUTHENTICATION_REQUIRED);
+	case REQUEST_TIMEOUT:
+		return (REQUEST_TIMEOUT);
+	case CONFLICT:
+		return (CONFLICT);
+	case GONE:
+		return (GONE);
+	case LENGTH_REQUIRED:
+		return (LENGTH_REQUIRED);
+	case PRECONDITION_FAILED:
+		return (PRECONDITION_FAILED);
+	case REQUEST_ENTITY_TOO_LARGE:
+		return (REQUEST_ENTITY_TOO_LARGE);
+	case REQUEST_URL_TOO_LONG:
+		return (REQUEST_URL_TOO_LONG);
+	case UNSUPPORTED_MEDIA_TYPE:
+		return (UNSUPPORTED_MEDIA_TYPE);
+	case REQUESTED_RANGE_NOT_SATISFIABLE:
+		return (REQUESTED_RANGE_NOT_SATISFIABLE);
+	case EXPECTATION_FAILED:
+		return (EXPECTATION_FAILED);
+	case INTERNAL_SERVER_ERROR:
+		return (INTERNAL_SERVER_ERROR);
+	case NOT_IMPLEMENTED:
+		return (NOT_IMPLEMENTED);
+	case BAD_GATEWAY:
+		return (BAD_GATEWAY);
+	case SERVICE_UNAVAILABLE:
+		return (SERVICE_UNAVAILABLE);
+	case GATEWAY_TIMEOUT:
+		return (GATEWAY_TIMEOUT);
+	case HTTP_VERSION_NOT_SUPPORTED:
+		return (HTTP_VERSION_NOT_SUPPORTED);
+	default:
+		return (NO_STATUS);
+	}
+}
