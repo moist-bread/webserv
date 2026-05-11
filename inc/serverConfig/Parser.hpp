@@ -59,7 +59,6 @@ class Parser
 		void _locationCgi(LocationConfig &location);
 		void _locationUploadStore(LocationConfig &location);
 
-
 		//	ServerHandler Validation functions
 		void _validate_Listen(const std::string &host, const int port);
 		void _validate_ServerNames(const std::vector<std::string> &serverNames);
@@ -73,6 +72,8 @@ class Parser
 		void _validate_Index(const std::vector<std::string> &index);
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
 		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
+		void _validate_Cgi(const std::string &extension, const std::string &executer);
+		void _validate_UploadStore(const std::string &path);
 	
 		void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
 		
@@ -85,7 +86,9 @@ class Parser
 		void _extractKeywordVector(std::vector<std::string> &destination);
 		void _isValidURI(const std::string &uri) const;
 		void _isValidURL(const std::string &url) const;
-		void _isValidDirectory(const std::string &path) const;
+		void _isValidAccess(const std::string &path, const int flags) const;
+		void _isValidFile(const std::string &path, const int flags) const;
+		void _isValidDirectory(const std::string &path, const int flags) const;
 
 		size_t	_cursor;
 		const std::vector<t_token> &_tokens;

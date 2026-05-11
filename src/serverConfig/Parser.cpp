@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cctype>
 
 /**
  * @brief Construct parser and initialize directive dispatch tables.
@@ -307,7 +308,7 @@ void Parser::_locationRoot(LocationConfig &location)
 
 void Parser::_validate_Root(const std::string &root)
 {
-	_isValidDirectory(root);
+	_isValidDirectory(root, R_OK | X_OK);
 }
 //*	----------- *
 
@@ -336,6 +337,7 @@ void Parser::_validate_Index(const std::vector<std::string> &index)
 }
 //*	----------- *
 
+//* Auto Index
 /**
  * @brief Parse location `autoindex` directive.
  * @param location Location configuration being populated.
@@ -349,6 +351,7 @@ void Parser::_locationAutoIndex(LocationConfig &location)
 	location.autoindex = autoindex == "on" ?  true : false;
 	_expect(TOKEN_SEMICOLON);
 }
+//*	----------- *
 
 //* Allow Methods
 /**
@@ -411,6 +414,7 @@ void Parser::_validate_ReturnCode(const t_status_code returnCode, const std::str
 }
 //*	----------- *
 
+//* CGI
 /**
  * @brief Parse location `cgi` directive.
  * @param location Location configuration being populated.
@@ -421,10 +425,25 @@ void Parser::_locationCgi(LocationConfig &location)
 	std::string exec;
 	_extractSingleKeyword(ext);
 	_extractSingleKeyword(exec);
-	location.cgi[ext] = exec;
 	_expect(TOKEN_SEMICOLON);
+	_validate_Cgi(ext, exec);	
+	location.cgi[ext] = exec;
 }
 
+void Parser::_validate_Cgi(const std::string &extension, const std::string &executer)
+{
+	if (extension.length() < 2 || extension[0] != '.')
+		throw std::runtime_error("Config error: Location - Invalid CGI extension"); // ! Write error
+	for (size_t i = 1; i < extension.length(); ++i)
+	{
+		if (!std::isalnum(extension[i]))
+			throw std::runtime_error("Config error: Location - Invalid CGI extension"); // ! Write error
+	}
+	_isValidFile(executer, R_OK | X_OK);
+}
+//*	----------- *
+
+//* Upload Store
 /**
  * @brief Parse location `upload_store` directive.
  * @param location Location configuration being populated.
@@ -433,7 +452,14 @@ void Parser::_locationUploadStore(LocationConfig &location)
 {
 	_extractSingleKeyword(location.uploadStore);
 	_expect(TOKEN_SEMICOLON);
+	_validate_UploadStore(location.uploadStore);
 }
+
+void Parser::_validate_UploadStore(const std::string &path)
+{
+	_isValidDirectory(path, W_OK | X_OK);
+}
+//*	----------- *
 
 //?	Needed ?
 void Parser::_validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames)
@@ -541,11 +567,25 @@ void Parser::_isValidURL(const std::string &url) const
 		throw std::runtime_error("Parser error: Invalid URL format");
 }
 
-void Parser::_isValidDirectory(const std::string &path) const
+void Parser::_isValidAccess(const std::string &path, const int flags) const
 {
-	if (access(path.c_str(), F_OK | R_OK | X_OK) != 0) 
-		throw std::runtime_error("Parser error: Failed Path to Directory");
+	if (access(path.c_str(), flags) != 0)
+		throw std::runtime_error("Parser error: Failed Path Access");
+}
 
+void Parser::_isValidFile(const std::string &path, const int flags) const
+{
+	_isValidAccess(path, flags);
+	struct stat path_stat;
+	if (stat(path.c_str(), &path_stat) == 0)
+		throw std::runtime_error("Parser error: Failed Path to Directory");
+	if (S_ISDIR(path_stat.st_mode))
+		throw std::runtime_error("Parser error: Path is a directory, not a file");
+}
+
+void Parser::_isValidDirectory(const std::string &path, const int flags) const
+{
+	_isValidAccess(path, flags);
 	struct stat path_stat;
 	if (stat(path.c_str(), &path_stat) != 0)
 		throw std::runtime_error("Parser error: Failed Path to Directory");
@@ -589,7 +629,7 @@ A. Prefix Redundancy
 	The Check: If a return directive exists, the status code MUST be a redirection code ($300$–$399$).
 	The Pair: If they provided a code, they must provide a URL to redirect to.
 
-E. The CGI Map
+// E. The CGI Map
 	The Check: For every entry in the cgi map (e.g., .php -> /usr/bin/php-cgi):
     	1. The extension must start with a dot.
    		2. The path to the executable must be valid (and ideally, you can use access(path, X_OK) to see if it's actually executable).
