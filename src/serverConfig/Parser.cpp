@@ -16,7 +16,6 @@ Parser::Parser(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens)
 	_serverHandlers["server_name"] = &Parser::_serverName;
 	_serverHandlers["client_max_body_size"] = &Parser::_serverMaxBodySize;
 	_serverHandlers["error_page"] = &Parser::_serverErrorPage;
-	_serverHandlers["location"] = &Parser::_serverLocation;
 
 	_locationHandlers["root"] = &Parser::_locationRoot;
 	_locationHandlers["index"] = &Parser::_locationIndex;
@@ -58,6 +57,7 @@ void Parser::parse(std::vector<ServerConfig> &servers)
 		else
 			throw std::runtime_error("Syntax error at line " /* + line number */ ": Expected 'server' block");
 	}
+	_validate_ServerCollision(servers);
 }
 
 //*	----- ServerHandler functions ----- */
@@ -68,11 +68,14 @@ void Parser::parse(std::vector<ServerConfig> &servers)
  */
 void Parser::_parseServerBlock(ServerConfig &newServer)
 {
+	std::set<std::string> locationsPathRecord;
 	while (_currentToken().type != TOKEN_RBRACE)
 	{
 		t_token directiveToken = _expect(TOKEN_KEYWORD);
 		std::string directive = directiveToken.content;
-		if (_serverHandlers.count(directive) > 0)
+		if (directive == "location")
+			_serverLocation(newServer.locations, locationsPathRecord);
+		else if (_serverHandlers.count(directive) > 0)
 		{
 			ServerHandler handler = _serverHandlers[directive];
 			(this->*handler)(newServer);
@@ -87,6 +90,37 @@ void Parser::_parseServerBlock(ServerConfig &newServer)
 	}
 	_expect(TOKEN_RBRACE);
 }
+
+void Parser::_validate_ServerCollision(const std::vector<ServerConfig> &servers)
+{
+	for (size_t i = 0; i < servers.size(); ++i)
+	{
+		const ServerConfig &server_A = servers[i];
+		for (size_t j = i + 1; j < servers.size(); ++j)
+		{
+			const ServerConfig &server_B = servers[j];
+			if (server_A.listenAddr == server_B.listenAddr)
+			{
+				if (server_A.serverNames.empty() && server_B.serverNames.empty())
+					throw std::runtime_error("Config error: Server - Server Name/Listen Address collision between servers"); // ! Write error
+				_validate_ServerNamesCollision(server_A, server_B);
+			}
+		}
+	}
+}
+
+void Parser::_validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B)
+{
+	for (size_t i = 0; i < server_A.serverNames.size(); ++i)
+	{
+		for (size_t j = 0; j < server_B.serverNames.size(); ++j)
+		{
+			if (server_A.serverNames[i] == server_B.serverNames[j])
+				throw std::runtime_error("Config error: Server - Server Name/Listen Address collision between servers"); // ! Write error
+		}
+	}
+}
+
 
 //*	Listen
 /**
@@ -118,10 +152,10 @@ void Parser::_validate_Listen(const std::string &host, const int port)
 {
 	if (port < 1 || port > 65535)
 		throw std::runtime_error("Config error: IP"); // ! Write error
-	if (std::count(host.begin(), host.end(), '.') != 3)
-		throw std::runtime_error("Config error: IP"); // ! Write error
 	if (host == "localhost" || host == "0.0.0.0")
 		return ;
+	if (std::count(host.begin(), host.end(), '.') != 3)
+		throw std::runtime_error("Config error: IP"); // ! Write error
 
 	std::string octet;
 	std::stringstream ss(host);
@@ -151,7 +185,6 @@ void Parser::_serverName(ServerConfig &server)
 	_extractKeywordVector(server.serverNames);
 	_expect(TOKEN_SEMICOLON);
 	_validate_ServerNames(server.serverNames);
-	//	!	ADD: _validate_NameServer_collision();
 }
 
 void Parser::_validate_ServerNames(const std::vector<std::string> &serverNames)
@@ -250,20 +283,22 @@ void Parser::_validate_ErrorPages(const std::map<t_status_code, std::string> &er
  * @brief Parse nested `location` block under a server.
  * @param server Server configuration being populated.
  */
-void Parser::_serverLocation(ServerConfig &server)
+void Parser::_serverLocation(std::vector<LocationConfig> &locations, std::set<std::string> &locationsPathRecord)
 {
 	t_token pathToken = _expect(TOKEN_KEYWORD);
 	LocationConfig newLocation;
 	newLocation.path = pathToken.content;
-	_validate_Path(newLocation.path);
+	_validate_Path(newLocation.path, locationsPathRecord);
 	_expect(TOKEN_LBRACE);
 	_parseLocationBlock(newLocation);
-	server.locations.push_back(newLocation);
+	locations.push_back(newLocation);
 }
 
-void Parser::_validate_Path(const std::string &path)
+void Parser::_validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord)
 {
 	_isValidURI(path);
+	if (locationsPathRecord.insert(path).second == false)
+		throw std::runtime_error("Parser error: Duplicated Location Path");
 }
 //*	----------- *
 
@@ -303,7 +338,7 @@ void Parser::_locationRoot(LocationConfig &location)
 {
 	_extractSingleKeyword(location.root);
 	_expect(TOKEN_SEMICOLON);
-	// ! _validate_Root(location.root);		->	remove comment
+	_validate_Root(location.root);
 }
 
 void Parser::_validate_Root(const std::string &root)
@@ -319,7 +354,7 @@ void Parser::_validate_Root(const std::string &root)
  */
 void Parser::_locationIndex(LocationConfig &location)
 {
-	location.index.pop_back();
+	location.index.clear();
 	_extractKeywordVector(location.index);
 	_expect(TOKEN_SEMICOLON);
 	_validate_Index(location.index);
@@ -360,7 +395,7 @@ void Parser::_locationAutoIndex(LocationConfig &location)
  */
 void Parser::_locationAllowMethods(LocationConfig &location)
 {
-	location.allowedMethods.pop_back();
+	location.allowedMethods.clear();
 	while (_currentToken().type == TOKEN_KEYWORD)
 	{
 		t_method method = HTTP::getMethod(_currentToken().content);
@@ -460,20 +495,6 @@ void Parser::_validate_UploadStore(const std::string &path)
 	_isValidDirectory(path, W_OK | X_OK);
 }
 //*	----------- *
-
-//?	Needed ?
-void Parser::_validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames)
-{
-	for (size_t i = 0; i < claimedNames.size(); i++)
-	{
-		const std::string &name = claimedNames[i];
-		for (size_t j = 0; j < server.serverNames.size(); ++j)
-		{
-			if (name == server.serverNames[j])
-				throw std::runtime_error("Config error: Name Server Collision"); // ! Write error
-		}
-	}
-}
 
 //*	----- Helpers ----- */
 
@@ -577,7 +598,7 @@ void Parser::_isValidFile(const std::string &path, const int flags) const
 {
 	_isValidAccess(path, flags);
 	struct stat path_stat;
-	if (stat(path.c_str(), &path_stat) == 0)
+	if (stat(path.c_str(), &path_stat) != 0)
 		throw std::runtime_error("Parser error: Failed Path to Directory");
 	if (S_ISDIR(path_stat.st_mode))
 		throw std::runtime_error("Parser error: Path is a directory, not a file");
@@ -593,26 +614,27 @@ void Parser::_isValidDirectory(const std::string &path, const int flags) const
 		throw std::runtime_error("Parser error: Path is not a Directory");
 }
 
-void Parser::_add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest)
-{
-	dest.insert(dest.end(), server.serverNames.begin(), server.serverNames.end());
-}
 
+/*
 
+	! VERIFY ALL THE VARIABLES THAT ONLY ACCEPT NUMBERS
 
+	// ! CHECK DUPLICATE LOCATIONS
 
-//	! VERIFY ALL THE VARIABLES THAT ONLY ACCEPT NUMBERS
+	// ! CHECK DUPLCIATE SERVER_NAMES
 
-//	! CHECK DUPLICATE LOCATIONS
+	! CHECK 'MUST HAVE' VARIABLES
+	
+	! CHECK DUPLICATE VARIABLES
 
-//	! CHECK DUPLCIATE SERVER_NAMES
+	! CHECK ERROR MESSAGES -> NOTE TO ADD LINE NUMBER
 
-//	! CHECK 'MUST HAVE' VARIABLES
+*/
 
 /*
 
 * 2. The Validation Checklist
-A. Prefix Redundancy
+// A. Prefix Redundancy
 	Just like you checked for server_name collisions, you must ensure you don't have two identical location paths in the same server.
 		Check: Is there another location /html in this same server block? If yes, throw an error.
 

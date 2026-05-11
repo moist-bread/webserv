@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <stdlib.h>
 
 #include "../ansi_color_codes.h"
@@ -48,7 +49,8 @@ class Parser
 		void _serverName(ServerConfig &server);
 		void _serverMaxBodySize(ServerConfig &server);
 		void _serverErrorPage(ServerConfig &server);
-		void _serverLocation(ServerConfig &server);
+		void _serverLocation(std::vector<LocationConfig> &locations, std::set<std::string> &locationsPathRecord);
+		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
 
 		//	LocationHandler functions
 		void _locationRoot(LocationConfig &location);
@@ -65,9 +67,10 @@ class Parser
 		void _validate_MaxBodySize(const size_t clientMaxBodySize);
 		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
 		void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
+		void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
 
 		//	LocationHandler Validation functions
-		void _validate_Path(const std::string &path);
+		void _validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord);
 		void _validate_Root(const std::string &root);
 		void _validate_Index(const std::vector<std::string> &index);
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
@@ -75,20 +78,20 @@ class Parser
 		void _validate_Cgi(const std::string &extension, const std::string &executer);
 		void _validate_UploadStore(const std::string &path);
 	
-		void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
-		
-
-		//	Helpers
+		//	Token Advance Helpers
 		t_token _expect(e_token_type expected_type);
 		const t_token &_currentToken(void) const;
 		void _advanceToken(void); 
 		void _extractSingleKeyword(std::string &destination);
 		void _extractKeywordVector(std::vector<std::string> &destination);
+
+		//	Validate Helpers
 		void _isValidURI(const std::string &uri) const;
 		void _isValidURL(const std::string &url) const;
 		void _isValidAccess(const std::string &path, const int flags) const;
 		void _isValidFile(const std::string &path, const int flags) const;
 		void _isValidDirectory(const std::string &path, const int flags) const;
+
 
 		size_t	_cursor;
 		const std::vector<t_token> &_tokens;
