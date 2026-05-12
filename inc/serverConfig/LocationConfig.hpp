@@ -22,7 +22,7 @@ class LocationConfig
 		std::string					path;           // e.g., "/images"
 		std::string					root;           // Directory to search files in
 		std::vector<std::string>	index;          // Default file (e.g., "index.html")
-		bool						autoindex;      // Directory listing (on/off)
+		int							autoindex;      // Directory listing (on/off)
 		std::vector<t_method>		allowedMethods; // e.g., ["GET", "POST"]
 		std::string					uploadStore;    // Where to save POST uploads
 	

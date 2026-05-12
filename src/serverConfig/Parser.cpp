@@ -14,6 +14,7 @@ Parser::Parser(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens)
 {
 	_serverHandlers["listen"] = &Parser::_serverListen;
 	_serverHandlers["server_name"] = &Parser::_serverName;
+	_serverHandlers["root"] = &Parser::_serverRoot;
 	_serverHandlers["client_max_body_size"] = &Parser::_serverMaxBodySize;
 	_serverHandlers["error_page"] = &Parser::_serverErrorPage;
 
@@ -52,12 +53,66 @@ void Parser::parse(std::vector<ServerConfig> &servers)
 			_expect(TOKEN_LBRACE);
 			ServerConfig newServer;
 			_parseServerBlock(newServer);
+			_finalizeServer(newServer);
 			servers.push_back(newServer);
 		}
 		else
 			throw std::runtime_error("Syntax error at line " /* + line number */ ": Expected 'server' block");
 	}
 	_validate_ServerCollision(servers);
+}
+
+void Parser::_finalizeServer(ServerConfig &server)
+{
+	//	Listen
+	if (server.listenAddr.empty())
+	{
+		server.host = "0.0.0.0";
+		server.port = 8080;
+		server.listenAddr = "0.0.0.0:8080";
+	}
+	//?	Server Names -> keep it empty
+	//?	Server Root -> keep it empty
+	//	Client Max Body Size
+	if (server.clientMaxBodySize == 0)
+		server.clientMaxBodySize = ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE;
+	//	Locations
+	if (server.locations.empty())
+		throw std::runtime_error("Config error: No Location");
+	_finalizeLocation(server);
+}
+
+void Parser::_finalizeLocation(ServerConfig &server)
+{
+	for (size_t i = 0; i < server.locations.size(); ++i)
+	{
+		LocationConfig &location = server.locations[i];
+		if (location.returnCode == UNITIALIZED)
+			location.returnCode = NO_STATUS;
+		if (location.root.empty())
+		{
+			if (location.returnCode == NO_STATUS)
+			{
+				if (server.root.empty())
+					throw std::runtime_error("Config error: No Location Root, couldnt inherit from Server Root(not inserted)");
+				else
+					location.root = server.root;
+			}
+		}
+		if (location.index.empty())
+			location.index.push_back("index.html");
+		if (location.autoindex == -1)
+			location.autoindex = false;
+		if (location.allowedMethods.empty())
+		{
+			location.allowedMethods.push_back(GET);
+			location.allowedMethods.push_back(POST);
+			location.allowedMethods.push_back(DELETE);
+		}
+		//?	Upload Store -> keep it empty - server doesnt allow uploads
+		//?	Return URL -> keep it empty - no Status code
+		//?	CGI -> keep it empy - server doesnt execute scripts
+	}
 }
 
 //*	----- ServerHandler functions ----- */
@@ -74,7 +129,7 @@ void Parser::_parseServerBlock(ServerConfig &newServer)
 		t_token directiveToken = _expect(TOKEN_KEYWORD);
 		std::string directive = directiveToken.content;
 		if (directive == "location")
-			_serverLocation(newServer.locations, locationsPathRecord);
+			_serverLocation(newServer, locationsPathRecord);
 		else if (_serverHandlers.count(directive) > 0)
 		{
 			ServerHandler handler = _serverHandlers[directive];
@@ -129,6 +184,8 @@ void Parser::_validate_ServerNamesCollision(const ServerConfig &server_A, const 
  */
 void Parser::_serverListen(ServerConfig &server)
 {
+	if (!server.listenAddr.empty())
+		throw std::runtime_error("Config error: Server - Listen duplicated");
 	std::string listen;
 	_extractSingleKeyword(listen);
 	size_t colonPos = listen.find(':');
@@ -212,6 +269,22 @@ void Parser::_validate_ServerNames(const std::vector<std::string> &serverNames)
 }
 //*	----------- *
 
+//* Root
+void Parser::_serverRoot(ServerConfig &server)
+{
+	if (!server.root.empty())
+		throw std::runtime_error("Config error: Server - Root duplicated");
+	_extractSingleKeyword(server.root);
+	_expect(TOKEN_SEMICOLON);
+	_validate_Root(server.root);
+}
+
+void Parser::_validate_Root(const std::string &root)
+{
+	_isValidDirectory(root, R_OK | X_OK);
+}
+//*	----------- *
+
 //* Max Body Size
 /**
  * @brief Parse `client_max_body_size`.
@@ -219,6 +292,8 @@ void Parser::_validate_ServerNames(const std::vector<std::string> &serverNames)
  */
 void Parser::_serverMaxBodySize(ServerConfig &server)
 {
+	if (server.clientMaxBodySize != 0)
+		throw std::runtime_error("Config error: Server - Client Max Body Size duplicated");
 	std::string sizeValue;
 	_extractSingleKeyword(sizeValue);
 	bool isMegaByte = false;
@@ -228,6 +303,8 @@ void Parser::_serverMaxBodySize(ServerConfig &server)
 		sizeValue.erase(sizeValue.size() - 1);
 	}
 	server.clientMaxBodySize = stringToNumber<long>(sizeValue);
+	if (server.clientMaxBodySize == 0)
+		throw std::runtime_error("Config error: Server - Client Max Body Size cant be 0");
 	if (isMegaByte)
 		server.clientMaxBodySize *= 1048576;
 	_expect(TOKEN_SEMICOLON);
@@ -283,15 +360,17 @@ void Parser::_validate_ErrorPages(const std::map<t_status_code, std::string> &er
  * @brief Parse nested `location` block under a server.
  * @param server Server configuration being populated.
  */
-void Parser::_serverLocation(std::vector<LocationConfig> &locations, std::set<std::string> &locationsPathRecord)
+void Parser::_serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord)
 {
 	t_token pathToken = _expect(TOKEN_KEYWORD);
+
 	LocationConfig newLocation;
 	newLocation.path = pathToken.content;
 	_validate_Path(newLocation.path, locationsPathRecord);
 	_expect(TOKEN_LBRACE);
+
 	_parseLocationBlock(newLocation);
-	locations.push_back(newLocation);
+	server.locations.push_back(newLocation);
 }
 
 void Parser::_validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord)
@@ -336,14 +415,11 @@ void Parser::_parseLocationBlock(LocationConfig &newLocation)
  */
 void Parser::_locationRoot(LocationConfig &location)
 {
+	if (!location.root.empty())
+		throw std::runtime_error("Config error: Location - Root duplicated");
 	_extractSingleKeyword(location.root);
 	_expect(TOKEN_SEMICOLON);
 	_validate_Root(location.root);
-}
-
-void Parser::_validate_Root(const std::string &root)
-{
-	_isValidDirectory(root, R_OK | X_OK);
 }
 //*	----------- *
 
@@ -354,7 +430,6 @@ void Parser::_validate_Root(const std::string &root)
  */
 void Parser::_locationIndex(LocationConfig &location)
 {
-	location.index.clear();
 	_extractKeywordVector(location.index);
 	_expect(TOKEN_SEMICOLON);
 	_validate_Index(location.index);
@@ -379,6 +454,8 @@ void Parser::_validate_Index(const std::vector<std::string> &index)
  */
 void Parser::_locationAutoIndex(LocationConfig &location)
 {
+	if (location.autoindex != -1)
+		throw std::runtime_error("Config error: Location - Auto Index duplicated");
 	std::string autoindex;
 	_extractSingleKeyword(autoindex);
 	if (autoindex != "on" && autoindex != "off")
@@ -395,11 +472,11 @@ void Parser::_locationAutoIndex(LocationConfig &location)
  */
 void Parser::_locationAllowMethods(LocationConfig &location)
 {
-	location.allowedMethods.clear();
 	while (_currentToken().type == TOKEN_KEYWORD)
 	{
 		t_method method = HTTP::getMethod(_currentToken().content);
-		location.allowedMethods.push_back(method);
+        if (std::find(location.allowedMethods.begin(), location.allowedMethods.end(), method) == location.allowedMethods.end())
+			location.allowedMethods.push_back(method);
 		_advanceToken();
 	}
 	_expect(TOKEN_SEMICOLON);
@@ -414,11 +491,6 @@ void Parser::_validate_AllowedMethods(const std::vector<t_method> &allowedMethod
 	{
 		if (allowedMethods[i] == UNSUPPORTED_METHOD)
 			throw std::runtime_error("Config error: Location - Unsuported Allowed Methods"); // ! Write error
-		for (size_t j = 0; j < allowedMethods.size(); ++j)
-		{
-			if (j != i && allowedMethods[j] == allowedMethods[i])
-				throw std::runtime_error("Config error: Location - Duplicated Allowed Methods"); // ! Write error
-		}
 	}
 }
 //*	----------- *
@@ -430,6 +502,8 @@ void Parser::_validate_AllowedMethods(const std::vector<t_method> &allowedMethod
  */
 void Parser::_locationReturn(LocationConfig &location)
 {
+	if (location.returnCode != UNITIALIZED)
+		throw std::runtime_error("Config error: Location - Return duplicated");
 	std::string keyword;
 	_extractSingleKeyword(keyword);
 	int	returnCode = stringToNumber<int>(keyword);
@@ -485,6 +559,8 @@ void Parser::_validate_Cgi(const std::string &extension, const std::string &exec
  */
 void Parser::_locationUploadStore(LocationConfig &location)
 {
+	if (!location.uploadStore.empty())
+		throw std::runtime_error("Config error: Location - Upload Store duplicated");
 	_extractSingleKeyword(location.uploadStore);
 	_expect(TOKEN_SEMICOLON);
 	_validate_UploadStore(location.uploadStore);
@@ -559,7 +635,10 @@ void Parser::_extractKeywordVector(std::vector<std::string> &destination)
 {
 	while (_currentToken().type == TOKEN_KEYWORD)
 	{
-		destination.push_back(_currentToken().content);
+		std::string newName = _currentToken().content;
+        
+        if (std::find(destination.begin(), destination.end(), newName) == destination.end())
+			destination.push_back(newName);
 		_advanceToken();
 	}
 }
@@ -617,19 +696,62 @@ void Parser::_isValidDirectory(const std::string &path, const int flags) const
 
 /*
 
-	! VERIFY ALL THE VARIABLES THAT ONLY ACCEPT NUMBERS
+	// ! VERIFY ALL THE VARIABLES THAT ONLY ACCEPT NUMBERS
 
 	// ! CHECK DUPLICATE LOCATIONS
 
 	// ! CHECK DUPLCIATE SERVER_NAMES
 
-	! CHECK 'MUST HAVE' VARIABLES
+	// ! CHECK 'MUST HAVE' VARIABLES
 	
-	! CHECK DUPLICATE VARIABLES
+	// ! CHECK DUPLICATE VARIABLES
 
 	! CHECK ERROR MESSAGES -> NOTE TO ADD LINE NUMBER
 
+	// ? CHECK BUG - duplicate server_name with the same name in the same block -> Ignores the duplicate and doesnt insert
+	// ? CHECK BUG - duplicate index with the same name in the same block -> Ignores the duplicate and doesnt insert
+	// ? CHECK BUG - duplicate allow methods with the same name in the same block -> Ignores the duplicate and doesnt insert
+
 */
+
+/*
+
+	* Part 1: The "Duplicate Check" Directives
+	These are Single-Value Directives. If the user writes these more than once in the exact same block,
+	you must throw an error to prevent silent overwrites.
+
+		// listen: (Because your struct only holds one host/port per server).
+
+		// root: A server/location can only have one physical base directory.
+
+		// client_max_body_size: There can only be one size limit.
+
+		// autoindex: It is either on or off; it cannot be both.
+
+		// return: A location can only have one immediate redirect.
+
+		// upload_store: There should only be one designated folder for uploads.
+
+	*Part 2: The "Multi-Value" Directives
+	These directives are allowed to be declared multiple times, OR they take multiple arguments.
+	You do not throw an error if the directive appears again;
+	you just append to the existing data structure.
+
+		server_name: Append to your std::vector<std::string>.
+
+		index: Append to your std::vector<std::string>.
+
+		allow_methods: Append to your std::vector<t_method>.
+
+		error_page: Insert into your std::map<t_status_code, std::string>.
+			(Note: If they define the exact same error code twice, like two error_page 404 directives,
+			NGINX overwrites the old one with the new one. You can safely let your std::map overwrite it).
+
+		cgi: Insert into your std::map<std::string, std::string>.
+			(Note: Just like error pages, if they define .py twice, the second one overwrites the first).
+
+*/
+
 
 /*
 

@@ -1,13 +1,11 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
 #include "../../inc/requests/HTTP.hpp"
 
-LocationConfig::LocationConfig(void) : autoindex(false)
+LocationConfig::LocationConfig(void) : 
+	autoindex(-1), returnCode(UNITIALIZED)
 {
 	std::cout << GRN "the LocationConfig ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-
-	index.push_back("index.html");
-	allowedMethods.push_back(GET);
 }
 
 LocationConfig::LocationConfig(LocationConfig const &source)

@@ -47,10 +47,13 @@ class Parser
 		//	ServerHandler functions
 		void _serverListen(ServerConfig &server);
 		void _serverName(ServerConfig &server);
+		void _serverRoot(ServerConfig &server);
 		void _serverMaxBodySize(ServerConfig &server);
 		void _serverErrorPage(ServerConfig &server);
-		void _serverLocation(std::vector<LocationConfig> &locations, std::set<std::string> &locationsPathRecord);
+		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
 		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
+		void _finalizeServer(ServerConfig &server);
+		void _finalizeLocation(ServerConfig &server);
 
 		//	LocationHandler functions
 		void _locationRoot(LocationConfig &location);
@@ -64,14 +67,13 @@ class Parser
 		//	ServerHandler Validation functions
 		void _validate_Listen(const std::string &host, const int port);
 		void _validate_ServerNames(const std::vector<std::string> &serverNames);
+		void _validate_Root(const std::string &root);
 		void _validate_MaxBodySize(const size_t clientMaxBodySize);
 		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
-		void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
 		void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
 
 		//	LocationHandler Validation functions
 		void _validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord);
-		void _validate_Root(const std::string &root);
 		void _validate_Index(const std::vector<std::string> &index);
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
 		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);

@@ -24,6 +24,7 @@ class ServerConfig
 		int							port;               // e.g., 8080
 		std::string					listenAddr;			// host:port combined into a string
 		std::vector<std::string>	serverNames;        // e.g., ["example.com", "www.example.com"]
+		std::string					root;
 		size_t						clientMaxBodySize;  // Limit for uploads (e.g., 1048576 for 1MB)
 
 		// Default error pages

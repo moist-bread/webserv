@@ -37,6 +37,7 @@ enum t_protocol
 
 enum t_status_code
 {
+	UNITIALIZED = -1,
 	NO_STATUS = 0,
 	CONTINUE = 100,
 	SWITCHING_PROTOCOL,
