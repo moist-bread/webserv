@@ -6,14 +6,14 @@
 #include <map>
 #include <vector>
 #include <stdio.h>
-#include <stdint.h>	  // size_max
+#include <stdint.h> // size_max
 
 // == defines
 #define CRLF "\r\n"
 #define VALUE_NOT_SET -1
 
 typedef std::map<std::string, std::string> map_strings;
-typedef std::vector< std::pair<int, int> > vector2;
+typedef std::vector<std::pair<int, int> > vector2;
 
 struct MultiForm
 {
@@ -24,12 +24,11 @@ struct MultiForm
 
 // == enums
 
-enum t_http_state
+enum t_request_state
 {
 	BEGIN,
 	LINE,
 	HEADERS,
-	//CHUNCK,
 	BODY,
 	END
 };
@@ -49,15 +48,6 @@ enum t_protocol
 	H1_0,
 	H1_1,
 	UNSUPPORTED_PROTOCOL
-};
-
-enum t_transfer_encoding
-{
-	CHUNKED,
-	COMPRESS,
-	DEFLATE,
-	GZIP,
-	INVALID_ENCODING
 };
 
 enum t_status_code
@@ -91,10 +81,10 @@ enum t_status_code
 	GONE,
 	LENGTH_REQUIRED,
 	PRECONDITION_FAILED,
-	REQUEST_ENTITY_TOO_LARGE,
-	REQUEST_URL_TOO_LONG,
+	CONTENT_TOO_LARGE,
+	URI_TOO_LONG,
 	UNSUPPORTED_MEDIA_TYPE,
-	REQUESTED_RANGE_NOT_SATISFIABLE,
+	RANGE_NOT_SATISFIABLE,
 	EXPECTATION_FAILED, // Expect request-header
 	INTERNAL_SERVER_ERROR = 500,
 	NOT_IMPLEMENTED,

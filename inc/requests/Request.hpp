@@ -8,10 +8,9 @@
 #include <unistd.h> // !! sleep for debug
 
 // TO-DO
-// [x] do singular range RESPONSES
-// [x] do multi range RESPONSES
 // [ ] do chuncked RESPONSES (e.g., dynamically generated content like CGI, streaming APIs)
-// [ ] START DOING COOKIES
+// [ ] make it so that the request can stop in the middle of the headers and then cotinue!!
+// [ ] create a static Inspect class for debug prints
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
 
@@ -32,7 +31,6 @@ public:
 	void parse_request_line(std::string &request);
 	void parse_request_headers(std::string &request);
 	void parse_body(std::string &request);
-	// void parse_chunck(std::string &request);
 
 	void validade_request(void);
 
@@ -47,8 +45,8 @@ public:
 	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
 
 	// state machine
-	void set_state(t_http_state new_state);
-	t_http_state get_state(void) const;
+	void set_state(t_request_state new_state);
+	t_request_state get_state(void) const;
 
 	class ParseError : public std::runtime_error
 	{
@@ -75,7 +73,7 @@ public:
 	vector2 wanted_ranges;
 
 private:
-	t_http_state state;
+	t_request_state state;
 };
 
 std::ostream &operator<<(std::ostream &out, Request &src);

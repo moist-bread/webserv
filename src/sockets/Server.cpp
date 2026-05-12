@@ -211,6 +211,7 @@ int Server::responder(int clientFd, const std::string &data)
 	return write(clientFd, data.c_str(), data.size());
 }
 
+#define READ_BUFFER_SIZE 65536
 
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
@@ -239,8 +240,8 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
  
 	//  Ler do tubo
 	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
-	char buffer[4096];
-	int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+	char buffer[READ_BUFFER_SIZE];
+	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
  
 	if (bytesRead > 0)
 	{
@@ -292,8 +293,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 {
 	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG
 	// make it slightly bigger than the max to see if it overflows
-	char tmp[65536]; // 64kb por segundo
-	int ret = recv(fd, tmp, sizeof(tmp), 0);
+	char tmp[READ_BUFFER_SIZE]; // 64kb por segundo
+	int ret = recv(fd, tmp, READ_BUFFER_SIZE, 0);
 
 	ConnectionStatus status = getStatus(ret);
 	if (status == IO_ERROR || status == IO_CLOSED)
@@ -304,7 +305,6 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	std::cout << "Raw Request:" << std::endl;
 	std::cout << rec << std::endl;
 	std::cout << "Bytes recebidos: " << ret << std::endl;
-	// HERE CHECK IF IT THE BUFFER WAS TOO SMALL
 
 	_clients[fd].response.status_code = OK;
 	try
@@ -314,18 +314,19 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	catch (const Request::ParseError &e)
 	{
 		std::cerr << e.what() << std::endl;
+		_clients[fd].request.set_state(END);
+		_clients[fd].request.file_extension = "html";
 		_clients[fd].response.status_code = e.request_status;
 	}
 
 	if (_clients[fd].request.get_state() != END) 
 	{
-		// will probably change this when i implement chuncked requests
-		std::cout << RED "WE ARE MISSING SOMETHING\n" DEF;
+		std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
 		return ;
 	}
 
-	std::cout << BLU "file extension: " DEF << _clients[fd].request.file_extension << std::endl;
-	if (_clients[fd].request.file_extension == "py")
+
+	if (_clients[fd].request.file_extension == "py") // !! move this part into the response
 	{
 		std::cout << BLU "THIS IS A CGI!!!!!!!\n" DEF;
 		try
@@ -344,6 +345,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
 	}
+
+
 	// Paramos de escutar POLLIN e passamos a escutar POLLOUT
 	_clients[fd].updateLastActivity();
 	_pollfds[*pollfds_idx].events = POLLOUT;
@@ -356,11 +359,17 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 	if (bytesWritten > 0)
 	{
 		_clients[fd].updateLastActivity();
+		std::cout << YEL "reponse sent..." DEF << std::endl;
+		_clients[fd].response.full_response.erase(0, bytesWritten);
+		if (_clients[fd].response.full_response.empty())
+		{
+			// only continue onto the next request after being able to
+			// send everything from the previously processed request
+			std::cout << YEL "full response is empty, change to POLLIN" DEF << std::endl;
+			_clients[fd].response.set_state(PREP);
+			_pollfds[*pollfds_idx].events = POLLIN;
+		}
 
-		// ??? shouldnt the case of the buffer not being fully sent
-		// handled by chunk responses????
-
-		_pollfds[*pollfds_idx].events = POLLIN;
 	}
 	else if (bytesWritten < 0)
 	{

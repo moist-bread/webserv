@@ -6,8 +6,9 @@
 #include <ctime>	  // localtime, strftime
 #include <sys/stat.h> // stat
 
-namespace response_utils {
-	
+namespace response_utils
+{
+
 	std::string backup_error_page(t_status_code status)
 	{
 		std::stringstream ss;
@@ -27,6 +28,8 @@ namespace response_utils {
 		return (ss.str());
 	}
 
+	#define RANGE_LIMIT 32768 // 16kb
+
 	bool range_valid(int file_len, vector2 &ranges)
 	{
 		// Range syntax options
@@ -43,7 +46,7 @@ namespace response_utils {
 		// 			Content-Type: multipart/byteranges; boundary=STRING
 
 		// -- step 1: translate all syntaxes to work the same way
-
+		
 		for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
 		{
 			if ((*it).first != VALUE_NOT_SET && (*it).second == VALUE_NOT_SET)
@@ -54,7 +57,7 @@ namespace response_utils {
 				(*it).second = file_len;
 			}
 			if ((*it).first >= (*it).second || (*it).second > static_cast<int>(file_len) || (*it).first < 0)
-					return (std::cout << (*it).first << " " << (*it).second << std::endl, false);
+				return (std::cout << (*it).first << " " << (*it).second << std::endl, false);
 		}
 
 		// -- step 2: copy map into a vector, sort and then loop to compare one to the next
@@ -63,8 +66,6 @@ namespace response_utils {
 		size_t size_limit = copy_range.size() - 1;
 		std::sort(copy_range.begin(), copy_range.end());
 
-		// for (vector2::iterator it = copy_range.begin(); it != copy_range.end(); it++)
-			// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 		for (size_t i = 0; i < size_limit; i++)
 		{
 			if (std::max(copy_range[i].first, copy_range[i + 1].first) <= std::min(copy_range[i].second, copy_range[i + 1].second))
@@ -73,37 +74,42 @@ namespace response_utils {
 				return (false);
 			}
 		}
+		
 		// for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
-			// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+
+		// -- step 3: force range limit size cap
+		//			  (needs to be after cmp as to not cover up any request errors)
+		for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
+			if ((*it).second - (*it).first  > RANGE_LIMIT)
+				(*it).second = (*it).first +  RANGE_LIMIT;
 
 		return (true);
 	}
-
-	
 
 	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, int size)
 	{
 		// Content-Range syntax:
 
 		// unit =	"bytes"
-		// range =	ranges[i].first"-"ranges[i].second OR * when REQUESTED_RANGE_NOT_SATISFIABLE
+		// range =	ranges[i].first"-"ranges[i].second OR * when RANGE_NOT_SATISFIABLE
 		// size =	total file size OR * when unknown
 
 		//	-> <unit> <range>/<size>	ex: bytes 0-1023/146515
 		//	-> <unit> <range>/*			ex: bytes 67589/*
 		//	-> <unit> */<size>			ex: bytes */67589
-		
+
 		std::string value = "bytes ";
-		if (status == REQUESTED_RANGE_NOT_SATISFIABLE)
+		if (status == RANGE_NOT_SATISFIABLE)
 			value += "*";
 		else
-			value += to_str(range.first) + "-" + to_str(range.second);
+			value += to_str(range.first) + "-" + to_str(range.second - 1);
 		value += "/";
 		if (size == VALUE_NOT_SET)
 			value += "*";
 		else
 			value += to_str(size);
-		return(value);
+		return (value);
 	}
 
 	const char *define_content_type(std::string &extension)
@@ -159,7 +165,7 @@ namespace response_utils {
 		else
 			return ("application/octet-stream");
 	}
-	
+
 	std::string random_name_generator(void)
 	{
 		std::string name;

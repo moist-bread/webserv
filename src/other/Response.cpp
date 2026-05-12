@@ -10,7 +10,8 @@
 
 #define BUFFER_SIZE 4096
 
-namespace response_utils {
+namespace response_utils
+{
 
 	std::string backup_error_page(t_status_code status);
 	bool range_valid(int file_len, vector2 &ranges);
@@ -43,11 +44,11 @@ Response &Response::operator=(Response const &src)
 		this->status_code = src.status_code;
 		this->headers = src.headers;
 		this->body = src.body;
-		
+
 		this->cgi_reply = src.cgi_reply;
-		
+
 		this->full_response = src.full_response;
-		
+
 		set_state(src.get_state());
 	}
 	return (*this);
@@ -55,39 +56,34 @@ Response &Response::operator=(Response const &src)
 
 void Response::process(void)
 {
-	/* while (full_response.empty())
+	while (full_response.empty())
 	{
-		// plan: make responses work in a state machine just like the requests
 		std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-		case BEGIN:
-			clear();
-			set_state(BODY);
+		case PREP:
+			preparations_for_response();
 			break;
-		case BODY:
-			//parse_body(request);
+		case CGI:
+			// send the cgi to be executed here
 			break;
-		case HEADERS:
-			//set_response_headers((*req));
+		case METHODS:
+			execute_methods();
 			break;
-		case END:
-			//assemble_full_response((*req));
+		case HEADERS_RESP:
+			set_response_headers();
+			break;
+		case FULL_RESP:
+			assemble_full_response();
 			break;
 		default:
+			set_state(SEND);
 			return;
 		}
-		if (get_state() == END)
+		if (get_state() == SEND)
 			break;
-	} */
+	}
 
-	preparations_for_response();
-	if (get_state() == END)
-		return ;
-	execute_methods();
-	set_response_headers();
-	assemble_full_response();
-	
 	std::cout << GRN "New Response ";
 	std::cout << UYEL "has been processed" DEF << std::endl;
 	std::cout << *this << std::endl;
@@ -97,13 +93,13 @@ void Response::clear(void)
 {
 	file_length = VALUE_NOT_SET;
 	boundary.clear();
-	
+
 	protocol = H1_0;
 	headers.clear();
 	body.clear();
 	cgi_reply.clear();
 	full_response.clear();
-	set_state(BEGIN);
+	set_state(PREP);
 }
 
 void Response::preparations_for_response(void)
@@ -111,24 +107,30 @@ void Response::preparations_for_response(void)
 	if (!this->req)
 		throw(std::runtime_error("Response was initialized without associated Request"));
 	(*req).set_state(BEGIN);
-	
+
 	// !! check if the path is actually a redirection
 	// HTTP redirect PERMANENT_REDIRECT
 	// Location header to thet new url
 	// no body
-	
+
+	// -- CHECK FOR CGI EXECUTION
+	// set_state(CGI);
+
+	// -- DO SOMETHING ELSE FOR CGI RESPONSE ASSEMBLY
 	if (!cgi_reply.empty())
 	{
+		std::cout << YEL "creating cgi full response..." DEF << std::endl;
 		std::string tmp = cgi_reply;
 		clear();
 		full_response = tmp;
-		set_state(END);
-		return ;
+		set_state(SEND);
+		return;
 	}
 	clear();
 
 	if (status_code != OK)
 		(*req).method = GET;
+	set_state(METHODS);
 }
 
 void Response::execute_methods(void)
@@ -158,18 +160,15 @@ void Response::execute_methods(void)
 		status_code = e.response_status;
 		body.clear();
 		(*req).wanted_ranges.clear();
-		method_get();
+		// --------- change this please
+		method_get(); // replace with error wtv
 	}
+	set_state(HEADERS_RESP);
 }
 
-void Response::set_state(t_http_state new_state) { state = new_state; }
+void Response::set_state(t_response_state new_state) { state = new_state; }
 
-t_http_state Response::get_state(void) const { return (state); }
-
-size_t getMaxRequestBodySize(void)
-{
-	return (4096);
-}
+t_response_state Response::get_state(void) const { return (state); }
 
 void Response::method_get(void)
 {
@@ -197,27 +196,14 @@ void Response::method_get(void)
 		file.seekg(0, file.end);
 		int len = file.tellg();
 		file.seekg(0, file.beg);
-		// std::cout << YEL "size of requested file: " DEF << file_length << std::endl;
-		
-		// -- NOTES; in case of the body being bigger than max_body_len
-		// get the whole body into the str anyways (moderation)
-		// but later only put max_body_len amount into the full body, make it chuncked encoding
-		// erase that part from the str body
-		// later in the server if theres still body at the end, DONT change to POLLIN
-		// keep it in sending chunck mode (header-less)
-		// when body is finally over but the mode is still in chuncked DONT change to POLLIN
-		// send the final empty chunck, clear body and turn chuncked false
-		// change to POLLIN
 
-		// get the whole content
 		if (!(*req).wanted_ranges.empty())
 		{
 			file_length = len;
 			body = create_range_response_body(file, (*req).wanted_ranges);
 		}
 		else
-			body = single_range(file, std::pair<int, int>(0, len));
-			// body = to_str(file.rdbuf());
+			body = to_str(file.rdbuf());
 		file.close();
 	}
 	else
@@ -227,7 +213,7 @@ void Response::method_get(void)
 std::string Response::create_range_response_body(std::ifstream &file, vector2 &ranges)
 {
 	if (!response_utils::range_valid(file_length, ranges))
-		throw(Response::CreateError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
+		throw(Response::CreateError("Incorrect Range header value", RANGE_NOT_SATISFIABLE));
 
 	status_code = PARTIAL_CONTENT;
 	if (ranges.size() > 1)
@@ -243,11 +229,11 @@ std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 	// (translation: 1-70 digits, last can't be a space)
 
 	// boundary := 0*69<bchars> bcharsnospace
-	// bchars := bcharsnospace / " " 
-	// bcharsnospace :=    DIGIT / ALPHA / "'" / "(" / ")" / "+"  / "_" 
-	//			/ "," / "-" / "." / "/" / ":" / "=" / "?" 
+	// bchars := bcharsnospace / " "
+	// bcharsnospace :=    DIGIT / ALPHA / "'" / "(" / ")" / "+"  / "_"
+	//			/ "," / "-" / "." / "/" / ":" / "=" / "?"
 	boundary = response_utils::random_name_generator();
-	
+
 	// ... in a loop
 	// -- step 2: add "--boundary" and headers
 	// -- step 3: read and add selected range part of file until end of ranges
@@ -268,37 +254,37 @@ std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 		content += CRLF;
 	}
 	content += "--" + boundary + "--";
-	return(content);
+	return (content);
 }
 
 std::string Response::single_range(std::ifstream &file, std::pair<int, int> range)
 {
 	// !! SINGLE RANGE
-	
+
 	char buffer[BUFFER_SIZE];
 	std::string content;
-    int read_progress = range.first;
+	int read_progress = range.first;
 	int read_end = range.second;
-	// ----------- POSSIBLE CHNGE: maybe limit read_end a bit when the file is way to big
+	// ----------- POSSIBLE CHNGE: maybe limit read_end a bit when the file is way too big
 	//		to avoid the change of having a 5GB std::string content
 	//		happens when: normal get on big file, any big get range request
-    
-    while (read_progress < read_end)
-    {
-        file.seekg(read_progress);
-        int to_read = (read_end - read_progress > BUFFER_SIZE ? BUFFER_SIZE : read_end - read_progress);
-        file.read(buffer, to_read);
+
+	while (read_progress < read_end)
+	{
+		file.seekg(read_progress);
+		int to_read = (read_end - read_progress > BUFFER_SIZE ? BUFFER_SIZE : read_end - read_progress);
+		file.read(buffer, to_read);
 		if (!file)
 			throw(Response::CreateError("Was unable to read from file", INTERNAL_SERVER_ERROR));
-        // std::cout << "characters read: " << file.gcount() << std::endl;
-        // std::cout << YEL "BUFFER READ FROM " << read_progress << " UNTIL ";
-        read_progress += file.gcount();
-        std::string tmp (buffer, file.gcount());
+		// std::cout << "characters read: " << file.gcount() << std::endl;
+		// std::cout << YEL "BUFFER READ FROM " << read_progress << " UNTIL ";
+		read_progress += file.gcount();
+		std::string tmp(buffer, file.gcount());
 		content += tmp;
-        // std::cout << read_progress << ":\n" DEF;
-        // std::cout << tmp;
-        // std::cout << YEL "\n--end of buffer\n" DEF;
-    }
+		// std::cout << read_progress << ":\n" DEF;
+		// std::cout << tmp;
+		// std::cout << YEL "\n--end of buffer\n" DEF;
+	}
 	return (content);
 }
 
@@ -456,8 +442,7 @@ void Response::handle_multipart_form(void)
 				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
 			// -- CAN I EVEN USE MKDIR????
-			if (!opendir(("www" + (*req).path_uri + "uploads/").c_str()) \
-					&& mkdir(("www" + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
+			if (!opendir(("www" + (*req).path_uri + "uploads/").c_str()) && mkdir(("www" + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
@@ -508,8 +493,8 @@ void Response::method_delete(void)
 	if (res == 0)
 	{
 		std::cout << "File deleted" << std::endl;
-		status_code = NO_CONTENT; // success
 		// can also be 200 OK if i want to send an html describing the outcome
+		status_code = NO_CONTENT; // success
 	}
 	else
 		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
@@ -517,44 +502,44 @@ void Response::method_delete(void)
 
 void Response::set_response_headers(void)
 {
-	// NOT WORKING FOR THE NOT SATISFIABLE CASE
-	if ((*req).wanted_ranges.size() == 1 || status_code == REQUESTED_RANGE_NOT_SATISFIABLE)
+	if ((*req).wanted_ranges.size() == 1 || status_code == RANGE_NOT_SATISFIABLE)
 		headers["Content-Range"] = response_utils::create_header_content_range(*((*req).wanted_ranges.begin()), status_code, file_length);
 
 	headers["Content-Length"] = to_str(body.size());
-	
+
 	if (!body.empty())
 	{
 		struct stat sb;
 		if (stat((*req).path_uri.c_str(), &sb) != -1)
 			headers["Last-Modified"] = response_utils::date_format(sb.st_mtime);
 
-		if ((*req).wanted_ranges.size() < 2) 
+		if ((*req).wanted_ranges.size() < 2)
 			headers["Content-Type"] = response_utils::define_content_type((*req).file_extension);
 		else
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
-	
 	}
-	
+
 	if ((*req).headers.find("connection") != (*req).headers.end())
 		headers["Connection"] = (*req).headers["connection"];
 	else
 		headers["Connection"] = "keep-alive";
 
 	headers["Date"] = response_utils::date_format(std::time(NULL));
+	set_state(FULL_RESP);
 }
 
 void Response::assemble_full_response(void)
 {
 	std::stringstream ss;
-	
-	ss << HTTP::stringProtocol((*req).protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
+
+	ss << HTTP::stringProtocol(H1_0) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
 	ss << CRLF;
 	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
 		ss << (*it).first << ": " << (*it).second << CRLF;
 	ss << CRLF;
 	ss << body;
 	full_response = ss.str();
+	set_state(SEND);
 }
 
 std::ostream &operator<<(std::ostream &out, Response &src)
@@ -567,14 +552,14 @@ std::ostream &operator<<(std::ostream &out, Response &src)
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	out << YEL "Body..." DEF << std::endl;
-	if (src.headers["Content-Type"] == "image/vnd.microsoft.icon")
-		out << "[PAGE ICON IMAGE]" << std::endl;
+	if (src.headers["Content-Type"] == "image/vnd.microsoft.icon" || src.headers["Content-Type"] == "image/png" || src.headers["Content-Type"] == "video/mp4" )
+		out << "[IMAGE]" << std::endl;
 	else
 		out << src.body << std::endl;
-	/*
+/* 
 	if (!src.full_response.empty())
 		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl;
-	*/
 	out << std::endl;
+*/
 	return (out);
 }

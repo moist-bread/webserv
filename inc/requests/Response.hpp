@@ -7,6 +7,18 @@
 
 class Request;
 
+// == enums
+
+enum t_response_state
+{
+	PREP,
+	CGI,
+	METHODS,
+	HEADERS_RESP,
+	FULL_RESP,
+	SEND
+};
+
 // =====>┊( RESPONSE )┊
 
 class Response
@@ -22,19 +34,19 @@ public:
 	void clear(void);
 
 	// state machine
-	void set_state(t_http_state new_state);
-	t_http_state get_state(void) const;
+	void set_state(t_response_state new_state);
+	t_response_state get_state(void) const;
 
 	// getters for private vars
 
-//private:
+	// private:
 	void method_get(void);
 	std::string create_autoindexing_page(void);
 	std::string assemble_content_path(t_status_code status_code); // CAN BE AN UTILS
 	std::string create_range_response_body(std::ifstream &file, vector2 &ranges);
 	std::string multiple_range(std::ifstream &file, vector2 &ranges);
 	std::string single_range(std::ifstream &file, std::pair<int, int> range);
-	
+
 	void method_post(void);
 	void handle_application_form(void);
 	void handle_multipart_form(void);
@@ -69,7 +81,7 @@ public:
 
 private:
 	Response(void);
-	t_http_state state;
+	t_response_state state;
 };
 
 std::ostream &operator<<(std::ostream &out, Response &src);

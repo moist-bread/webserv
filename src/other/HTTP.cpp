@@ -19,7 +19,7 @@ HTTP &HTTP::operator=(HTTP const &source)
 t_method HTTP::getMethod(const std::string &strMethod)
 {
 	size_t number_methods = (sizeof(_method_names) / sizeof(_method_names[0]));
-	for (size_t i = 0; i < number_methods;i++)
+	for (size_t i = 0; i < number_methods; i++)
 	{
 		if (!strMethod.compare(_method_names[i]))
 			return (static_cast<t_method>(i));
@@ -110,14 +110,14 @@ std::string HTTP::getReasonPhrase(t_status_code status_code)
 		return ("Length Required");
 	case PRECONDITION_FAILED:
 		return ("Precondition Failed");
-	case REQUEST_ENTITY_TOO_LARGE:
-		return ("Request Entity Too Large");
-	case REQUEST_URL_TOO_LONG:
-		return ("Request-url Too Long");
+	case CONTENT_TOO_LARGE:
+		return ("Content Too Large");
+	case URI_TOO_LONG:
+		return ("URI Too Long");
 	case UNSUPPORTED_MEDIA_TYPE:
 		return ("Unsupported Media Type");
-	case REQUESTED_RANGE_NOT_SATISFIABLE:
-		return ("Requested Range Not Satisfiable");
+	case RANGE_NOT_SATISFIABLE:
+		return ("Range Not Satisfiable");
 	case EXPECTATION_FAILED:
 		return ("Expectation Failed");
 	case INTERNAL_SERVER_ERROR:

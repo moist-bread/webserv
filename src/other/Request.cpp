@@ -4,6 +4,8 @@
 #include <algorithm> // transform, strtod
 #include <cmath>	 // HUGE_VAL
 
+#define URI_LIMIT 2000
+
 Request::Request(void) { clear(); }
 
 Request::Request(Request const &src) { *this = src; }
@@ -52,11 +54,6 @@ void Request::process(std::string request)
 		case BODY:
 			parse_body(request);
 			break;
-		/*
-		case CHUNCK:
-			parse_chunck(request);
-			break;
-		*/
 		default:
 			request.clear();
 		}
@@ -125,11 +122,16 @@ void Request::parse_request_line(std::string &request)
 	// -- GET PROTOCOL
 	protocol = HTTP::getProtocol(extract(&request, CRLF));
 
+	if (query.size() + path_uri.size() > URI_LIMIT)
+		throw(Request::ParseError("Client request URI has surpassed the Server's limit", URI_TOO_LONG));
+
 	set_state(HEADERS);
 }
 
 void Request::parse_request_headers(std::string &request)
 {
+	// !! make this function less strict
+	
 	headers = extract_key_value(&request, ":", CRLF);
 	request.erase(0, 2);
 	set_state(BODY);
@@ -137,8 +139,14 @@ void Request::parse_request_headers(std::string &request)
 	parse_range_header();
 }
 
+size_t getMaxRequestBodySize(void)
+{
+	return (1000000);
+}
+
 void Request::parse_body(std::string &request)
 {
+
 	// !! Content-Length > Actual Length
 	// If the Content-Length is larger than the actual length,
 	// after reading to the end of the message, the server/client
@@ -161,21 +169,14 @@ void Request::parse_body(std::string &request)
 	body += request.substr(0, content_length - content_read);
 	content_read += content_length - content_read;
 	request.clear();
+	
+	if (body.size() > getMaxRequestBodySize())
+		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
 
 	// -- parse the body
 	parse_forms();
 	set_state(END);
 }
-
-/*
-void Request::parse_chunck(std::string &request)
-{
-	// !! The terminating block is a regular chunk except for its length being 0
-
-	request.clear();
-	set_state(END);
-}
-*/
 
 void Request::validade_request(void)
 {
@@ -295,7 +296,7 @@ void Request::parse_range_header(void)
 		wanted_ranges.push_back(std::pair<int, int>(range_start, range_end));
 	}
 	if (wanted_ranges.empty())
-		throw(Request::ParseError("Incorrect Range header value", REQUESTED_RANGE_NOT_SATISFIABLE));
+		throw(Request::ParseError("Incorrect Range header value", RANGE_NOT_SATISFIABLE));
 }
 
 void Request::parse_forms(void)
@@ -466,9 +467,9 @@ map_strings Request::extract_key_value(std::string *src, std::string sep, std::s
 	return (map);
 }
 
-void Request::set_state(t_http_state new_state) { state = new_state; }
+void Request::set_state(t_request_state new_state) { state = new_state; }
 
-t_http_state Request::get_state(void) const { return (state); }
+t_request_state Request::get_state(void) const { return (state); }
 
 std::ostream &operator<<(std::ostream &out, Request &src)
 {
