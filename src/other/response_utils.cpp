@@ -9,6 +9,8 @@
 namespace response_utils
 {
 
+	bool is_error(t_status_code code) {	return (code >= 400 ? true : false); }
+	
 	std::string backup_error_page(t_status_code status)
 	{
 		std::stringstream ss;
@@ -28,7 +30,7 @@ namespace response_utils
 		return (ss.str());
 	}
 
-	#define RANGE_LIMIT 32768 // 16kb
+	#define RANGE_LIMIT 65536 // 64kb
 
 	bool range_valid(int file_len, vector2 &ranges)
 	{

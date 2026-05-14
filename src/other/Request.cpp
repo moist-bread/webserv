@@ -147,6 +147,9 @@ size_t getMaxRequestBodySize(void)
 void Request::parse_body(std::string &request)
 {
 
+	if (body.size() > getMaxRequestBodySize()) // !! error: this made the port 8080 stop working...
+		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
+
 	// !! Content-Length > Actual Length
 	// If the Content-Length is larger than the actual length,
 	// after reading to the end of the message, the server/client
@@ -170,8 +173,7 @@ void Request::parse_body(std::string &request)
 	content_read += content_length - content_read;
 	request.clear();
 	
-	if (body.size() > getMaxRequestBodySize())
-		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
+	
 
 	// -- parse the body
 	parse_forms();
@@ -520,7 +522,6 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 		out << BLU "Wanted ranges from header..." DEF << std::endl;
 		for (vector2::iterator it = src.wanted_ranges.begin(); it != src.wanted_ranges.end(); it++)
 			out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-		// sleep (10);
 	}
 	return (out);
 }

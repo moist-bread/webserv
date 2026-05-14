@@ -13,6 +13,7 @@
 namespace response_utils
 {
 
+	bool is_error(t_status_code code);
 	std::string backup_error_page(t_status_code status);
 	bool range_valid(int file_len, vector2 &ranges);
 	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, int size);
@@ -65,6 +66,7 @@ void Response::process(void)
 			preparations_for_response();
 			break;
 		case CGI:
+			execute_cgi();
 			// send the cgi to be executed here
 			break;
 		case METHODS:
@@ -112,12 +114,10 @@ void Response::preparations_for_response(void)
 	// HTTP redirect PERMANENT_REDIRECT
 	// Location header to thet new url
 	// no body
-
-	// -- CHECK FOR CGI EXECUTION
-	// set_state(CGI);
-
+	
 	// -- DO SOMETHING ELSE FOR CGI RESPONSE ASSEMBLY
-	if (!cgi_reply.empty())
+	// !! continue working here
+	if (!cgi_reply.empty() && !response_utils::is_error(status_code))
 	{
 		std::cout << YEL "creating cgi full response..." DEF << std::endl;
 		std::string tmp = cgi_reply;
@@ -128,7 +128,7 @@ void Response::preparations_for_response(void)
 	}
 	clear();
 
-	if (status_code != OK)
+	if (response_utils::is_error(status_code))
 		(*req).method = GET;
 	set_state(METHODS);
 }
@@ -166,6 +166,11 @@ void Response::execute_methods(void)
 	set_state(HEADERS_RESP);
 }
 
+void Response::execute_cgi(void)
+{
+	;
+}
+
 void Response::set_state(t_response_state new_state) { state = new_state; }
 
 t_response_state Response::get_state(void) const { return (state); }
@@ -197,7 +202,7 @@ void Response::method_get(void)
 		int len = file.tellg();
 		file.seekg(0, file.beg);
 
-		if (!(*req).wanted_ranges.empty())
+		if (!response_utils::is_error(status_code) && !(*req).wanted_ranges.empty())
 		{
 			file_length = len;
 			body = create_range_response_body(file, (*req).wanted_ranges);
@@ -357,14 +362,13 @@ std::string Response::create_autoindexing_page(void)
 	return (ss.str());
 }
 
+
 std::string Response::assemble_content_path(t_status_code status_code)
 {
 	std::string path;
-	if (status_code != OK)
+	if (response_utils::is_error(status_code))
 	{
-		// in case of error
-		// look at the config to see which error page to send
-		// (later) consider default error pages from config
+		// --- look at the config to see which error page to send
 		path = "www/404.html";
 		(*req).file_extension = "html";
 	}
@@ -502,8 +506,10 @@ void Response::method_delete(void)
 
 void Response::set_response_headers(void)
 {
-	if ((*req).wanted_ranges.size() == 1 || status_code == RANGE_NOT_SATISFIABLE)
-		headers["Content-Range"] = response_utils::create_header_content_range(*((*req).wanted_ranges.begin()), status_code, file_length);
+	if ((*req).wanted_ranges.size() == 1)
+		headers["Content-Range"] = response_utils::create_header_content_range((*req).wanted_ranges[0], status_code, file_length);
+	else if (status_code == RANGE_NOT_SATISFIABLE)
+		headers["Content-Range"] = response_utils::create_header_content_range(std::pair<int, int>(VALUE_NOT_SET, VALUE_NOT_SET), status_code, file_length);
 
 	headers["Content-Length"] = to_str(body.size());
 
@@ -519,7 +525,9 @@ void Response::set_response_headers(void)
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
 	}
 
-	if ((*req).headers.find("connection") != (*req).headers.end())
+	if (status_code == CONTENT_TOO_LARGE) // close, else it will continue trying to send the file
+		headers["Connection"] = "close";
+	else if ((*req).headers.find("connection") != (*req).headers.end())
 		headers["Connection"] = (*req).headers["connection"];
 	else
 		headers["Connection"] = "keep-alive";

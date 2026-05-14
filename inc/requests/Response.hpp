@@ -55,6 +55,7 @@ public:
 
 	void preparations_for_response(void);
 	void execute_methods(void);
+	void execute_cgi(void);
 	void set_response_headers(void);
 	void assemble_full_response(void);
 

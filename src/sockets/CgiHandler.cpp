@@ -6,7 +6,7 @@
 #include <fstream>		// fstream, perror
 #include <algorithm>	// transform, EXIT_FAILURE
 
-CgiHandler::CgiHandler(void) : time_started(-1) {}
+CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
 CgiHandler::CgiHandler(CgiHandler const &source)
 {
@@ -37,6 +37,7 @@ CgiHandler::CgiHandler(Request &src)
 }
 void CgiHandler::process(Request &src)
 {
+	std::cout << "-- THIS IS A CGI!!!!!!!" << std::endl;
 	clear();
 	update_info(src);
 	executeCgi();
@@ -53,7 +54,7 @@ void CgiHandler::clear()
 	_compiler.clear();
 	_scriptPath.clear();
 	_env.clear();
-	time_started = -1;
+	time_started = VALUE_NOT_SET;
 }
 
 void CgiHandler::update_info(Request &src)
@@ -121,18 +122,11 @@ std::string CgiHandler::extract_path_info(std::string full_path)
 int CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
-	{
 		throw(std::runtime_error("pipe failure"));
-		return -1; // WHAT TO DO IN CASE OF -1????
-	}
 
 	this->_pid = fork();
 	if (_pid == -1)
-	{
-		std::cout << "Something went wrong while doing fork" << std::endl;
 		throw(std::runtime_error("fork failure"));
-		return -1;
-	}
 	else if (_pid >= 1)
 	{
 		std::cout << "------ Parent process ------" << std::endl;
@@ -164,49 +158,32 @@ int CgiHandler::executeCgi()
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
 		exec_env.push_back(NULL);
 
-		/*
-		// -- testing only env
-		char **envp = &exec_env[0];
-		std::cerr << "\nCGI env:\n";
-		for (size_t i = 0; i < _env.size(); i++)
-		std::cerr << envp[i] << std::endl;
-		// --
-		*/
-
 		execve(argv[0], argv, &exec_env[0]);
 		perror("execve failed");
 		_exit(EXIT_FAILURE);
-		time_started = -1;
+		time_started = VALUE_NOT_SET;
 	}
 	time_started = std::time(NULL);
-	// !!!!!! WHAT TO DO IN CASE OF CGI ERROR
 	return 1;
 }
 
 int CgiHandler::InitPipes()
 {
 	if (pipe(this->_pipeIn) == -1)
-	{
-		std::cout << "Something went wrong while doing pipe" << std::endl;
 		return -1;
-	}
 
 	if (pipe(this->_pipeOut) == -1)
-	{
-		std::cout << "Something went wrong while doing pipe" << std::endl;
 		return -1;
-	}
 	return 0;
 }
 
-int CgiHandler::writeBodyToCgiInput() const
+int CgiHandler::writeBodyToCgiInput() const // does this really need to retyurn when we are throwing?
 {
 	if (!_body.empty())
 	{
 		ssize_t n = write(this->_pipeIn[1], _body.c_str(), _body.size());
 		if (n <= 0)
 		{
-			std::cout << "write() failed" << std::endl;
 			close(this->_pipeIn[1]);
 			throw(std::runtime_error("write failure"));
 			return -1;
@@ -214,7 +191,7 @@ int CgiHandler::writeBodyToCgiInput() const
 	}
 
 	// if we verify CLOSE SUCCESS HERE we should to the same everywhere
-	if (close(this->_pipeIn[1]) == -1)
+	if (close(this->_pipeIn[1]) == -1) // !!!!!!!!!!!!!!!!
 	{
 		std::cout << "close(_pipeIn[1]) failed" << std::endl;
 		throw(std::runtime_error("close failure"));
@@ -222,18 +199,6 @@ int CgiHandler::writeBodyToCgiInput() const
 	}
 
 	return 0;
-}
-
-char **CgiHandler::create_execve_env(void) const
-{
-	// !! PROBLEMS HERE !!!!
-	static std::vector<char *> exec_env;
-	exec_env.clear();
-	for (size_t i = 0; i < _env.size(); i++)
-		exec_env.push_back(const_cast<char *>(_env[i].c_str()));
-	exec_env.push_back(NULL);
-
-	return (&exec_env[0]);
 }
 
 int CgiHandler::getPipeOutReadFd() const

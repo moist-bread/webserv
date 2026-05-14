@@ -24,7 +24,6 @@ private:
 	int executeCgi();
 	int InitPipes();
 	int writeBodyToCgiInput() const;
-	char **create_execve_env(void) const;
 	static std::string extract_script_filename(std::string full_path);
 	static std::string extract_path_info(std::string full_path);
 
@@ -45,6 +44,6 @@ public:
 	class CgiExecutionFail : public std::exception
 	{
 	public:
-		const char *what(void) const throw() { return ("execution failure"); }
+		const char *what(void) const throw() { return ("cgi execution failure"); }
 	};
 };

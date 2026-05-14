@@ -8,11 +8,15 @@
 #include <unistd.h> // !! sleep for debug
 
 // TO-DO
+// [ ] fix cgi responses
 // [ ] do chuncked RESPONSES (e.g., dynamically generated content like CGI, streaming APIs)
 // [ ] make it so that the request can stop in the middle of the headers and then cotinue!!
 // [ ] create a static Inspect class for debug prints
 // [ ] adapt better for config incorporation
 // [ ] vefify LWS (linear whitespace) better
+
+// !! Requirements
+// - A request to your server should never hang indefinitely. (issue: sending a large file)
 
 // =====>┊( REQUEST )┊
 
