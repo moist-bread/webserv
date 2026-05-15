@@ -1,7 +1,7 @@
 #include "../../inc/requests/Request.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <algorithm> // transform, strtod
+#include <algorithm> // strtod
 #include <cmath>	 // HUGE_VAL
 
 #define URI_LIMIT 2000
@@ -27,7 +27,7 @@ Request &Request::operator=(Request const &src)
 		this->multi_form = src.multi_form;
 		this->content_length = src.content_length;
 		this->content_read = src.content_read;
-		this->chuncked_body = src.chuncked_body;
+		// this->chunked_body = src.chunked_body;
 		this->wanted_ranges = src.wanted_ranges;
 		set_state(src.get_state());
 	}
@@ -78,7 +78,7 @@ void Request::clear(void)
 	content_length = VALUE_NOT_SET;
 	content_read = 0;
 
-	chuncked_body = false;
+	// chunked_body = false;
 
 	wanted_ranges.clear();
 
@@ -129,10 +129,22 @@ void Request::parse_request_line(std::string &request)
 }
 
 void Request::parse_request_headers(std::string &request)
-{
-	// !! make this function less strict
+{	
+	if (!temp_headers.empty())
+	{
+		request.insert(0, temp_headers);
+		temp_headers.clear();
+	}
+
+	// see if the end of the header already exists or not
+	// if not: keep waiting for for requets (until timeout if needed)
+	if (request.find(CRLF CRLF) == std::string::npos)
+	{
+		temp_headers = request;
+		return (request.clear());
+	}
 	
-	headers = extract_key_value(&request, ":", CRLF);
+	headers = HTTP::extract_key_value(&request, ":", CRLF);
 	request.erase(0, 2);
 	set_state(BODY);
 	update_content_length(request);
@@ -172,19 +184,30 @@ void Request::parse_body(std::string &request)
 	body += request.substr(0, content_length - content_read);
 	content_read += content_length - content_read;
 	request.clear();
-	
-	
 
 	// -- parse the body
 	parse_forms();
 	set_state(END);
 }
 
+bool acceptedMethod(t_method method, std::string loc)
+{
+	(void)loc;
+	if (method != UNSUPPORTED_METHOD)
+		return (true);
+	else
+		return (false);
+}
+
 void Request::validade_request(void)
 {
-	// !! check if method is valid for the locations in config !!
-	// !! see if DELETE has body, if so PARSEERROR
-	// throw(Request::ParseError("Invalid method \"" + method_names[method] + "\"" , METHOD_NOT_ALLOWED));
+	// !! probably will need more things
+
+	if (!acceptedMethod(method, path_uri))
+		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"" , METHOD_NOT_ALLOWED));
+
+	if (method == DELETE && !body.empty())
+		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
 }
 
 void Request::update_content_length(std::string &request)
@@ -211,14 +234,14 @@ void Request::update_content_length(std::string &request)
 	}
 	else if (headers.find("transfer-encoding") != headers.end())
 	{
-		// when the request has transfer encoding chuncked
+		// when the request has transfer encoding chunked
 		// request body will have to be read differently?
 		if (protocol != H1_1)
 			throw(Request::ParseError("Transfer-Encoding not supported for specified HTTP version", BAD_REQUEST));
-		if (headers["transfer-encoding"] == "chuncked")
-			chuncked_body = true;
-		else
-			throw(Request::ParseError("Unsupported Transfer-Encoding directive", BAD_REQUEST));
+		// if (headers["transfer-encoding"] == "chunked")
+			// chunked_body = true;
+		// else
+		throw(Request::ParseError("Unsupported Transfer-Encoding directive", BAD_REQUEST));
 	}
 	else if (request.size())
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
@@ -316,7 +339,7 @@ void Request::format_application_form(void)
 {
 	// turn body into json format...
 	std::string remaining_body = body;
-	map_strings json_values = extract_key_value(&remaining_body, "=", "&");
+	map_strings json_values = HTTP::extract_key_value(&remaining_body, "=", "&");
 	json += "{";
 	for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
 	{
@@ -338,7 +361,7 @@ void Request::format_multipart_form(std::string type)
 	// extract boundary string from the content type header
 	size_t pin = type.find("boundary=");
 	if (pin == std::string::npos)
-		throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+		throw(Request::ParseError("Miss formated request set bound", BAD_REQUEST));
 	std::string boundary_str = "--" + type.substr(pin + 9, type.length() - pin);
 
 	// std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
@@ -353,16 +376,19 @@ void Request::format_multipart_form(std::string type)
 		// std::cout << RED "STARTING POINT: " DEF << pin << std::endl;
 		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
 		if (pin == std::string::npos)
-			throw(Request::ParseError("Miss formated request", BAD_REQUEST)); // SOMETHING IS WRONG
+			throw(Request::ParseError("Miss formated request skip first bound", BAD_REQUEST));
 		part.data = remaining_body.substr(pin + boundary_str.size() + 2);
 		pin = part.data.find(boundary_str);
 		// std::cout << RED "END: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
-			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+			throw(Request::ParseError("Miss formated request find next bound", BAD_REQUEST));
 
 		part.data.erase(pin - 2, part.data.size() - pin + 4);
-		remaining_body.erase(0, boundary_str.size() + 3 + part.data.size());
 		// std::cout << RED "PART: \n" DEF << "|" << part.data << "|" << std::endl;
+
+		// std::cout << RED "REMAINING BODY b4 erase: \n" DEF << remaining_body << std::endl;
+		remaining_body.erase(0, (!remaining_body.compare(0, 2, CRLF) ? 2 : 0) + boundary_str.size() + 2 + part.data.size());
+		// std::cout << RED "REMAINING BODY after erase: \n" DEF << remaining_body << std::endl;
 
 		std::string line;
 		size_t end_line;
@@ -375,17 +401,17 @@ void Request::format_multipart_form(std::string type)
 			int comp = part.data.compare(pin + 21, 11, "form-data; ");
 			// std::cout << "compare: " << comp << std::endl;
 			if (comp)
-				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+				throw(Request::ParseError("Miss formated request form data", BAD_REQUEST));
 
 			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+				throw(Request::ParseError("Miss formated request end of cont disp", BAD_REQUEST));
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 32);
 			// std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
 			// std::cout << RED "cont dis line: \n" DEF << line << std::endl;
-			part.content_disposition = extract_key_value(&line, "=", "; ");
+			part.content_disposition = HTTP::extract_key_value(&line, "=", "; ");
 		}
 
 		// see if it has content-type
@@ -396,7 +422,7 @@ void Request::format_multipart_form(std::string type)
 		{
 			end_line = part.data.find(CRLF, pin);
 			if (end_line == std::string::npos)
-				throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+				throw(Request::ParseError("Miss formated request end of cont type", BAD_REQUEST));
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 14);
@@ -407,7 +433,7 @@ void Request::format_multipart_form(std::string type)
 		if (!part.data.compare(0, 2, CRLF))
 			part.data.erase(0, 2);
 		else
-			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+			throw(Request::ParseError("Miss formated request empty line after headers", BAD_REQUEST));
 
 		multi_form.push_back(part);
 
@@ -416,7 +442,7 @@ void Request::format_multipart_form(std::string type)
 		// std::cout << RED "finding: " DEF << boundary_str + "--" << std::endl;
 		// std::cout << RED "LASTPART: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
-			throw(Request::ParseError("Miss formated request", BAD_REQUEST));
+			throw(Request::ParseError("Miss formated request closing bound", BAD_REQUEST));
 		if (pin == 0)
 			break;
 	}
@@ -432,41 +458,6 @@ std::string Request::extract(std::string *src, const char *sep) const
 	(*src).erase(0, len + (static_cast<std::string>(sep)).length());
 
 	return (segment);
-}
-
-map_strings Request::extract_key_value(std::string *src, std::string sep, std::string delim) const
-{
-	map_strings map;
-	std::string key;
-	std::string value;
-	size_t len;
-	size_t lws;
-
-	while (!(*src).empty())
-	{
-		// -- get the key name
-		if ((*src).find(CRLF) == 0)
-			break;
-		len = (*src).find(sep);
-		if (len == std::string::npos)
-			break;
-		key = (*src).substr(0, len);
-		// a header is a case-insensitive name
-		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		(*src).erase(0, len + sep.length());
-
-		// -- get the value content
-		len = (*src).find(delim);
-		if (len == std::string::npos)
-			len = (*src).size();
-		lws = (*src).find_first_not_of(" \t\n\v\f\r"); // !!!!!! verify lws better
-		if (lws == std::string::npos)
-			lws = 0;
-		value = (*src).substr(lws, len - lws);
-		(*src).erase(0, len + delim.length());
-		map[key] = value;
-	}
-	return (map);
 }
 
 void Request::set_state(t_request_state new_state) { state = new_state; }
@@ -490,7 +481,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-	if (!src.body.empty())
+	/* if (!src.body.empty())
 	{
 		out << BLU "Body..." DEF << std::endl;
 		out << src.body << std::endl;
@@ -516,7 +507,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 			out << BLU "Data..." DEF << std::endl;
 			out << "|" << (*it).data << "|" << std::endl;
 		}
-	}
+	} */
 	if (!src.wanted_ranges.empty())
 	{
 		out << BLU "Wanted ranges from header..." DEF << std::endl;

@@ -13,6 +13,7 @@ enum t_response_state
 {
 	PREP,
 	CGI,
+	CHUNK,
 	METHODS,
 	HEADERS_RESP,
 	FULL_RESP,
@@ -31,7 +32,7 @@ public:
 	Response &operator=(Response const &src);
 
 	void process(void);
-	void clear(void);
+	void clear(bool all);
 
 	// state machine
 	void set_state(t_response_state new_state);
@@ -41,6 +42,7 @@ public:
 
 	// private:
 	void method_get(void);
+	void error_response(void);
 	std::string create_autoindexing_page(void);
 	std::string assemble_content_path(t_status_code status_code); // CAN BE AN UTILS
 	std::string create_range_response_body(std::ifstream &file, vector2 &ranges);
@@ -55,7 +57,8 @@ public:
 
 	void preparations_for_response(void);
 	void execute_methods(void);
-	void execute_cgi(void);
+	void cgi_response(void);
+	void chunk_response(void);
 	void set_response_headers(void);
 	void assemble_full_response(void);
 
@@ -77,6 +80,7 @@ public:
 	std::string body;
 
 	std::string cgi_reply;
+	bool is_chunked;
 
 	std::string full_response;
 

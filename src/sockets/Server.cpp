@@ -3,13 +3,13 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <unistd.h>	// close, read
+#include <unistd.h> // close, read
 #include <ctime>	// time, difftime
 #include <stdio.h>	// perror
 #include <fcntl.h>	// fcntl
 
 #define TIMEOUT_TIME 120
-#define READ_BUFFER_SIZE 65536 // 64kb
+#define READ_BUFFER_SIZE 65536 // 64kb per second
 
 extern bool running;
 
@@ -112,7 +112,7 @@ void Server::removeClient(int fd, size_t &index)
 {
 	std::cout << RED "REMOVING THE CLIENT " DEF << fd << "\n";
 	_clients.erase(fd);
-	for (std::map<int, int>::iterator it = _cgiMap.begin(); it !=_cgiMap.end(); it++)
+	for (std::map<int, int>::iterator it = _cgiMap.begin(); it != _cgiMap.end(); it++)
 	{
 		if (it->second == fd)
 		{
@@ -140,13 +140,13 @@ void Server::launch()
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
 			int fd = _pollfds[i].fd;
-			
+
 			if (!running && _clients.find(fd) != _clients.end())
 			{
 				removeClient(fd, i);
 				continue;
 			}
-			
+
 			// --- CASO 1: NOVA CONEXÃO ---
 			if (isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 				accepter(fd);
@@ -166,7 +166,6 @@ void Server::launch()
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
 			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 				inactivityTimeout(fd, &i);
-			
 		}
 		std::cout << "== DONE ===" << std::endl;
 	}
@@ -215,10 +214,10 @@ int Server::responder(int clientFd, const std::string &data)
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
- 
+
 	_clients[clientFd].cgi.time_started = VALUE_NOT_SET;
- 
-	//Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
+
+	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
 	if (_pollfds[*pollfds_idx].revents & POLLERR)
 	{
 		std::cerr << "[CGI] POLLERR no pipe — a gerar resposta de erro\n";
@@ -236,21 +235,30 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			}
 		return;
 	}
- 
+
 	//  Ler do tubo
 	char buffer[READ_BUFFER_SIZE];
 	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
- 
+
 	if (bytesRead > 0)
 	{
-		_clients[clientFd].response.cgi_reply += std::string(buffer, bytesRead);
-		// !! maybe send right away here with encoding chuncked
+		_clients[clientFd].response.cgi_reply = std::string(buffer, bytesRead);
+		for (size_t j = 0; j < _pollfds.size(); j++)
+		{
+			if (_pollfds[j].fd == clientFd)
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
+		}
+		// !! maybe send right away here with encoding chunked
 		// and then later send the finishing chunck when it gets the 0
 	}
 	else if (bytesRead == 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
 	{
 		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
- 
+		_clients[clientFd].response.cgi_reply.clear();
+
 		//  Fechar e limpar o tubo
 		close(fd);
 		_cgiMap.erase(fd);
@@ -264,11 +272,11 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			Fix: agora se o full_response estiver vazio apos o CGI terminar significa que o script
 			falhou silenciosamente e ainda recebe um INTERNAL_SERVER_ERROR
 		*/
-		if (_clients[clientFd].response.cgi_reply.empty())
-        {
-            std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
-            _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-        }
+		if (_clients[clientFd].response.cgi_reply.empty() && !_clients[clientFd].response.is_chunked)
+		{
+			std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
+			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
+		}
 
 		// Acordar o Cliente! Passar o cliente para POLLOUT para ele enviar a resposta
 		for (size_t j = 0; j < _pollfds.size(); j++)
@@ -279,9 +287,9 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 				break;
 			}
 		}
-		std::cout << YEL "-- CGI Response --" DEF "\n\n";
-		std::cout << YEL "Body..." DEF << std::endl;
-		std::cout << _clients[clientFd].response.cgi_reply << std::endl;
+		// std::cout << YEL "-- CGI Response --" DEF "\n\n";
+		// std::cout << YEL "Body..." DEF << std::endl;
+		// std::cout << _clients[clientFd].response.cgi_reply << std::endl;
 	}
 	else // will see if all of this is necessary in the future
 	{
@@ -302,17 +310,17 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 	}
 }
 
-bool acceptedCGI(std::string cgi_type, std::string loc)
+bool allowedCGI(std::string cgi_type, std::string loc)
 {
 	(void)loc;
 	if (cgi_type == "py")
-		return(true);
+		return (true);
 	return (false);
 }
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 {
-	char tmp[READ_BUFFER_SIZE]; // 64kb por segundo
+	char tmp[READ_BUFFER_SIZE];
 	int ret = recv(fd, tmp, READ_BUFFER_SIZE, 0);
 
 	ConnectionStatus status = getStatus(ret);
@@ -321,8 +329,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	std::string rec = std::string(tmp, ret);
 	std::cout << std::endl;
-	std::cout << "Raw Request:" << std::endl;
-	std::cout << rec << std::endl;
+	// std::cout << "Raw Request:" << std::endl;
+	// std::cout << rec << std::endl;
 	std::cout << "Bytes recebidos: " << ret << std::endl;
 
 	_clients[fd].response.status_code = OK;
@@ -336,19 +344,19 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		_clients[fd].request.set_state(END);
 		_clients[fd].response.status_code = e.request_status;
 		_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
-		return ;
+		return;
 	}
 
 	_clients[fd].updateLastActivity();
 
-	if (_clients[fd].request.get_state() != END) 
+	if (_clients[fd].request.get_state() != END)
 	{
 		std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
-		return ;
+		return;
 	}
 
 	// start the cgi execution right away
-	if (acceptedCGI(_clients[fd].request.file_extension, _clients[fd].request.path_uri))
+	if (allowedCGI(_clients[fd].request.file_extension, _clients[fd].request.path_uri))
 	{
 		try
 		{
@@ -376,7 +384,7 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 	if (bytesWritten > 0)
 	{
 		_clients[fd].updateLastActivity();
-		std::cout << YEL "reponse sent..." DEF << std::endl;
+		std::cout << YEL "response sent..." DEF << std::endl;
 		_clients[fd].response.full_response.erase(0, bytesWritten);
 		if (_clients[fd].response.full_response.empty())
 		{
@@ -386,7 +394,6 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 			_clients[fd].response.set_state(PREP);
 			_pollfds[*pollfds_idx].events = POLLIN;
 		}
-
 	}
 	else if (bytesWritten < 0)
 	{

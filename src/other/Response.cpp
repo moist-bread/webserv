@@ -7,6 +7,8 @@
 #include <dirent.h>	  // opendir, readdir, closedir, DIR
 #include <sys/stat.h> // mkdir, stat
 #include <ctime>	  // time
+#include <algorithm> // strtod
+#include <cmath>	 // HUGE_VAL
 
 #define BUFFER_SIZE 4096
 
@@ -23,9 +25,9 @@ namespace response_utils
 
 }
 
-Response::Response(void) : req(NULL) { clear(); }
+Response::Response(void) : req(NULL) { clear(true); }
 
-Response::Response(Request &src) : req(&src) { clear(); }
+Response::Response(Request &src) : req(&src) { clear(true); }
 
 Response::Response(Response const &src)
 {
@@ -47,6 +49,7 @@ Response &Response::operator=(Response const &src)
 		this->body = src.body;
 
 		this->cgi_reply = src.cgi_reply;
+		this->is_chunked = src.is_chunked;
 
 		this->full_response = src.full_response;
 
@@ -66,8 +69,10 @@ void Response::process(void)
 			preparations_for_response();
 			break;
 		case CGI:
-			execute_cgi();
-			// send the cgi to be executed here
+			cgi_response();
+			break;
+		case CHUNK:
+			chunk_response();
 			break;
 		case METHODS:
 			execute_methods();
@@ -91,15 +96,17 @@ void Response::process(void)
 	std::cout << *this << std::endl;
 }
 
-void Response::clear(void)
+void Response::clear(bool all)
 {
 	file_length = VALUE_NOT_SET;
 	boundary.clear();
 
-	protocol = H1_0;
+	protocol = H1_1;
 	headers.clear();
 	body.clear();
-	cgi_reply.clear();
+	if (all)
+		cgi_reply.clear();
+	is_chunked = false;
 	full_response.clear();
 	set_state(PREP);
 }
@@ -114,19 +121,15 @@ void Response::preparations_for_response(void)
 	// HTTP redirect PERMANENT_REDIRECT
 	// Location header to thet new url
 	// no body
-	
-	// -- DO SOMETHING ELSE FOR CGI RESPONSE ASSEMBLY
-	// !! continue working here
-	if (!cgi_reply.empty() && !response_utils::is_error(status_code))
-	{
-		std::cout << YEL "creating cgi full response..." DEF << std::endl;
-		std::string tmp = cgi_reply;
-		clear();
-		full_response = tmp;
-		set_state(SEND);
-		return;
-	}
-	clear();
+
+	if (!is_chunked && !cgi_reply.empty() && !response_utils::is_error(status_code))
+		return (set_state(CGI));
+	else if (is_chunked && !response_utils::is_error(status_code))
+		return (set_state(CHUNK));
+
+	clear(true);
+	if ((*req).protocol != UNSUPPORTED_PROTOCOL)
+		protocol = (*req).protocol;
 
 	if (response_utils::is_error(status_code))
 		(*req).method = GET;
@@ -135,6 +138,8 @@ void Response::preparations_for_response(void)
 
 void Response::execute_methods(void)
 {
+	if (response_utils::is_error(status_code))
+		(*req).method = GET;
 	try
 	{
 		switch ((*req).method)
@@ -149,8 +154,7 @@ void Response::execute_methods(void)
 			method_delete();
 			break;
 		default:
-			status_code = METHOD_NOT_ALLOWED;
-			method_get();
+			throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
 			break;
 		}
 	}
@@ -158,17 +162,73 @@ void Response::execute_methods(void)
 	{
 		std::cerr << e.what() << std::endl;
 		status_code = e.response_status;
-		body.clear();
 		(*req).wanted_ranges.clear();
-		// --------- change this please
-		method_get(); // replace with error wtv
+		error_response();
 	}
 	set_state(HEADERS_RESP);
 }
 
-void Response::execute_cgi(void)
+void Response::cgi_response(void)
 {
-	;
+	std::cout << YEL "starting cgi response..." DEF << std::endl;
+	clear(false);
+
+	// -- step 1: extract headers (and or line) from cgi_reply
+	std::string preamble;
+	size_t pin;
+
+	pin = cgi_reply.find(CRLF CRLF);
+	if (pin == std::string::npos)
+		return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
+	preamble = cgi_reply.substr(0, pin);
+	cgi_reply.erase(0, pin + 2);
+
+	if (preamble.compare(0, 5, "HTTP/") == 0)
+	{
+		pin = preamble.find("\n");
+		if (pin == std::string::npos)
+			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
+		preamble.erase(0, pin + 1);
+	}
+	
+	// -- step 2: add those headers
+	headers = HTTP::extract_key_value(&preamble, ":", CRLF);
+
+	// -- step 3: update status_code based on Status header
+	if (headers.find("status") != headers.end())
+	{
+		double st = HUGE_VAL;
+		char *end = NULL;
+		if (!headers["status"].empty())
+			st = std::strtod(headers["status"].c_str(), &end);
+		if (*end || st == HUGE_VAL || st == -HUGE_VAL)
+			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
+		status_code = static_cast<t_status_code>(st);
+	}
+
+	set_state(CHUNK);
+}
+void Response::chunk_response(void)
+{
+	std::cout << YEL "processing chunk..." DEF << std::endl;
+
+	std::stringstream ss;
+	ss << std::hex << cgi_reply.size() << std::dec << CRLF;
+	ss << cgi_reply << CRLF;
+	body = ss.str();
+
+	if (!is_chunked)
+	{
+		is_chunked = true;
+		set_state(HEADERS_RESP);
+	}
+	else
+	{
+		if (cgi_reply.empty())
+			is_chunked = false;
+		full_response = body;
+		set_state(SEND);
+	}
 }
 
 void Response::set_state(t_response_state new_state) { state = new_state; }
@@ -177,7 +237,9 @@ t_response_state Response::get_state(void) const { return (state); }
 
 void Response::method_get(void)
 {
-	// !! IF ERROR GO IN A DIFF ROUTE
+	if (response_utils::is_error(status_code))
+		return (error_response());
+
 	// get the requested content
 	if ((*req).path_uri == "/uploads") // IN CASE OF AUTO INDEXING
 	{
@@ -187,13 +249,12 @@ void Response::method_get(void)
 	std::ifstream file(assemble_content_path(status_code).c_str());
 	if (!file.is_open())
 	{
-		perror("File does not exist");
+		perror("File did not open");
 		if ((*req).file_extension == "html")
 			status_code = NOT_FOUND;
 		else
 			status_code = INTERNAL_SERVER_ERROR;
-		(*req).file_extension = "html";
-		file.open(assemble_content_path(status_code).c_str());
+		return (error_response());
 	}
 
 	if (file.is_open())
@@ -202,7 +263,7 @@ void Response::method_get(void)
 		int len = file.tellg();
 		file.seekg(0, file.beg);
 
-		if (!response_utils::is_error(status_code) && !(*req).wanted_ranges.empty())
+		if (!(*req).wanted_ranges.empty())
 		{
 			file_length = len;
 			body = create_range_response_body(file, (*req).wanted_ranges);
@@ -213,6 +274,22 @@ void Response::method_get(void)
 	}
 	else
 		body = response_utils::backup_error_page(status_code);
+}
+
+void Response::error_response(void)
+{
+	(*req).file_extension = "html";
+	std::ifstream file(assemble_content_path(status_code).c_str());
+	if (!file.is_open())
+	{
+		perror("Defined error file does not exist, using backup");
+		body = response_utils::backup_error_page(status_code);
+	}
+	else
+	{
+		body = to_str(file.rdbuf());
+		file.close();
+	}
 }
 
 std::string Response::create_range_response_body(std::ifstream &file, vector2 &ranges)
@@ -270,9 +347,6 @@ std::string Response::single_range(std::ifstream &file, std::pair<int, int> rang
 	std::string content;
 	int read_progress = range.first;
 	int read_end = range.second;
-	// ----------- POSSIBLE CHNGE: maybe limit read_end a bit when the file is way too big
-	//		to avoid the change of having a 5GB std::string content
-	//		happens when: normal get on big file, any big get range request
 
 	while (read_progress < read_end)
 	{
@@ -361,7 +435,6 @@ std::string Response::create_autoindexing_page(void)
 	ss << "</html>" << std::endl;
 	return (ss.str());
 }
-
 
 std::string Response::assemble_content_path(t_status_code status_code)
 {
@@ -511,7 +584,14 @@ void Response::set_response_headers(void)
 	else if (status_code == RANGE_NOT_SATISFIABLE)
 		headers["Content-Range"] = response_utils::create_header_content_range(std::pair<int, int>(VALUE_NOT_SET, VALUE_NOT_SET), status_code, file_length);
 
-	headers["Content-Length"] = to_str(body.size());
+	if (is_chunked)
+	{
+		headers["Transfer-Encoding"] = "chunked";
+		headers.erase ("content-length");
+		protocol = H1_1;
+	}
+	else
+		headers["Content-Length"] = to_str(body.size());
 
 	if (!body.empty())
 	{
@@ -519,9 +599,9 @@ void Response::set_response_headers(void)
 		if (stat((*req).path_uri.c_str(), &sb) != -1)
 			headers["Last-Modified"] = response_utils::date_format(sb.st_mtime);
 
-		if ((*req).wanted_ranges.size() < 2)
+		if ((*req).wanted_ranges.size() < 2 && !is_chunked)
 			headers["Content-Type"] = response_utils::define_content_type((*req).file_extension);
-		else
+		else if ((*req).wanted_ranges.size() > 1)
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
 	}
 
@@ -540,7 +620,7 @@ void Response::assemble_full_response(void)
 {
 	std::stringstream ss;
 
-	ss << HTTP::stringProtocol(H1_0) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
+	ss << HTTP::stringProtocol(protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
 	ss << CRLF;
 	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
 		ss << (*it).first << ": " << (*it).second << CRLF;
@@ -559,15 +639,17 @@ std::ostream &operator<<(std::ostream &out, Response &src)
 	out << YEL "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-	out << YEL "Body..." DEF << std::endl;
+	out << YEL "Body..." DEF;
+	out << " (size) " << src.body.size() << std::endl;
+	/*
 	if (src.headers["Content-Type"] == "image/vnd.microsoft.icon" || src.headers["Content-Type"] == "image/png" || src.headers["Content-Type"] == "video/mp4" )
 		out << "[IMAGE]" << std::endl;
 	else
 		out << src.body << std::endl;
-/* 
+	*/
+	
 	if (!src.full_response.empty())
 		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl;
-	out << std::endl;
-*/
+	
 	return (out);
 }

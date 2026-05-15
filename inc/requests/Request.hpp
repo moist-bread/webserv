@@ -8,15 +8,9 @@
 #include <unistd.h> // !! sleep for debug
 
 // TO-DO
-// [ ] fix cgi responses
-// [ ] do chuncked RESPONSES (e.g., dynamically generated content like CGI, streaming APIs)
-// [ ] make it so that the request can stop in the middle of the headers and then cotinue!!
-// [ ] create a static Inspect class for debug prints
 // [ ] adapt better for config incorporation
+// [ ] create a static Inspect class for debug prints
 // [ ] vefify LWS (linear whitespace) better
-
-// !! Requirements
-// - A request to your server should never hang indefinitely. (issue: sending a large file)
 
 // =====>┊( REQUEST )┊
 
@@ -46,8 +40,6 @@ public:
 
 	std::string extract(std::string *src, const char *sep) const;
 
-	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
-
 	// state machine
 	void set_state(t_request_state new_state);
 	t_request_state get_state(void) const;
@@ -64,6 +56,7 @@ public:
 	std::string query;
 	std::string file_extension;
 	t_protocol protocol;
+	std::string temp_headers;
 	map_strings headers;
 	std::string body;
 	std::string json;
@@ -72,7 +65,7 @@ public:
 	double content_length;
 	size_t content_read;
 
-	bool chuncked_body;
+	// bool chunked_body;
 
 	vector2 wanted_ranges;
 
