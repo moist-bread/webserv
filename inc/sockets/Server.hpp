@@ -21,6 +21,9 @@ enum ConnectionStatus
 class Server : public ASimpleServer
 {
 private:
+
+ 	Config _config;
+
 	std::map<int, Client> _clients;
 	std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
 
@@ -30,7 +33,7 @@ private:
 
 	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-	void SetupPorts(Config config);
+	std::map<int, const ServerConfig*> _fdToServerConfig; // listenFd → config do servidor
 
 	void SetNonblocking(int fd);
 
@@ -41,6 +44,9 @@ private:
 	bool isServerSocket(int fd);
 	ConnectionStatus getStatus(int ret);
 
+	const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
+
+	void SetupPorts();
 	void accepter(int listenFd);
 	int responder(int clientFd, const std::string &data);
 

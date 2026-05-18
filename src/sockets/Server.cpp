@@ -19,20 +19,22 @@ static int getPrimaryPort()
 	return ports[0];
 }
 
-Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, getPrimaryPort(), INADDR_ANY, 10)
+Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, getPrimaryPort(), INADDR_ANY, 10), _config(config)
 {
 	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 
-	SetupPorts(config);
+	SetupPorts();
 	launch();
 }
 
-Server::Server(Server const &source) : ASimpleServer(source)
+Server::Server(Server const &source) : ASimpleServer(source), _config(source._config)
 {
-	*this = source;
-	std::cout << GRN "the Server ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
+    *this = source;
+    _fdToServerConfig.clear();
+    const std::vector<ServerConfig>& servers = _config.getServers();
+    for (size_t i = 0; i < _listeningFds.size() && i < servers.size(); i++)
+        _fdToServerConfig[_listeningFds[i]] = &servers[i];
 }
 
 Server::~Server(void)
@@ -52,47 +54,46 @@ Server &Server::operator=(Server const &source)
 }
 
 
-void Server::SetupPorts(Config	config)
+void Server::SetupPorts()
 {
+    const std::vector<ServerConfig>& servers = _config.getServers();
+    std::map<int, int> portToFd; // porta | fd já criado
 
-	// Portas hardcoded para testar
-	const std::vector<ServerConfig>& servers = config.getServers(); 
-	std::vector <int> ports;
-	for (size_t i = 0; i < servers.size(); i++)
-	{
-		
-		ports.push_back(servers[i].port);
-		
-	}
-	
+    for (size_t i = 0; i < servers.size(); i++)
+    {
+        int port = servers[i].port;
+        int fd;
 
-	_serverPorts.clear();
-	_extraListeners.clear();
-	_listeningFds.clear();
+        if (i == 0)
+        {
+            fd = this->_sock;
+            _listeningFds.push_back(fd);
+            PopulatePollInfo(fd);
+            portToFd[port] = fd;
+        }
+        else if (portToFd.count(port)) // porta ja existe
+        {
+            fd = portToFd[port]; // reutiliza o fd existente
+            _listeningFds.push_back(fd);
+        }
+        else
+        {
+            ListeningSocket *listener = new ListeningSocket(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY, 10);
+            _extraListeners.push_back(listener);
+            fd = listener->getSocketfd();
+            _listeningFds.push_back(fd);
+            PopulatePollInfo(fd);
+            portToFd[port] = fd;
+        }
 
-	std::cout << "Showing off my ports" << std::endl;
-	for (size_t i = 0; i < ports.size(); i++)
-	{
-		_serverPorts.push_back(ports[i]);
-		std::cout << "Index: " << i << " Port Number: " << ports[i] << std::endl;
-	}
+        _serverPorts.push_back(port);
+        _fdToServerConfig[fd] = &servers[i];
+    }
 
-	for (size_t i = 0; i < ports.size(); i++)
-	{
-		// Sou a primeira socket aka first Listener
-		if (i == 0)
-		{
-			_listeningFds.push_back(this->_sock);
-			PopulatePollInfo(this->_sock);
-			continue;
-		}
-
-		ListeningSocket *listener = new ListeningSocket(AF_INET, SOCK_STREAM, 0, ports[i], INADDR_ANY, 10);
-		_extraListeners.push_back(listener);
-		int fd = listener->getSocketfd();
-		_listeningFds.push_back(fd);
-		PopulatePollInfo(fd);
-	}
+	//Debug
+	std::cout << "[DEBUG] SetupPorts — mapa fd→config:" << std::endl;
+    for (std::map<int, const ServerConfig*>::iterator it = _fdToServerConfig.begin(); it != _fdToServerConfig.end(); it++)
+        std::cout << "  fd=" << it->first << " porta=" << it->second->port << " serverName=" << (it->second->serverNames.empty() ? "none" : it->second->serverNames[0]) << std::endl;
 }
 
 void Server::SetNonblocking(int fd)
@@ -133,8 +134,41 @@ void Server::removeClient(int fd, size_t &index)
 	index--;
 }
 
+
+/*
+Descobre qual ServerConfig responde ao pedido com base no ListenFd en Host: Header
+*/
+const ServerConfig* Server::resolveServerConfig(int listenFd, const std::string &hostHeader) const
+{
+    const std::vector<ServerConfig>& servers = _config.getServers();
+
+    // 1ª passagem — procura pelo serverName exato
+    for (size_t i = 0; i < servers.size(); i++)
+    {
+        if (_listeningFds[i] != listenFd)
+            continue;
+        const std::vector<std::string>& names = servers[i].serverNames;
+        for (size_t j = 0; j < names.size(); j++)
+            if (names[j] == hostHeader)
+                return &servers[i];
+    }
+
+    // 2ª passagem — fallback: primeiro servidor que escuta neste fd
+    for (size_t i = 0; i < _listeningFds.size(); i++)
+        if (_listeningFds[i] == listenFd)
+            return &servers[i];
+
+    return NULL;
+}
+
 void Server::launch()
 {
+	if(_pollfds.empty())
+	{
+ 		std::cerr << "[Server] Nenhuma porta configurada — a sair." << std::endl;
+		return;
+	}
+
 	running = true;
 	while (running)
 	{
@@ -201,18 +235,29 @@ ConnectionStatus Server::getStatus(int ret)
 
 void Server::accepter(int listenFd)
 {
-	struct sockaddr_in clientAddr;
-	int addrlen = sizeof(clientAddr);
+    struct sockaddr_in clientAddr;
+    int addrlen = sizeof(clientAddr);
 
-	// Aceita nova conexao
-	int newFd = accept(listenFd, (struct sockaddr *)&clientAddr, (socklen_t *)&addrlen);
-	if (newFd < 0)
-		return (perror("accept"));
+    int newFd = accept(listenFd, (struct sockaddr *)&clientAddr, (socklen_t *)&addrlen);
+    if (newFd < 0)
+        return (perror("accept"));
 
-	PopulatePollInfo(newFd);
-	Client newClient(newFd);
-	_clients.insert(std::make_pair(newFd, newClient));
+    PopulatePollInfo(newFd);
+    Client newClient(newFd);
+
+
+	newClient.listenFd = listenFd;
+    // Associa o ServerConfig correto ao cliente
+    if (_fdToServerConfig.count(listenFd))
+        newClient.serverConfig = _fdToServerConfig[listenFd];
+
+    _clients.insert(std::make_pair(newFd, newClient));
 	std::cout << "Cliente criado na socket " << newFd << std::endl;
+
+	if (newClient.serverConfig)
+    	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->port << std::endl;
+    else
+        std::cout << "[DEBUG] accepter — cliente " << newFd << " SEM serverConfig!" << std::endl;
 }
 
 int Server::responder(int clientFd, const std::string &data)
@@ -315,6 +360,17 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	try
 	{
 		_clients[fd].request.process(rec);
+		std::string hostHeader = _clients[fd].request.headers["host"];
+
+		size_t colon = hostHeader.find(':');
+		if (colon != std::string::npos)
+			hostHeader = hostHeader.substr(0, colon);
+
+		_clients[fd].serverConfig = resolveServerConfig(_clients[fd].listenFd, hostHeader);
+	if (_clients[fd].serverConfig)
+    	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' resolveu para porta=" << _clients[fd].serverConfig->port << std::endl;
+	else
+    	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' NAO resolveu!" << std::endl;
 	}
 	catch (const Request::ParseError &e)
 	{
@@ -387,7 +443,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 	time_t now = std::time(NULL);
 	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
 
-	// Vamos definir 120 segundos como o limite máximo de inatividade
+	// Vamos definir TIMEOUT_TIME segundos como o limite máximo de inatividade
 	if (seconds_idle > TIMEOUT_TIME)
 	{
 		std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;

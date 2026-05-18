@@ -3,12 +3,12 @@
 
 #include <ctime>	// time
 
-Client::Client(void)
+Client::Client(void) : serverConfig(NULL)
 {
 	updateLastActivity();
 }
 
-Client::Client(int fd) : _ClientFd(fd)
+Client::Client(int fd) : _ClientFd(fd),serverConfig(NULL), listenFd(-1)
 {
 	updateLastActivity();
 	std::cout << GRN "the Client ";
@@ -35,9 +35,10 @@ Client &Client::operator=(Client const &source)
 		this->_ClientFd = source._ClientFd;
 		this->_lastActivity = source._lastActivity;
 		this->request = source.request;
-		this->request = source.request;
 		this->response = source.response;
 		this->cgi = source.cgi;
+		this->listenFd = source.listenFd;
+		this->serverConfig = source.serverConfig;
 	}
 	return (*this);
 }

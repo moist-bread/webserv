@@ -11,13 +11,8 @@ int main(int ac, char **av)
     try
     {
         Config config;
-
-        //Criar um config e dar lhe a porta
-        
-        //ServerConfig config;
-
-        // config.port = 8080;
-        // Server t(config);
+        config.load(av[1]);
+        Server t(config);
     }
     catch (const std::exception &e)
     {
