@@ -10,6 +10,15 @@
 
 // =====>┊( CONFIG )┊
 
+/**
+ * @class Config
+ * @brief Owner and facade for the parsed server configuration tree.
+ *
+ * Responsibilities:
+ * - Load a configuration file (lexer + parser).
+ * - Store the normalized list of `ServerConfig` objects.
+ * - Provide read-only accessors used by the runtime server.
+ */
 class Config
 {
 	public:
@@ -32,20 +41,3 @@ class Config
 };
 
 std::ostream &operator<<(std::ostream &out, Config const &src);
-
-// class Config {
-// private:
-//     std::vector<ServerConfig> _servers;
-
-// public:
-    // What it does: Loops through all _servers, extracts their 'port' numbers, 
-    // removes duplicates, and returns the list.
-    // Why: You use this in main.cpp to know how many poll()/select() sockets to open!
-    // std::vector<int> getUniquePorts(void) const;
-
-    // What it does: 
-    // 1. Finds all servers listening on the given 'port'.
-    // 2. Checks if the 'hostHeader' (e.g., "example.com") matches any of their 'server_names'.
-    // 3. Returns a pointer to the exact matching server (or the first/default server on that port if no name matches).
-    // const ServerConfig* getServer(int port, const std::string &hostHeader) const;
-// };

@@ -20,6 +20,15 @@ struct ListenAddress
 	ListenAddress() : port(-1) {};
 };
 
+/**
+ * @brief Plain-data container representing a virtual server block.
+ *
+ * `ServerConfig` holds all parsed configuration for a single virtual server
+ * (listen address, server names, root, error pages and location routes).
+ * It is designed as a lightweight POD-like struct: validation and parsing
+ * responsibilities belong to the parser, while the runtime reads these
+ * fields for socket setup and request routing.
+ */
 struct ServerConfig
 {
 	ServerConfig(void); 				// default constructor
@@ -57,22 +66,3 @@ struct ServerConfig
 };
 
 std::ostream &operator<<(std::ostream &out, ServerConfig const &source);
-
-/*
-struct ServerConfig {
-
-    What it does: Compares the request URI against all location paths.
-    CRITICAL LOGIC: It must find the "Longest Prefix Match". 
-    If the user requests "/images/cats/cute.jpg", and you have location "/", 
-    and location "/images", it MUST return the pointer to "/images".
-    const LocationConfig* matchLocation(const std::string &uri) const;
-
-    What it does: Returns clientMaxBodySize.
-    size_t getClientMaxBodySize(void) const;
-
-    What it does: Checks the errorPages map. If the map has a custom HTML 
-    page for the requested error code (e.g., 404), return the string path. 
-    If not, return an empty string "" (so the server knows to use a default).
-    std::string getErrorPage(t_status_code code) const;
-};
-*/

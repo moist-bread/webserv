@@ -1,12 +1,31 @@
 #include "../../inc/serverConfig/TokenStream.hpp"
 #include <sstream>
 
+/**
+ * @brief Construct TokenStream from a token vector.
+ * @param tokens Tokens produced by the `Lexer`.
+ *
+ * The TokenStream holds a reference to the provided token container and
+ * manages an internal cursor used by the parser to navigate tokens.
+ */
 TokenStream::TokenStream(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens) {}
 
+/**
+ * @brief Copy constructor.
+ * @param obj TokenStream to copy (cursor and token reference are copied).
+ */
 TokenStream::TokenStream(const TokenStream &obj) : _cursor(obj._cursor), _tokens(obj._tokens) {}
 
+/**
+ * @brief Destructor (trivial).
+ */
 TokenStream::~TokenStream(void) {}
 
+/**
+ * @brief Convert token enum to a short human-readable string.
+ * @param type Token enum value.
+ * @return Small string representing the token (used in error messages).
+ */
 std::string TokenStream::_tokenTypeToString(e_token_type type) const
 {
 	switch (type) {
@@ -91,7 +110,16 @@ void TokenStream::_extractKeywordVector(std::vector<std::string> &destination)
 }
 
 /**
- * @brief Throws a formatted error using the CURRENT cursor's line number.
+ * @brief Throw a syntax error with an attached line number.
+ *
+ * If `customLine` is provided (non-zero) it is used verbatim. Otherwise the
+ * current token's line is used. When the stream is empty, the function falls
+ * back to line 1. The function throws a `std::runtime_error` containing a
+ * formatted message suitable for displaying to the user.
+ *
+ * @param message Human-readable error description.
+ * @param customLine Optional explicit line number to use (0 = auto-select).
+ * @throws std::runtime_error Always throws with the formatted message.
  */
 void TokenStream::throwSyntaxError(const std::string &message, size_t customLine) const
 {
@@ -105,7 +133,15 @@ void TokenStream::throwSyntaxError(const std::string &message, size_t customLine
 }
 
 /**
- * @brief Throws a formatted error using the PREVIOUS cursor's line number.
+ * @brief Throw a configuration validation error tied to a directive.
+ *
+ * Validation errors are anchored to the previous token's line number (the
+ * directive's location) to produce clearer, actionable messages. If no
+ * previous token exists the function falls back to line 1.
+ *
+ * @param message Human-readable validation message.
+ * @param directive Optional directive name to include in the message.
+ * @throws std::runtime_error Always throws with the formatted message.
  */
 void TokenStream::throwValidationError(const std::string &message, const std::string &directive) const
 {

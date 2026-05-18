@@ -3,12 +3,30 @@
 const int ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE = 1048576;
 const unsigned long ServerConfig::MAX_CLIENT_MAX_BODY_SIZE = 524288000;
 
+/**
+ * @brief Construct a ServerConfig with default values.
+ *
+ * Sets `clientMaxBodySize` to 0 and `listen.port` to -1 to indicate
+ * an uninitialized listen address.
+ */
 ServerConfig::ServerConfig(void) : clientMaxBodySize(0) { listen.port = -1; }
 
+/**
+ * @brief Copy constructor — perform member-wise copy.
+ * @param source Source ServerConfig to copy.
+ */
 ServerConfig::ServerConfig(ServerConfig const &source) { *this = source; }
 
+/**
+ * @brief Destructor (trivial).
+ */
 ServerConfig::~ServerConfig(void) {}
 
+/**
+ * @brief Copy assignment operator.
+ * @param source Source ServerConfig to assign from.
+ * @return Reference to this instance.
+ */
 ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 {
 	if (this != &source)
@@ -25,6 +43,14 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 	return (*this);
 }
 
+/**
+ * @brief Build a simple HTTP URL for this server using the first server name
+ *        or the listen host as fallback.
+ *
+ * Example: "http://example.com:8080"
+ *
+ * @return A std::string containing the URL.
+ */
 std::string ServerConfig::getServerUrl(void) const 
 {
 	std::string baseUrl = "http://";
@@ -43,16 +69,41 @@ std::string ServerConfig::getServerUrl(void) const
 	return (baseUrl + domainOrIp + ":" + portStream.str());
 }
 
+/**
+ * @brief Get the configured listen host string.
+ * @return Reference to the listen host string.
+ */
 const std::string &ServerConfig::getListenHost(void) const { return (this->listen.host); }
 
+/**
+ * @brief Get the configured listen port number.
+ * @return Listen port as int.
+ */
 int ServerConfig::getListenPort(void) const { return (this->listen.port); }
 
+/**
+ * @brief Get the combined listen host:port string.
+ * @return Reference to the combined listen string.
+ */
 const std::string &ServerConfig::getListenString(void) const { return (this->listen.string); }
 
+/**
+ * @brief Get the `ListenAddress` struct for this server.
+ * @return Reference to the `ListenAddress` member.
+ */
 const ListenAddress &ServerConfig::getListenAddress(void) const { return (this->listen); }
 
+/**
+ * @brief Get the configured `server_name` entries.
+ * @return Reference to vector of server names.
+ */
 const std::vector<std::string> &ServerConfig::getServerNames(void) const { return (this->serverNames); }
 
+/**
+ * @brief Check whether `serverName` is present in this server's `server_name` list.
+ * @param serverName Name to check.
+ * @return true if present, false otherwise.
+ */
 bool ServerConfig::isServerName(const std::string &serverName) const
 {
 	for (size_t i = 0; i < this->serverNames.size(); ++i)
@@ -63,10 +114,23 @@ bool ServerConfig::isServerName(const std::string &serverName) const
 	return (false);
 }
 
+/**
+ * @brief Get the configured document root for this server.
+ * @return Reference to the root path string.
+ */
 const std::string &ServerConfig::getRoot(void) const { return (this->root); }
 
+/**
+ * @brief Get the client max body size limit in bytes.
+ * @return Size limit in bytes.
+ */
 size_t ServerConfig::getClientMaxBodySize(void) const { return (this->clientMaxBodySize); }
 
+/**
+ * @brief Retrieve the error page path for a given status code.
+ * @param code HTTP status code to lookup.
+ * @return File path to error page or empty string when not configured.
+ */
 std::string ServerConfig::getErrorPage(t_status_code code) const
 {
 	std::map<t_status_code, std::string>::const_iterator it = this->errorPages.find(code);
@@ -75,6 +139,16 @@ std::string ServerConfig::getErrorPage(t_status_code code) const
 	return ("");
 }
 
+/**
+ * @brief Find the best matching `LocationConfig` for a request URI.
+ *
+ * The function performs prefix matching against each location's `path` and
+ * returns the location with the longest matching prefix. An exact match is
+ * returned immediately.
+ *
+ * @param uri Request URI to match (e.g., "/images/logo.png").
+ * @return Pointer to the matched `LocationConfig`, or nullptr if none match.
+ */
 const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 {
 	const LocationConfig *LocationMatched = NULL;
@@ -96,6 +170,12 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 	return (LocationMatched);
 }
 
+/**
+ * @brief Pretty-print a `ServerConfig` for debugging.
+ * @param out Output stream.
+ * @param source ServerConfig to print.
+ * @return Reference to the output stream.
+ */
 std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 {
 	out << "  [Server Block]\n";

@@ -14,10 +14,32 @@
  */
 Lexer::Lexer(void) {}
 
+/**
+ * @brief Copy constructor (no-op).
+ *
+ * Lexer is a static utility type; copying is not meaningful. The definition
+ * exists to satisfy the rule-of-three but intentionally performs no work.
+ *
+ * @param src Source instance (ignored).
+ */
 Lexer::Lexer(Lexer const &src) { (void)src; }
 
+/**
+ * @brief Destructor (trivial).
+ *
+ * Lexer has no runtime-owned resources; destructor is defaulted.
+ */
 Lexer::~Lexer(void) {}
 
+/**
+ * @brief Copy assignment operator (no-op).
+ *
+ * The operator is defined to prevent accidental copying semantics. It ignores
+ * the source and returns `*this`.
+ *
+ * @param src Source instance (ignored).
+ * @return Reference to this instance.
+ */
 Lexer &Lexer::operator=(Lexer const &src)
 {
 	(void)src;
@@ -122,7 +144,9 @@ void Lexer::_skipSpaces(const std::string &line, size_t &cursor)
  * @param line The line being parsed
  * @param cursor Current position in line (incremented after extraction)
  * @param lineNumber Line number for the token
- * @return Token representing the symbol at cursor position
+ * @return Token representing the symbol at cursor position. The token's
+ *         `content` is a single character, `type` set accordingly and
+ *         `collumn` set to the 1-based column where the symbol started.
  */
 t_token Lexer::_getSymbol(const std::string &line, size_t &cursor, size_t lineNumber)
 {
@@ -154,9 +178,9 @@ t_token Lexer::_getSymbol(const std::string &line, size_t &cursor, size_t lineNu
  * @param line The line being parsed
  * @param cursor Current position in line (updated to character after keyword)
  * @param lineNumber Line number for the token
- * @return Token containing the keyword string
- * 
- * @note Includes bounds checking to prevent buffer overflow
+ * @return Token containing the keyword string (type `TOKEN_KEYWORD`, `content` set).
+ *
+ * @note The returned token's `collumn` is set to the 1-based starting column.
  */
 t_token Lexer::_getKeyword(const std::string &line, size_t &cursor, size_t lineNumber)
 {
@@ -197,12 +221,14 @@ void Lexer::_pushEOF(size_t lineNumber, std::vector<t_token> &outTokens)
 //
 
 /**
- * @brief Converts token type enum to human-readable string
- * 
- * Helper function for debugging and display purposes.
- * 
- * @param tokenType The token type to convert
- * @return String representation of the token type
+ * @brief Internal helper to convert token enum to readable name.
+ *
+ * This function is a small debugging aid used by the `operator<<` overload
+ * to produce human-readable token dumps. It is intentionally `static` to
+ * restrict linkage to this translation unit.
+ *
+ * @param tokenType Token enum value.
+ * @return Short name string for the token type.
  */
 static std::string getTokenTypeName(e_token_type tokenType)
 {

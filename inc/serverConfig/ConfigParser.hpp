@@ -17,11 +17,20 @@ struct LocationConfig;
 class TokenStream;
 
 /**
- * @class Parser
- * @brief Parses a token stream into server configuration objects.
+ * @class ConfigParser
+ * @brief Convert a token sequence into runtime server configuration objects.
  *
- * The parser consumes tokens produced by the lexer and builds
- * `ServerConfig` and nested `LocationConfig` objects.
+ * `ConfigParser` is responsible for validating and transforming the flat
+ * token stream produced by the `Lexer` into a structured vector of
+ * `ServerConfig` objects (each containing nested `LocationConfig` entries).
+ * The class centralizes syntactic and semantic validation, reporting errors
+ * via the attached `TokenStream` helpers so messages include line anchors
+ * and consistent formatting. The parser does not perform I/O; it operates
+ * entirely on the provided token vector.
+ *
+ * Usage: construct with the token vector and call `parse()` to obtain the
+ * resulting vector of `ServerConfig` instances. The parser assumes the token
+ * stream ends with `TOKEN_EOF`.
  */
 class ConfigParser
 {
