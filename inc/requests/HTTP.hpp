@@ -115,7 +115,6 @@ public:
 	static std::string stringProtocol(const t_protocol Protocol);  // returns the string from Protocol Enum
 	static std::string getReasonPhrase(t_status_code status_code); // returns the string from Status Code Enum
 	static map_strings extract_key_value(std::string *src, std::string sep, std::string delim); 
-	 
 
 private:
 	HTTP(void);				  // default constructor

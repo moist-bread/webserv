@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>Banana</title>
+</head>
+<body>
+	<div class="text red-mark">gallery</div>
+	<br>
+	<div id="file-list">Loading Images...</div>
+	
+	<script>
+		async function load_images()
+		{
+			try
+			{
+				const response = await fetch("/uploads");
+				const text = await response.text();
+				if (!response.ok)
+					throw "Upload folder not found...";
+
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(text, "text/html");
+				const links = Array.from(doc.querySelectorAll("li > a"));
+				if (links.length === 0)
+					throw "No files were found...";
+
+				const listContainer = document.getElementById("file-list");
+				listContainer.innerHTML = "";
+				links.forEach((link) => {
+					const href = link.getAttribute("href");
+					const name = link.textContent;
+					
+					if (href !== ".." && name !== "..")
+					{
+						const card = document.createElement("div");
+						console.log(href);
+						card.className = "file-card";
+						card.innerHTML = `
+						<div class='image-post'
+						style="background-color: #F8F8F8; border: 2px solid black; border-radius: 4px; padding: 20px 20px; margin: 15px;">
+							<img src="${href}" alt="${name}">
+							<br>
+							<span>${name}</span>
+							<div class="actions">
+								<button onclick="delete_file('${href}')" 
+								style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px;">
+									Delete
+								</button>
+							</div>
+						</div>
+						`;
+						listContainer.appendChild(card);
+					}
+				});
+			}
+			catch (error)
+			{
+				console.error("Error loading files:", error);
+				document.getElementById("file-list").innerHTML = error;
+			}
+		}
+
+		async function delete_file(file_name)
+		{
+			if (!confirm(`do you want to delete the following file? \"${file_name}\"`))
+				return;
+
+			try
+			{
+				const response = await fetch(`${file_name}`, {method: "DELETE"});
+				if (response.ok)
+				{
+					alert("File deleted successfully");
+					load_images();
+				}
+				else
+					throw response.status;
+			}
+			catch (error)
+			{
+				console.error("Error when trying to delete: ", error);
+				alert("Failed to delete file");
+			}
+		}
+
+		load_images();
+	</script>
+</body>
+</html>

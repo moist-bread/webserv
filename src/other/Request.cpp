@@ -77,7 +77,6 @@ void Request::clear(void)
 
 	content_length = VALUE_NOT_SET;
 	content_read = 0;
-
 	// chunked_body = false;
 
 	wanted_ranges.clear();
@@ -385,10 +384,7 @@ void Request::format_multipart_form(std::string type)
 
 		part.data.erase(pin - 2, part.data.size() - pin + 4);
 		// std::cout << RED "PART: \n" DEF << "|" << part.data << "|" << std::endl;
-
-		// std::cout << RED "REMAINING BODY b4 erase: \n" DEF << remaining_body << std::endl;
 		remaining_body.erase(0, (!remaining_body.compare(0, 2, CRLF) ? 2 : 0) + boundary_str.size() + 2 + part.data.size());
-		// std::cout << RED "REMAINING BODY after erase: \n" DEF << remaining_body << std::endl;
 
 		std::string line;
 		size_t end_line;

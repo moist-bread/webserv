@@ -2,7 +2,6 @@
 
 #include <algorithm> // transform
 
-
 const std::string HTTP::_method_names[] = {"GET", "POST", "PUT", "DELETE", "PATCH", "UNSUPPORTED_METHOD"};
 const std::string HTTP::_protocol_names[] = {"HTTP/1.0", "HTTP/1.1", "UNSUPPORTED_PROTOCOL"};
 

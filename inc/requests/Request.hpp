@@ -64,7 +64,6 @@ public:
 
 	double content_length;
 	size_t content_read;
-
 	// bool chunked_body;
 
 	vector2 wanted_ranges;
