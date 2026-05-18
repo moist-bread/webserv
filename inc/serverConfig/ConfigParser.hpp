@@ -10,9 +10,11 @@
 #include "../ansi_color_codes.h"
 #include "token.h"
 #include "../requests/HTTP.hpp"
+#include "../../inc/serverConfig/TokenStream.hpp"
 
-class ServerConfig;
-class LocationConfig;
+struct ServerConfig;
+struct LocationConfig;
+class TokenStream;
 
 /**
  * @class Parser
@@ -21,25 +23,24 @@ class LocationConfig;
  * The parser consumes tokens produced by the lexer and builds
  * `ServerConfig` and nested `LocationConfig` objects.
  */
-
-class Parser
+class ConfigParser
 {
 	public:
-		Parser(const std::vector<t_token> &tokens);	// main constructor
-		~Parser(void);								// destructor
+		ConfigParser(const std::vector<t_token> &tokens);	// main constructor
+		~ConfigParser(void);								// destructor
 
-		void parse(std::vector<ServerConfig> &servers);
+		std::vector<ServerConfig> parse(void);
 
 	private:
-		Parser(void); 					// default constructor
-		Parser(Parser const &source);	// copy constructor
-		Parser &operator=(Parser const &source); // copy assignment operator overload
+		ConfigParser(void); 					// default constructor
+		ConfigParser(ConfigParser const &source);	// copy constructor
+		ConfigParser &operator=(ConfigParser const &source); // copy assignment operator overload
 
 		void _parseServerBlock(ServerConfig &newServer);
 		void _parseLocationBlock(LocationConfig &newLocation);
 
-		typedef void (Parser::*ServerHandler)(ServerConfig &);		//	custom type called 'ServerHandler' -> pointer to a Parser method that takes a ServerConfig reference
-		typedef void (Parser::*LocationHandler)(LocationConfig &);	//	custom type called 'LocationHandler' -> pointer to a Parser method that takes a LocationConfig reference
+		typedef void (ConfigParser::*ServerHandler)(ServerConfig &);		//	custom type called 'ServerHandler' -> pointer to a Parser method that takes a ServerConfig reference
+		typedef void (ConfigParser::*LocationHandler)(LocationConfig &);	//	custom type called 'LocationHandler' -> pointer to a Parser method that takes a LocationConfig reference
 
 		std::map<std::string, ServerHandler> _serverHandlers;		//	map links the string (e.g., "listen") to the function pointer
 		std::map<std::string, LocationHandler> _locationHandlers;	//	map links the string (e.g., "root") to the function pointer
@@ -80,24 +81,14 @@ class Parser
 		void _validate_Cgi(const std::string &extension, const std::string &executer);
 		void _validate_UploadStore(const std::string &path);
 	
-		//	Token Advance Helpers
-		t_token _expect(e_token_type expected_type);
-		const t_token &_currentToken(void) const;
-		void _advanceToken(void); 
-		void _extractSingleKeyword(std::string &destination);
-		void _extractKeywordVector(std::vector<std::string> &destination);
-
 		//	Validate Helpers
-		void _isValidURI(const std::string &uri) const;
-		void _isValidURL(const std::string &url) const;
-		void _isValidAccess(const std::string &path, const int flags) const;
-		void _isValidFile(const std::string &path, const int flags) const;
-		void _isValidDirectory(const std::string &path, const int flags) const;
+		bool _isValidURI(const std::string &uri) const;
+		bool _isValidURL(const std::string &url) const;
+		bool _isValidAccess(const std::string &path, const int flags) const;
+		bool _isValidFile(const std::string &path, const int flags) const;
+		bool _isValidDirectory(const std::string &path, const int flags) const;
 
-
-		size_t	_cursor;
-		const std::vector<t_token> &_tokens;
-
+		TokenStream _ts;
 };
 
 template <typename T>

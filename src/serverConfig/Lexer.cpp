@@ -129,6 +129,7 @@ t_token Lexer::_getSymbol(const std::string &line, size_t &cursor, size_t lineNu
 	t_token token;
 	token.content = line[cursor];
 	token.line = lineNumber;
+	token.collumn = cursor + 1;
 
 	if (line[cursor] == '{')
 		token.type = TOKEN_LBRACE;
@@ -162,6 +163,7 @@ t_token Lexer::_getKeyword(const std::string &line, size_t &cursor, size_t lineN
 	t_token token;
 	token.type = TOKEN_KEYWORD;
 	token.line = lineNumber;
+	token.collumn = cursor + 1;
 
 	size_t needle = cursor;
 	while (needle < line.length() && line[needle] != '{' && line[needle] != '}'
@@ -186,6 +188,7 @@ void Lexer::_pushEOF(size_t lineNumber, std::vector<t_token> &outTokens)
 	t_token token;
 	token.type = TOKEN_EOF;
 	token.line = lineNumber;
+	token.collumn = 0;
 	outTokens.push_back(token);
 }
 

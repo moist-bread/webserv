@@ -29,5 +29,6 @@ typedef struct	s_token
 	e_token_type	type;		//< Type of the token (keyword, symbol, EOF)
 	std::string		content;	//< Textual content (e.g., "listen", "8080", "{")
 	size_t			line;		//< Line number where token appears (1-indexed)
+	size_t			collumn;		//< Line number where token appears (1-indexed)
 } 				t_token;
 
