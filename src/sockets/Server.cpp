@@ -12,18 +12,20 @@
 
 extern bool running;
 
+/*
 static int getPrimaryPort()
 {
 	// will be replaced by config file
 	static const int ports[] = {8080, 9090, 9094};
 	return ports[0];
 }
+*/
 
-Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, getPrimaryPort(), INADDR_ANY, 10), _config(config)
+Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getServers()[0].port, INADDR_ANY, 10), _config(config)
 {
 	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
-
+	
 	SetupPorts();
 	launch();
 }
