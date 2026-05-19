@@ -55,19 +55,20 @@
 	<script>
 
 		const file_upload = document.getElementById("file_upload");
-		const file_input = document.getElementById("file_input");
-		const text_input = document.getElementById("title");
-		const result = document.getElementById("result");
-		const progressBar = document.getElementById("progressBar");
-
-		// this makes it so that the client doesnt lose its connection whilst doing an upload that is "too large"
+		
 		file_upload.addEventListener("submit", function(e)
 		{
+			// this makes it so that the client doesnt lose connection whilst doing an upload that is "too large"
 			e.preventDefault();
 			progressBar.value = 0;
 
+			const file_input = document.getElementById("file_input");
+			const text_input = document.getElementById("title");
+			const result = document.getElementById("result");
+			const progressBar = document.getElementById("progressBar");
+
 			if (!file_input.files.length) {
-				result.innerText = "❌ Please select a file";
+				result.innerText = "Please select a file...";
 				return;
 			}
 
@@ -76,13 +77,13 @@
 			formData.append("title", text_input.value);
 
 			const xhr = new XMLHttpRequest();
-
 			xhr.open("POST", "/");
 
 			progressBar.hidden = false;
 
 			xhr.upload.addEventListener("progress", (e) => {
-				if (e.lengthComputable) {
+				if (e.lengthComputable)
+				{
 					const percent = (e.loaded / e.total) * 100;
 					progressBar.value = percent;
 				}
@@ -90,42 +91,36 @@
 
 			xhr.onload = () => {
 
-				if (xhr.status === 200 || xhr.status === 302) {
-					result.innerText = "✅ Upload successful";
-					loadFiles();
+				if (xhr.status === 200 || xhr.status === 302)
+				{
+					result.innerText = "Upload successful!!";
+					load_files();
 					progressBar.value = 100;
 				}
-				else {
+				else
 					result.innerText = "❌ Server error: " + xhr.status;
-				}
-
 			};
 
-			xhr.onerror = () => {
-				result.innerText = "❌ Upload stopped with error: " + xhr.status;
-			};
-
+			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
 			xhr.send(formData);
 
 		});
 
 
-		async function loadFiles()
+		async function load_files()
 		{
 			try
 			{
 				const response = await fetch("/uploads");
 				const text = await response.text();
+				if (!response.ok)
+					throw "Couldn't load the files...";
 
-				if (!response.ok) {
-					throw "❌ Folder not found!";
-				}
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
 				const links = Array.from(doc.querySelectorAll("li > a"));
-
 				if (links.length === 0)
-					throw "❌ No files inside uploads!";
+					throw "No files to load...";
 
 				const listContainer = document.getElementById("file-list");
 				listContainer.innerHTML = "";
@@ -153,8 +148,7 @@
 			catch (error)
 			{
 				console.error("Error loading files:", error);
-				document.getElementById("file-list").innerHTML =
-					"Couldn't load the files.";
+				document.getElementById("file-list").innerHTML = error;
 			}
 		}
 
@@ -169,7 +163,7 @@
 				if (response.ok)
 				{
 					alert("File deleted successfully");
-					loadFiles();
+					load_files();
 				}
 				else
 					throw response.status;
@@ -181,7 +175,7 @@
 			}
 		}
 
-		loadFiles();
+		load_files();
 	</script>
 </body>
 </html>

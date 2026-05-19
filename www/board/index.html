@@ -7,7 +7,7 @@
 	<title>Banana</title>
 </head>
 <body>
-	<div class="text red-mark">board posts</div>
+	<div class="text red-mark">post board</div>
 	<br>
 	<ul class="post-board" id="post-board"></ul>
 
@@ -25,7 +25,6 @@
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
 				const links = Array.from(doc.querySelectorAll("li"));
-
 				if (links.length === 0)
 					throw "No posts to load...";
 

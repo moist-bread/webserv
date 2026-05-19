@@ -4,18 +4,8 @@
 # step 3: in a for loop for each elem of json that has 
 # step 4: if no database or correct elem set print EMPTY
 
-import sys
-import os
 from urllib.parse import unquote_plus
-import time
 import json
-
-content_length = int(os.environ.get("CONTENT_LENGTH", 0))
-request = os.environ.get("REQUEST_METHOD", "(empty)")
-query_string = unquote_plus(os.environ.get("QUERY_STRING", "(empty)"))
-body = unquote_plus(sys.stdin.read(content_length))
-
-# urllib.parse.parse_qs(query) will parse it into a dictionary
 
 html_response_head = f"""<html>
 <head>

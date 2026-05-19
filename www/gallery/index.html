@@ -19,13 +19,13 @@
 				const response = await fetch("/uploads");
 				const text = await response.text();
 				if (!response.ok)
-					throw "Upload folder not found...";
+					throw "Couldn't load the files...";
 
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
 				const links = Array.from(doc.querySelectorAll("li > a"));
 				if (links.length === 0)
-					throw "No files were found...";
+					throw "No files to load...";
 
 				const listContainer = document.getElementById("file-list");
 				listContainer.innerHTML = "";
