@@ -48,7 +48,7 @@ void Request::process(std::string request)
 		case LINE:
 			parse_request_line(request);
 			break;
-		case HEADERS:
+		case HEADERS_REQ:
 			parse_request_headers(request);
 			break;
 		case BODY:
@@ -124,7 +124,7 @@ void Request::parse_request_line(std::string &request)
 	if (query.size() + path_uri.size() > URI_LIMIT)
 		throw(Request::ParseError("Client request URI has surpassed the Server's limit", URI_TOO_LONG));
 
-	set_state(HEADERS);
+	set_state(HEADERS_REQ);
 }
 
 void Request::parse_request_headers(std::string &request)

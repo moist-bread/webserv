@@ -44,7 +44,7 @@ private:
 	bool isServerSocket(int fd);
 	ConnectionStatus getStatus(int ret);
 
-	const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
+	// const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
 
 	void SetupPorts();
 	void accepter(int listenFd);

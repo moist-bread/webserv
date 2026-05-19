@@ -132,28 +132,28 @@ void Server::removeClient(int fd, size_t &index)
 /*
 Descobre qual ServerConfig responde ao pedido com base no ListenFd en Host: Header
 */
-const ServerConfig* Server::resolveServerConfig(int listenFd, const std::string &hostHeader) const
-{
-    const std::vector<ServerConfig>& servers = _config.getallServers();
+// const ServerConfig* Server::resolveServerConfig(int listenFd, const std::string &hostHeader) const
+// {
+//     const std::vector<ServerConfig>& servers = _config.getallServers();
 
-    // 1ª passagem — procura pelo serverName exato
-    for (size_t i = 0; i < servers.size(); i++)
-    {
-        if (_listeningFds[i] != listenFd)
-            continue;
-        const std::vector<std::string>& names = servers[i].serverNames;
-        for (size_t j = 0; j < names.size(); j++)
-            if (names[j] == hostHeader)
-                return &servers[i];
-    }
+//     // 1ª passagem — procura pelo serverName exato
+//     for (size_t i = 0; i < servers.size(); i++)
+//     {
+//         if (_listeningFds[i] != listenFd)
+//             continue;
+//         const std::vector<std::string>& names = servers[i].serverNames;
+//         for (size_t j = 0; j < names.size(); j++)
+//             if (names[j] == hostHeader)
+//                 return &servers[i];
+//     }
 
-    // 2ª passagem — fallback: primeiro servidor que escuta neste fd
-    for (size_t i = 0; i < _listeningFds.size(); i++)
-        if (_listeningFds[i] == listenFd)
-            return &servers[i];
+//     // 2ª passagem — fallback: primeiro servidor que escuta neste fd
+//     for (size_t i = 0; i < _listeningFds.size(); i++)
+//         if (_listeningFds[i] == listenFd)
+//             return &servers[i];
 
-    return NULL;
-}
+//     return NULL;
+// }
 
 void Server::launch()
 {
@@ -233,26 +233,20 @@ void Server::accepter(int listenFd)
 
     int newFd = accept(listenFd, (struct sockaddr *)&clientAddr, (socklen_t *)&addrlen);
     if (newFd < 0)
-        return (perror("accept"));
+		return (perror("accept"));
 
+	if (!_fdToServerConfig.count(listenFd))
+		throw (std::runtime_error("cliente sem server config"));
     PopulatePollInfo(newFd);
-    Client newClient(newFd);
-
-
-	newClient.listenFd = listenFd;
-    // Associa o ServerConfig correto ao cliente
-    if (_fdToServerConfig.count(listenFd))
-        newClient.serverConfig = _fdToServerConfig[listenFd];
-	else
-		throw (std::runtime_error("cliente sem server conig"));
+	std::cout << RED "this is the config\n" DEF;
+	std::cout << *_fdToServerConfig[listenFd] << std::endl;
+    Client newClient(newFd, listenFd, _fdToServerConfig[listenFd]);
 
     _clients.insert(std::make_pair(newFd, newClient));
 	std::cout << "Cliente criado na socket " << newFd << std::endl;
 
-	// if (newClient.serverConfig)
-	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->getListenPort() << std::endl;
-    // else
-        // std::cout << "[DEBUG] accepter — cliente " << newFd << " SEM serverConfig!" << std::endl;
+	std::cout << "[DEBUG] accepter — cliente " << newFd;
+	std::cout << " associado ao servidor porta=" << newClient.serverConfig->getListenPort() << std::endl;
 }
 
 int Server::responder(int clientFd, const std::string &data)

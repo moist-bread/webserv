@@ -1,14 +1,16 @@
 #include "../../inc/requests/Response.hpp"
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/serverConfig/LocationConfig.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <fstream>	  // remove, fstream, ifstream, ofstream
-#include <dirent.h>	  // opendir, readdir, closedir, DIR
-#include <sys/stat.h> // mkdir, stat
-#include <ctime>	  // time
-#include <algorithm> // strtod
-#include <cmath>	 // HUGE_VAL
+#include <fstream>		// remove, fstream, ifstream, ofstream
+#include <dirent.h>		// opendir, readdir, closedir, DIR
+#include <sys/stat.h>	// mkdir, stat
+#include <ctime>		// time
+#include <algorithm>	// strtod
+#include <cmath>		// HUGE_VAL
 
 #define BUFFER_SIZE 4096
 
@@ -25,9 +27,9 @@ namespace response_utils
 
 }
 
-Response::Response(void) : req(NULL) { clear(true); }
+Response::Response(void) : req(NULL), conf(NULL) { clear(true); }
 
-Response::Response(Request &src) : req(&src) { clear(true); }
+Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc) { clear(true); }
 
 Response::Response(Response const &src)
 {
@@ -115,12 +117,24 @@ void Response::preparations_for_response(void)
 {
 	if (!this->req)
 		throw(std::runtime_error("Response was initialized without associated Request"));
+	else if (!this->conf)
+		throw(std::runtime_error("Response was initialized without associated ServerConfig"));
+	
 	(*req).set_state(BEGIN);
 
-	// !! check if the path is actually a redirection
-	// HTTP redirect PERMANENT_REDIRECT
-	// Location header to thet new url
-	// no body
+	const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a class variable
+	// std::cout << RED "CURRENT LOCATION" DEF << std::endl;
+	// if (loc)
+	// 	std::cout << *loc << std::endl;
+
+
+	if (loc && loc->isRedirect()) // !! this isn't working yet, returns loc for "/" even when it isnt
+	{
+		;
+		// headers["Location"] = loc->getReturnUrl();
+		// status_code = loc->getReturnCode();
+		// return (set_state(HEADERS_RESP));
+	}
 
 	if (!is_chunked && !cgi_reply.empty() && !response_utils::is_error(status_code))
 		return (set_state(CGI));
@@ -240,8 +254,8 @@ void Response::method_get(void)
 	if (response_utils::is_error(status_code))
 		return (error_response());
 
-	// get the requested content
-	if ((*req).path_uri == "/uploads") // IN CASE OF AUTO INDEXING
+	const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a variable
+	if (loc && loc->isAutoIndexOn())
 	{
 		body = create_autoindexing_page();
 		return;
@@ -278,6 +292,10 @@ void Response::method_get(void)
 
 void Response::error_response(void)
 {
+	// -------------------------------- continue parsing incorporation here
+
+
+	
 	(*req).file_extension = "html";
 	std::ifstream file(assemble_content_path(status_code).c_str());
 	if (!file.is_open())

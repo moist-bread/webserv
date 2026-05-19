@@ -12,18 +12,18 @@ private:
 	time_t _lastActivity;
 	
 public:
-	const ServerConfig* serverConfig;
+	const ServerConfig *serverConfig;
 	int listenFd; // qual listener aceitou esta conexao
-
-	Client(void);					// default constructor
-	Client(int fd);			   		// int constructor
-	Client(Client const &src);	// copy constructor
-	~Client(void);					// destructor
-	Client &operator=(Client const &src); // copy assignment operator overload
-
+	
 	Request request;
 	Response response;
 	CgiHandler cgi;
+
+	Client(void);
+	Client(int fd, int lfd, const ServerConfig *sc);
+	Client(Client const &src);
+	~Client(void);
+	Client &operator=(Client const &src);
 
 	time_t GetLastActivity() const;
 	int GetClientFd() const;

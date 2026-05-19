@@ -28,7 +28,7 @@ enum t_request_state
 {
 	BEGIN,
 	LINE,
-	HEADERS,
+	HEADERS_REQ,
 	BODY,
 	END
 };

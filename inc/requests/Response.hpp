@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 class Request;
+struct ServerConfig;
 
 // == enums
 
@@ -25,7 +26,7 @@ enum t_response_state
 class Response
 {
 public:
-	Response(Request &src);
+	Response(Request &req_ref, const ServerConfig *sc);
 	Response(Response const &src);
 	~Response(void);
 
@@ -38,13 +39,11 @@ public:
 	void set_state(t_response_state new_state);
 	t_response_state get_state(void) const;
 
-	// getters for private vars
-
 	// private:
 	void method_get(void);
 	void error_response(void);
 	std::string create_autoindexing_page(void);
-	std::string assemble_content_path(t_status_code status_code); // CAN BE AN UTILS
+	std::string assemble_content_path(t_status_code status_code);
 	std::string create_range_response_body(std::ifstream &file, vector2 &ranges);
 	std::string multiple_range(std::ifstream &file, vector2 &ranges);
 	std::string single_range(std::ifstream &file, std::pair<int, int> range);
@@ -70,6 +69,7 @@ public:
 	};
 
 	Request *req;
+	const ServerConfig *conf;
 
 	int file_length;
 	std::string boundary;
