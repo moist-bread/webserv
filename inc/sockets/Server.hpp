@@ -1,7 +1,8 @@
 #pragma once
 
 #include "ASimpleServer.hpp"
-
+#include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/serverConfig/Config.hpp"
 #include <map>
 #include <vector>
 #include <iostream>
@@ -20,6 +21,9 @@ enum ConnectionStatus
 class Server : public ASimpleServer
 {
 private:
+
+ 	Config _config;
+
 	std::map<int, Client> _clients;
 	std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
 
@@ -29,7 +33,8 @@ private:
 
 	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-	void SetupPorts();
+	std::map<int, const ServerConfig*> _fdToServerConfig; // listenFd → config do servidor
+
 	void SetNonblocking(int fd);
 
 	void PopulatePollInfo(int fd);
@@ -39,6 +44,9 @@ private:
 	bool isServerSocket(int fd);
 	ConnectionStatus getStatus(int ret);
 
+	const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
+
+	void SetupPorts();
 	void accepter(int listenFd);
 	int responder(int clientFd, const std::string &data);
 
@@ -48,7 +56,7 @@ private:
 	void inactivityTimeout(int fd, size_t *pollfds_idx);
 
 public:
-	Server(void);				  // default constructor
+	Server(Config config);				  // default constructor
 	Server(Server const &source); // copy constructor
 	~Server(void);				  // destructor
 

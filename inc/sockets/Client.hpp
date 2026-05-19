@@ -2,6 +2,7 @@
 
 #include "../requests/Request.hpp"
 #include "../requests/Response.hpp"
+#include "../serverConfig/ServerConfig.hpp"
 #include "CgiHandler.hpp"
 
 class Client
@@ -11,6 +12,9 @@ private:
 	time_t _lastActivity;
 	
 public:
+	const ServerConfig* serverConfig;
+	int listenFd; // qual listener aceitou esta conexao
+
 	Client(void);					// default constructor
 	Client(int fd);			   		// int constructor
 	Client(Client const &src);	// copy constructor
