@@ -4,13 +4,12 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
-#include <vector>
+
+#include <unistd.h> // !! sleep for debug
 
 // TO-DO
-//
-// [ ] DO CHUNCKED REQUESTS AND RESPONSES
-// [ ] START DOING COOKIES
 // [ ] adapt better for config incorporation
+// [ ] create a static Inspect class for debug prints
 // [ ] vefify LWS (linear whitespace) better
 
 // =====>┊( REQUEST )┊
@@ -19,23 +18,31 @@ class Request
 {
 public:
 	Request(void);
-	Request(Request const &source);
+	Request(Request const &src);
 	~Request(void);
 
-	Request &operator=(Request const &source);
+	Request &operator=(Request const &src);
 
 	void process(std::string request);
 	void clear(void);
+
 	void parse_request_line(std::string &request);
+	void parse_request_headers(std::string &request);
 	void parse_body(std::string &request);
+
+	void validade_request(void);
+
+	void update_content_length(std::string &request);
+	void parse_range_header(void);
 	void parse_forms(void);
 	void format_application_form(void);
 	void format_multipart_form(std::string type);
 
 	std::string extract(std::string *src, const char *sep) const;
-	
-	map_strings extract_key_value(std::string *src, std::string sep, std::string delim) const;
-	// bool detect_cgi(void) const;
+
+	// state machine
+	void set_state(t_request_state new_state);
+	t_request_state get_state(void) const;
 
 	class ParseError : public std::runtime_error
 	{
@@ -49,11 +56,20 @@ public:
 	std::string query;
 	std::string file_extension;
 	t_protocol protocol;
+	std::string temp_headers;
 	map_strings headers;
 	std::string body;
 	std::string json;
 	std::vector<MultiForm> multi_form;
-	bool missing_request_part;
+
+	double content_length;
+	size_t content_read;
+	// bool chunked_body;
+
+	vector2 wanted_ranges;
+
+private:
+	t_request_state state;
 };
 
 std::ostream &operator<<(std::ostream &out, Request &src);

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>Banana</title>
+</head>
+<body>
+	<div class="text red-mark">post board</div>
+	<br>
+	<ul class="post-board" id="post-board"></ul>
+
+	
+	<script>
+		async function load_posts()
+		{
+			try
+			{
+				const response = await fetch("/get_posts.py");
+				const text = await response.text();
+				if (!response.ok)
+					throw "Couldn't load the posts...";
+	
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(text, "text/html");
+				const links = Array.from(doc.querySelectorAll("li"));
+				if (links.length === 0)
+					throw "No posts to load...";
+
+				const listContainer = document.getElementById("post-board");
+				listContainer.innerHTML = "";
+				links.forEach((link) => { listContainer.appendChild(link); });
+			}
+			catch (error)
+			{
+				console.error("Error loading posts:", error);
+				document.getElementById("post-board").innerHTML = error;
+			}
+		}
+
+		load_posts();
+	</script>
+</body>
+</html>

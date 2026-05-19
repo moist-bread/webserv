@@ -13,9 +13,9 @@ private:
 public:
 	Client(void);					// default constructor
 	Client(int fd);			   		// int constructor
-	Client(Client const &source);	// copy constructor
+	Client(Client const &src);	// copy constructor
 	~Client(void);					// destructor
-	Client &operator=(Client const &source); // copy assignment operator overload
+	Client &operator=(Client const &src); // copy assignment operator overload
 
 	Request request;
 	Response response;

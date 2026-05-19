@@ -28,34 +28,99 @@
 		<p>Store Body in location POST request:</p>
 		<label for="username">username:</label>
 		<input type="text" id="username" name="username"><br><br>
+		<label for="title">post title:</label>
+		<input type="text" id="title" name="title"><br><br>
 		<label for="notes">notes:</label>
 		<input type="text" id="notes" name="notes"><br><br>
 		<input type="submit" value="Submit">
 	</form>
-	<form action="/" method="POST" enctype="multipart/form-data">
-		<p>Send us a File:</p>
+	<form id="basic_file_upload" action="/" method="POST" enctype="multipart/form-data">
+		<p>Basic file upload:</p>
 		<label for="file">file:</label>
-		<input type="file" id="fileInput" name="media" required>
-		<input type="text" id="title" name="title"><br><br>
+		<input type="file" id="file" name="media" required>
 		<input type="submit" value="Submit">
 	</form>
+	<form id="file_upload" action="/" method="POST" enctype="multipart/form-data">
+		<p>Send us a File:</p>
+		<label for="file">file:</label>
+		<input type="file" id="file_input" name="media" required>
+		<input type="text" id="title" name="title"><br><br>
+		<button type="submit">📤 Upload</button>
+		<progress id="progressBar" value="0" max="100" hidden></progress>
+	</form>
+	<p id="result"></p>
 	<div class="text yellow-mark">uploads</div>
 	<div id="file-list">Loading files...</div>
 	
 	<script>
-		async function loadFiles()
+
+		const file_upload = document.getElementById("file_upload");
+		
+		file_upload.addEventListener("submit", function(e)
+		{
+			// this makes it so that the client doesnt lose connection whilst doing an upload that is "too large"
+			e.preventDefault();
+			progressBar.value = 0;
+
+			const file_input = document.getElementById("file_input");
+			const text_input = document.getElementById("title");
+			const result = document.getElementById("result");
+			const progressBar = document.getElementById("progressBar");
+
+			if (!file_input.files.length) {
+				result.innerText = "Please select a file...";
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append("media", file_input.files[0]);
+			formData.append("title", text_input.value);
+
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/");
+
+			progressBar.hidden = false;
+
+			xhr.upload.addEventListener("progress", (e) => {
+				if (e.lengthComputable)
+				{
+					const percent = (e.loaded / e.total) * 100;
+					progressBar.value = percent;
+				}
+			});
+
+			xhr.onload = () => {
+
+				if (xhr.status === 200 || xhr.status === 302)
+				{
+					result.innerText = "Upload successful!!";
+					load_files();
+					progressBar.value = 100;
+				}
+				else
+					result.innerText = "❌ Server error: " + xhr.status;
+			};
+
+			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
+			xhr.send(formData);
+
+		});
+
+
+		async function load_files()
 		{
 			try
 			{
 				const response = await fetch("/uploads");
 				const text = await response.text();
+				if (!response.ok)
+					throw "Couldn't load the files...";
 
-				if (!response.ok) {
-					throw error("❌ Folder not found!");
-				}
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
 				const links = Array.from(doc.querySelectorAll("li > a"));
+				if (links.length === 0)
+					throw "No files to load...";
 
 				const listContainer = document.getElementById("file-list");
 				listContainer.innerHTML = "";
@@ -71,7 +136,7 @@
 						<span>${name}</span>
 						<div class="actions">
 							<a href="${href}" target="_blank">Preview</a>
-							<button onclick="deleteFile('${href}')" 
+							<button onclick="delete_file('${href}')" 
 							style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
 								Delete
 							</button>
@@ -83,40 +148,34 @@
 			catch (error)
 			{
 				console.error("Error loading files:", error);
-				document.getElementById("file-list").innerHTML =
-					"Couldn't load the files.";
+				document.getElementById("file-list").innerHTML = error;
 			}
 		}
 
-		async function deleteFile(fileName)
+		async function delete_file(file_name)
 		{
-			if (!confirm(`do you want to delete the following file? \"${fileName}\"`))
+			if (!confirm(`do you want to delete the following file? \"${file_name}\"`))
 				return;
 
 			try
 			{
-				const response = await fetch(`${fileName}`, {method: "DELETE"});
-
+				const response = await fetch(`${file_name}`, {method: "DELETE"});
 				if (response.ok)
 				{
 					alert("File deleted successfully");
-					loadFiles();
+					load_files();
 				}
 				else
-				{
-					const errorText = await response.text();
-					alert("Error on delete: " + response.status);
-					console.error("Error details:", errorText);
-				}
+					throw response.status;
 			}
 			catch (error)
 			{
-				console.error("Error on DELETE request:", error);
-				alert("Couldn't connect with the server to delete");
+				console.error("Error when trying to delete: ", error);
+				alert("Failed to delete file");
 			}
 		}
 
-		loadFiles();
+		load_files();
 	</script>
 </body>
 </html>

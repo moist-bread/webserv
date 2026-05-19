@@ -17,6 +17,11 @@ body {
 	gap: 18px;
 }
 
+button {
+	color: #222;
+	font-family: "Mansalva", sans-serif;
+}
+
 .text {
 	width: fit-content;
 	padding: 6px 12px;
@@ -61,3 +66,141 @@ body {
 		--mark-bg-angle: 150deg;
 	}
 }
+
+.post-board {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	li {
+		margin:25px;
+		position:relative;
+		transition: transform .15s linear;
+	}
+	
+	li:nth-child(even) {
+		transform: rotate(4deg);
+		top:5px;
+	}
+	
+	li:nth-child(3n) {
+		transform: rotate(-3deg);
+		top:-5px;
+		background: #FFDDEF;
+	}
+	
+	li:nth-child(5n) {
+		transform: rotate(5deg);
+		top:-10px;
+	}
+
+	li:nth-child(4n+2) {
+		background: #cfc;
+	}
+
+	li:nth-child(4n+4) {
+		background: #D5F4FF;
+	}
+
+	li:hover, li:focus{
+		box-shadow:10px 10px 7px rgba(0,0,0,.7);
+		transform: scale(1.25);
+		position:relative;
+		z-index:5;
+	}
+
+}
+
+.post-it {
+	width:250px;
+	height:240px;
+	position:relative;
+	background:#ffa;
+	overflow:hidden;
+	padding:15px;
+	line-height:1.2em;
+	font-size:18px;
+	text-decoration:none;
+	display:block;
+	box-shadow: 5px 5px 7px rgba(33,33,33,.7);
+	
+	h2 {
+		font-weight: bold;
+	}
+
+	
+	span.subtitle {
+		color: grey;
+		font-size:15px;
+	}
+	
+}
+
+.table:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+
+.pages-overview {
+	float: left;
+	margin-left: 20px;
+	margin-right: 20px;
+	
+}
+
+
+.page-paper-strip {
+	min-width: 300px;
+	max-width: 500px;
+	width: 20%;
+	display: block;
+	height: 50px;
+	position: relative;
+	border-radius: 1px;
+	background: linear-gradient(to right, #B4EBFF 35%, #E8F3F7 100%);
+	/* background: linear-gradient(to right, #abbd73 35%, #d6e2ad 100%); */
+	margin-bottom: 40px;
+	color: darkslategray;
+	box-shadow: 1px 2px 1px -1px #777;
+	transition: background 200ms ease-in-out;
+
+	&:hover {
+		background: linear-gradient(to right, #B4EBFF 0%, #E8F3F7 100%);
+		/* background: linear-gradient(to right, #abbd73 0%, #abbd73 100%); */
+	}
+
+	&.shadow:before {
+		position: relative;
+		z-index: -1;
+		position: absolute;
+		content: "";
+		bottom: 13px;
+		right: 7px;
+		width: 30%;
+		top: 0;
+		box-shadow: 0 15px 10px #777;
+		transform: rotate(4deg);
+		transition: all 150ms ease-in-out;
+	}
+
+	&.shadow:hover::before {
+		transform: rotate(0deg);
+		bottom: 20px;
+		z-index: -10;
+	}
+
+	button {
+		cursor: pointer;
+		border: none;
+		width: 100%;
+		height: 100%;
+		background: none;
+		font-size: 25px;
+		text-align: left;
+		white-space: nowrap;
+		padding: 4px 40px;
+		overflow: hidden;
+	}
+}
+

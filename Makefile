@@ -22,7 +22,7 @@ SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp Connectin
 
 CONF_FILES_C	= 	Lexer.cpp Parser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp \
 
-OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp Response.cpp HTTP.cpp
+OTHER_FILES_C	=	Class.cpp signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp
 
 OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))
@@ -76,6 +76,10 @@ rexe: re
 val: all
 	$(M_VAL)
 	$(VAL) ./$(NAME) configfile
+
+main_test:
+	@$(CXX) $(CXXFLAGS) src/main_sock.cpp -o $(NAME)
+	./$(NAME) configfile
 
 # =====>┊( STANDARD RULES )┊
 clean:

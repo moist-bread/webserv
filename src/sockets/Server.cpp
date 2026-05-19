@@ -3,12 +3,13 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <unistd.h>	// close, read
+#include <unistd.h> // close, read
 #include <ctime>	// time, difftime
 #include <stdio.h>	// perror
 #include <fcntl.h>	// fcntl
 
 #define TIMEOUT_TIME 120
+#define READ_BUFFER_SIZE 65536 // 64kb per second
 
 extern bool running;
 
@@ -111,7 +112,7 @@ void Server::removeClient(int fd, size_t &index)
 {
 	std::cout << RED "REMOVING THE CLIENT " DEF << fd << "\n";
 	_clients.erase(fd);
-	for (std::map<int, int>::iterator it = _cgiMap.begin(); it !=_cgiMap.end(); it++)
+	for (std::map<int, int>::iterator it = _cgiMap.begin(); it != _cgiMap.end(); it++)
 	{
 		if (it->second == fd)
 		{
@@ -139,13 +140,13 @@ void Server::launch()
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
 			int fd = _pollfds[i].fd;
-			
+
 			if (!running && _clients.find(fd) != _clients.end())
 			{
 				removeClient(fd, i);
 				continue;
 			}
-			
+
 			// --- CASO 1: NOVA CONEXÃO ---
 			if (isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 				accepter(fd);
@@ -165,7 +166,6 @@ void Server::launch()
 			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
 			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 				inactivityTimeout(fd, &i);
-			
 		}
 		std::cout << "== DONE ===" << std::endl;
 	}
@@ -211,14 +211,13 @@ int Server::responder(int clientFd, const std::string &data)
 	return write(clientFd, data.c_str(), data.size());
 }
 
-
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
- 
-	_clients[clientFd].cgi.time_started = -1;
- 
-	//Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
+
+	_clients[clientFd].cgi.time_started = VALUE_NOT_SET;
+
+	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
 	if (_pollfds[*pollfds_idx].revents & POLLERR)
 	{
 		std::cerr << "[CGI] POLLERR no pipe — a gerar resposta de erro\n";
@@ -227,50 +226,23 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--;
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-		_clients[clientFd].response.process(_clients[clientFd].request);
+
 		for (size_t j = 0; j < _pollfds.size(); j++)
 			if (_pollfds[j].fd == clientFd)
-				{
-					_pollfds[j].events = POLLOUT;
-					 break;
-				}
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
 		return;
 	}
- 
+
 	//  Ler do tubo
-	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG?
-	char buffer[4096];
-	int bytesRead = read(fd, buffer, sizeof(buffer) - 1);
- 
+	char buffer[READ_BUFFER_SIZE];
+	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
+
 	if (bytesRead > 0)
 	{
-		_clients[clientFd].response.full_response += std::string(buffer, bytesRead);
-	}
-	else if (bytesRead <= 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
-	{
-		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
- 
-		//  Fechar e limpar o tubo
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
-
-		/*Fix
-			Erro de antes como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
-			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
-
-			Agora se o full_response estiver vazio apos o amigo CGI terminar significa que o script
-			falhou no puro silencio shhhh e ainda recebe um 500 banger
-		*/
-		if (_clients[clientFd].response.full_response.empty())
-        {
-            std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
-            _clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-            _clients[clientFd].response.process(_clients[clientFd].request);
-        }
-
-		// Acordar o Cliente! Passar o cliente para POLLOUT para ele receber a resposta
+		_clients[clientFd].response.cgi_reply = std::string(buffer, bytesRead);
 		for (size_t j = 0; j < _pollfds.size(); j++)
 		{
 			if (_pollfds[j].fd == clientFd)
@@ -279,17 +251,77 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 				break;
 			}
 		}
+		// !! maybe send right away here with encoding chunked
+		// and then later send the finishing chunck when it gets the 0
+	}
+	else if (bytesRead == 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
+	{
+		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
+		_clients[clientFd].response.cgi_reply.clear();
+
+		//  Fechar e limpar o tubo
+		close(fd);
+		_cgiMap.erase(fd);
+		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
+		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
+
+		/*
+			Erro de antes: como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
+			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
+
+			Fix: agora se o full_response estiver vazio apos o CGI terminar significa que o script
+			falhou silenciosamente e ainda recebe um INTERNAL_SERVER_ERROR
+		*/
+		if (_clients[clientFd].response.cgi_reply.empty() && !_clients[clientFd].response.is_chunked)
+		{
+			std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
+			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
+		}
+
+		// Acordar o Cliente! Passar o cliente para POLLOUT para ele enviar a resposta
+		for (size_t j = 0; j < _pollfds.size(); j++)
+		{
+			if (_pollfds[j].fd == clientFd)
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
+		}
+		// std::cout << YEL "-- CGI Response --" DEF "\n\n";
+		// std::cout << YEL "Body..." DEF << std::endl;
+		// std::cout << _clients[clientFd].response.cgi_reply << std::endl;
+	}
+	else // will see if all of this is necessary in the future
+	{
+		std::cout << "CGI read error " << clientFd << std::endl;
+		close(fd);
+		_cgiMap.erase(fd);
+		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
+		(*pollfds_idx)--;
+		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
+
+		for (size_t j = 0; j < _pollfds.size(); j++)
+			if (_pollfds[j].fd == clientFd)
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
+		return;
 	}
 }
 
-
+bool allowedCGI(std::string cgi_type, std::string loc)
+{
+	(void)loc;
+	if (cgi_type == "py")
+		return (true);
+	return (false);
+}
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 {
-	// CHANGE IT SO THAT BUFFER SIZE IS DIFF DEPENDING ON CONFIG
-	// make it slightly bigger than the max to see if it overflows
-	char tmp[65536]; // 64kb por segundo
-	int ret = recv(fd, tmp, sizeof(tmp), 0);
+	char tmp[READ_BUFFER_SIZE];
+	int ret = recv(fd, tmp, READ_BUFFER_SIZE, 0);
 
 	ConnectionStatus status = getStatus(ret);
 	if (status == IO_ERROR || status == IO_CLOSED)
@@ -297,10 +329,9 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	std::string rec = std::string(tmp, ret);
 	std::cout << std::endl;
-	std::cout << "Raw Request:" << std::endl;
-	std::cout << rec << std::endl;
+	// std::cout << "Raw Request:" << std::endl;
+	// std::cout << rec << std::endl;
 	std::cout << "Bytes recebidos: " << ret << std::endl;
-	// HERE CHECK IF IT THE BUFFER WAS TOO SMALL
 
 	_clients[fd].response.status_code = OK;
 	try
@@ -310,28 +341,30 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	catch (const Request::ParseError &e)
 	{
 		std::cerr << e.what() << std::endl;
+		_clients[fd].request.set_state(END);
 		_clients[fd].response.status_code = e.request_status;
+		_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
+		return;
 	}
 
-	if (_clients[fd].request.missing_request_part) 
+	_clients[fd].updateLastActivity();
+
+	if (_clients[fd].request.get_state() != END)
 	{
-		// will probably change this when i implement chuncked requests
-		std::cout << RED "WE ARE MISSING SOMETHING\n" DEF;
-		return ;
+		std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
+		return;
 	}
 
-	std::cout << BLU "file extension: " DEF << _clients[fd].request.file_extension << std::endl;
-	if (_clients[fd].request.file_extension == "py")
+	// start the cgi execution right away
+	if (allowedCGI(_clients[fd].request.file_extension, _clients[fd].request.path_uri))
 	{
-		std::cout << BLU "THIS IS A CGI!!!!!!!\n" DEF;
 		try
 		{
 			_clients[fd].cgi.process(_clients[fd].request);
 			int contentOfCgiFd = _clients[fd].cgi.getPipeOutReadFd();
 			PopulatePollInfo(contentOfCgiFd);
 			_cgiMap.insert(std::make_pair(contentOfCgiFd, _clients[fd].GetClientFd()));
-			// O cliente fica "adormecido" no poll até o CGI acabar
-			_pollfds[*pollfds_idx].events = 0;
+			_pollfds[*pollfds_idx].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
 			return;
 		}
 		catch (const CgiHandler::CgiExecutionFail &e)
@@ -340,26 +373,27 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
 	}
-	_clients[fd].response.process(_clients[fd].request);
-	// Paramos de escutar POLLIN e passamos a escutar POLLOUT
-	_clients[fd].updateLastActivity();
-	_pollfds[*pollfds_idx].events = POLLOUT;
+
+	_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
 }
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
+	_clients[fd].response.process();
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
 		_clients[fd].updateLastActivity();
-		_clients[fd].response.eraseWritten(0, bytesWritten);
-
-		// ??? shouldnt the case of the buffer not being fully sent
-		// handled by chunk responses????
-
-		// Buffer vazio, vamos voltar a escutar para input
+		std::cout << YEL "response sent..." DEF << std::endl;
+		_clients[fd].response.full_response.erase(0, bytesWritten);
 		if (_clients[fd].response.full_response.empty())
+		{
+			// only continue onto the next request after being able to
+			// send everything from the previously processed request
+			std::cout << YEL "full response is empty, change to POLLIN" DEF << std::endl;
+			_clients[fd].response.set_state(PREP);
 			_pollfds[*pollfds_idx].events = POLLIN;
+		}
 	}
 	else if (bytesWritten < 0)
 	{
@@ -369,8 +403,8 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 
 void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
-	if (_clients[fd].response.headers.find("connection") != _clients[fd].response.headers.end())
-		if (_clients[fd].response.headers["connection"] == "close")
+	if (_clients[fd].response.headers.find("Connection") != _clients[fd].response.headers.end())
+		if (_clients[fd].response.headers["Connection"] == "close")
 			return (removeClient(fd, *pollfds_idx));
 
 	// Chegámos ao fim do processamento deste FD nesta volta.
@@ -385,7 +419,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 		return (removeClient(fd, *pollfds_idx));
 	}
 
-	if (_clients[fd].cgi.getCgiActivityStart() == -1)
+	if (_clients[fd].cgi.getCgiActivityStart() == VALUE_NOT_SET)
 		return;
 	double cgi_time = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
 	if (cgi_time > TIMEOUT_TIME)

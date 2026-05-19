@@ -4,11 +4,16 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
+#include <stdio.h>
+#include <stdint.h> // size_max
 
 // == defines
 #define CRLF "\r\n"
+#define VALUE_NOT_SET -1
 
 typedef std::map<std::string, std::string> map_strings;
+typedef std::vector<std::pair<int, int> > vector2;
 
 struct MultiForm
 {
@@ -18,6 +23,16 @@ struct MultiForm
 };
 
 // == enums
+
+enum t_request_state
+{
+	BEGIN,
+	LINE,
+	HEADERS,
+	BODY,
+	END
+};
+
 enum t_method
 {
 	GET,
@@ -66,10 +81,10 @@ enum t_status_code
 	GONE,
 	LENGTH_REQUIRED,
 	PRECONDITION_FAILED,
-	REQUEST_ENTITY_TOO_LARGE,
-	REQUEST_URL_TOO_LONG,
+	CONTENT_TOO_LARGE,
+	URI_TOO_LONG,
 	UNSUPPORTED_MEDIA_TYPE,
-	REQUESTED_RANGE_NOT_SATISFIABLE,
+	RANGE_NOT_SATISFIABLE,
 	EXPECTATION_FAILED, // Expect request-header
 	INTERNAL_SERVER_ERROR = 500,
 	NOT_IMPLEMENTED,
@@ -93,20 +108,21 @@ std::string to_str(const T &value)
 // == classes
 class HTTP
 {
-	public:
-		static t_method getMethod(const std::string &strMethod);		// returns the Method Enum from string
-		static std::string stringMethod(const t_method Method);			// returns the string from Method Enum
-		static t_protocol getProtocol(const std::string &strProtocol);	// returns the Protocol Enum from string
-		static std::string stringProtocol(const t_protocol Protocol);	// returns the string from Protocol Enum
-		static std::string getReasonPhrase(t_status_code status_code);	// returns the string from Status Code Enum
+public:
+	static t_method getMethod(const std::string &strMethod);	   // returns the Method Enum from string
+	static std::string stringMethod(const t_method Method);		   // returns the string from Method Enum
+	static t_protocol getProtocol(const std::string &strProtocol); // returns the Protocol Enum from string
+	static std::string stringProtocol(const t_protocol Protocol);  // returns the string from Protocol Enum
+	static std::string getReasonPhrase(t_status_code status_code); // returns the string from Status Code Enum
+	static map_strings extract_key_value(std::string *src, std::string sep, std::string delim); 
 
-	private:
-		HTTP(void); 				// default constructor
-		HTTP(HTTP const &source);	// copy constructor
-		~HTTP(void);				// destructor
+private:
+	HTTP(void);				  // default constructor
+	HTTP(HTTP const &source); // copy constructor
+	~HTTP(void);			  // destructor
 
-		HTTP &operator=(HTTP const &source); // copy assignment operator overload
+	HTTP &operator=(HTTP const &source); // copy assignment operator overload
 
-		static const std::string _method_names[];
-		static const std::string _protocol_names[];
+	static const std::string _method_names[];
+	static const std::string _protocol_names[];
 };

@@ -3,21 +3,21 @@
 
 #include <ctime>	// time
 
-Client::Client(void)
+Client::Client(void) : response(request)
 {
 	updateLastActivity();
 }
 
-Client::Client(int fd) : _ClientFd(fd)
+Client::Client(int fd) : _ClientFd(fd), response(request)
 {
 	updateLastActivity();
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-Client::Client(Client const &source)
+Client::Client(Client const &src) : response(request)
 {
-	*this = source;
+	*this = src;
 	std::cout << GRN "the Client ";
 	std::cout << UYEL "has been copy created" DEF << std::endl;
 }
@@ -28,16 +28,16 @@ Client::~Client(void)
 	std::cout << URED "has been deleted" DEF << std::endl;
 }
 
-Client &Client::operator=(Client const &source)
+Client &Client::operator=(Client const &src)
 {
-	if (this != &source)
+	if (this != &src)
 	{
-		this->_ClientFd = source._ClientFd;
-		this->_lastActivity = source._lastActivity;
-		this->request = source.request;
-		this->request = source.request;
-		this->response = source.response;
-		this->cgi = source.cgi;
+		this->_ClientFd = src._ClientFd;
+		this->_lastActivity = src._lastActivity;
+		this->request = src.request;
+		this->request = src.request;
+		this->response = src.response;
+		this->cgi = src.cgi;
 	}
 	return (*this);
 }
