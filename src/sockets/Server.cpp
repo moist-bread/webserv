@@ -13,15 +13,6 @@
 
 extern bool running;
 
-/*
-static int getPrimaryPort()
-{
-	// will be replaced by config file
-	static const int ports[] = {8080, 9090, 9094};
-	return ports[0];
-}
-*/
-
 Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getServers()[0].port, INADDR_ANY, 10), _config(config)
 {
 	std::cout << GRN "the Server ";
@@ -252,14 +243,16 @@ void Server::accepter(int listenFd)
     // Associa o ServerConfig correto ao cliente
     if (_fdToServerConfig.count(listenFd))
         newClient.serverConfig = _fdToServerConfig[listenFd];
+	else
+		throw (std::runtime_error("cliente sem server conig"));
 
     _clients.insert(std::make_pair(newFd, newClient));
 	std::cout << "Cliente criado na socket " << newFd << std::endl;
 
-	if (newClient.serverConfig)
-    	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->port << std::endl;
-    else
-        std::cout << "[DEBUG] accepter — cliente " << newFd << " SEM serverConfig!" << std::endl;
+	// if (newClient.serverConfig)
+	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->port << std::endl;
+    // else
+        // std::cout << "[DEBUG] accepter — cliente " << newFd << " SEM serverConfig!" << std::endl;
 }
 
 int Server::responder(int clientFd, const std::string &data)
@@ -328,7 +321,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			Fix: agora se o full_response estiver vazio apos o CGI terminar significa que o script
 			falhou silenciosamente e ainda recebe um INTERNAL_SERVER_ERROR
 		*/
-		if (_clients[clientFd].response.cgi_reply.empty() && !_clients[clientFd].response.is_chunked)
+		if (!_clients[clientFd].response.is_chunked)
 		{
 			std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
 			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
@@ -343,9 +336,6 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 				break;
 			}
 		}
-		// std::cout << YEL "-- CGI Response --" DEF "\n\n";
-		// std::cout << YEL "Body..." DEF << std::endl;
-		// std::cout << _clients[clientFd].response.cgi_reply << std::endl;
 	}
 	else // will see if all of this is necessary in the future
 	{
@@ -393,17 +383,17 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	try
 	{
 		_clients[fd].request.process(rec);
-		std::string hostHeader = _clients[fd].request.headers["host"];
+		
+		// std::string hostHeader = _clients[fd].request.headers["host"];
+		// size_t colon = hostHeader.find(':');
+		// if (colon != std::string::npos)
+		// 	hostHeader = hostHeader.substr(0, colon);
 
-		size_t colon = hostHeader.find(':');
-		if (colon != std::string::npos)
-			hostHeader = hostHeader.substr(0, colon);
-
-		_clients[fd].serverConfig = resolveServerConfig(_clients[fd].listenFd, hostHeader);
-	if (_clients[fd].serverConfig)
-    	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' resolveu para porta=" << _clients[fd].serverConfig->port << std::endl;
-	else
-    	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' NAO resolveu!" << std::endl;
+		// _clients[fd].serverConfig = resolveServerConfig(_clients[fd].listenFd, hostHeader);
+		// if (_clients[fd].serverConfig)
+		// 	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' resolveu para porta=" << _clients[fd].serverConfig->port << std::endl;
+		// else
+		// 	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' NAO resolveu!" << std::endl;
 	}
 	catch (const Request::ParseError &e)
 	{
@@ -436,7 +426,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		}
 		catch (const CgiHandler::CgiExecutionFail &e)
 		{
-			std::cerr << "cgi failure: " << e.what() << '\n';
+			std::cerr << "cgi failure: " << e.what() << std::endl;
 			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
 	}

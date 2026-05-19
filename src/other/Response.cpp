@@ -518,8 +518,8 @@ void Response::handle_multipart_form(void)
 			if (len != std::string::npos)
 				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
-			// -- CAN I EVEN USE MKDIR????
-			if (!opendir(("www" + (*req).path_uri + "uploads/").c_str()) && mkdir(("www" + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
+			// -- use of mkdir is not allowed but we'll kee it commented for the useful case
+			if (!opendir(("www" + (*req).path_uri + "uploads/").c_str())) // && mkdir(("www" + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
@@ -530,7 +530,6 @@ void Response::handle_multipart_form(void)
 		}
 		else
 		{
-			// !! should this be in the database file?
 			map_strings::iterator elem_name = (*it).content_disposition.find("name");
 			std::string name = "name";
 			if (elem_name != (*it).content_disposition.end())
@@ -565,7 +564,6 @@ void Response::method_delete(void)
 	if ((sb.st_mode & S_IFMT) == S_IFDIR) // don't allow folder DELETE
 		throw(Response::CreateError("Action not permited", FORBIDDEN));
 
-	// -- CAN I EVEN USE REMOVE??
 	int res = std::remove(file_name.c_str());
 	if (res == 0)
 	{
