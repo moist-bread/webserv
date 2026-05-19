@@ -4,10 +4,21 @@
 #include <iostream>
 #include <vector>
 
-class ServerConfig;
+#include "../../inc/serverConfig/Lexer.hpp"
+#include "../../inc/serverConfig/ConfigParser.hpp"
+#include "../../inc/serverConfig/ServerConfig.hpp"
 
 // =====>┊( CONFIG )┊
 
+/**
+ * @class Config
+ * @brief Owner and facade for the parsed server configuration tree.
+ *
+ * Responsibilities:
+ * - Load a configuration file (lexer + parser).
+ * - Store the normalized list of `ServerConfig` objects.
+ * - Provide read-only accessors used by the runtime server.
+ */
 class Config
 {
 	public:
@@ -17,19 +28,16 @@ class Config
 		Config &operator=(Config const &src);
 
 		void load(const std::string &filePath);
-		const std::vector<ServerConfig> &getServers(void) const;
+
+		const ServerConfig *getServer(const std::string &listen, const std::string &hostHeader) const;
+		const std::vector<ServerConfig> &getallServers(void) const;
+
+		std::vector<int> getUniquePorts(void) const;
+		std::vector<ListenAddress> getUniqueListen(void) const;
 
 	private:
 		std::vector<ServerConfig>	_servers;
 
-		void _validateServers(void) const;
-		static void _validate_HostPort(const ServerConfig &server);
-		static void _validate_ServerNames(const ServerConfig &server);
-		static void _validate_BodySize(const ServerConfig &server);
-		static void _validate_ErrorPages(const ServerConfig &server);
-		static void _validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames);
-		static void _add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest);
-		
 };
 
 std::ostream &operator<<(std::ostream &out, Config const &src);

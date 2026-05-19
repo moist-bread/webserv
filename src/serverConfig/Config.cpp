@@ -1,7 +1,4 @@
 #include "../../inc/serverConfig/Config.hpp"
-#include "../../inc/serverConfig/Lexer.hpp"
-#include "../../inc/serverConfig/Parser.hpp"
-#include "../../inc/serverConfig/ServerConfig.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
@@ -9,160 +6,138 @@
 #include <algorithm>
 #include <map>
 
-Config::Config(void)
-{
-	std::cout << GRN "the Config ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+/**
+ * @brief Default constructor.
+ */
+Config::Config(void) {}
 
-Config::Config(Config const &src)
-{
-	*this = src;
-	std::cout << GRN "the Config ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
+/**
+ * @brief Copy constructor.
+ * @param src Source Config to copy.
+ */
+Config::Config(Config const &src) { *this = src; }
 
-Config::~Config(void)
-{
-	std::cout << GRN "the Config ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+/**
+ * @brief Destructor.
+ */
+Config::~Config(void) {}
 
+/**
+ * @brief Copy assignment operator.
+ * @param src Source Config to assign from.
+ * @return Reference to this `Config`.
+ */
 Config &Config::operator=(Config const &src)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &src)
 		_servers = src._servers;
 	return (*this);
 }
 
-//	Load the configuration file information into the config class
+/**
+ * @brief Load configuration from file.
+ *
+ * Tokenizes `filePath` with the `Lexer`, parses tokens with `ConfigParser`,
+ * and stores the resulting vector of `ServerConfig` inside this object.
+ *
+ * @param filePath Path to configuration file to load.
+ */
 void Config::load(const std::string &filePath)
 {
-	//	tokenize the file
-	std::vector<t_token> fileTokens = Lexer::tokenizeFile(filePath);
-	std::cout << fileTokens << std::endl;
+	std::vector<t_token> tokenFile = Lexer::tokenizeFile(filePath);
+	// * std::cout << tokenFile << std::endl; -> PRINT TOKENS;
 
-	//	Parse the tokens and dump the tokens into the Config class variables
-	//	The parser class instantiate with tokens and then parse into a given servers vector 
-	Parser configFile(fileTokens);
-	configFile.parse(this->_servers);
-
-	this->_validateServers();
+	_servers = ConfigParser(tokenFile).parse();
 }
 
-const std::vector<ServerConfig>& Config::getServers(void) const
+/**
+ * @brief Find the best matching server for the given listen string and Host header.
+ *
+ * The function returns the `ServerConfig` whose listen string matches `listen` and
+ * whose `server_name` matches `hostHeader` when present. If no name matches, it
+ * returns the first server that listens on `listen` (the default for that socket),
+ * or nullptr if none match.
+ *
+ * @param listen Host:port string to match (e.g. "0.0.0.0:80").
+ * @param hostHeader HTTP Host header used for name-based virtual hosting.
+ * @return Pointer to matching `ServerConfig`, or nullptr if not found.
+ */
+const ServerConfig* Config::getServer(const std::string &listen, const std::string &hostHeader) const
+{
+	const ServerConfig *matchServer = NULL;
+	for (size_t i = 0; i < this->_servers.size(); ++i)
+	{
+		if (this->_servers[i].getListenString() == listen)
+		{
+			if (this->_servers[i].isServerName(hostHeader))
+				return (&this->_servers[i]);
+			if (matchServer == NULL)
+				matchServer = &this->_servers[i];
+		}
+	}
+	return (matchServer);
+}
+
+/**
+ * @brief Return all parsed servers.
+ * @return Const reference to the internal `std::vector<ServerConfig>`.
+ */
+const std::vector<ServerConfig>& Config::getallServers(void) const
 {
 	return (this->_servers);
 }
 
-void Config::_validateServers(void) const
+/**
+ * @brief Collect unique listen ports across all servers.
+ * @return Vector of unique port numbers.
+ */
+std::vector<int> Config::getUniquePorts(void) const
 {
-	std::map<std::string, std::vector<std::string> > serverClaimedNames;
-	for (size_t i = 0; i < _servers.size(); i++)
+	std::vector<int> uniquePorts;
+	for (size_t i = 0; i < this->_servers.size(); ++i)
 	{
-		std::vector<std::string> &claimedNames = serverClaimedNames[_servers[i].listenAddr];
-		_validate_HostPort(_servers[i]);
-		_validate_ServerNames(_servers[i]);
-		_validate_BodySize(_servers[i]);
-		_validate_ErrorPages(_servers[i]);
-		_validate_NameServer_Collision(_servers[i], claimedNames);
-		_add_to_ClaimedNames(_servers[i], claimedNames);
+		if (std::find(uniquePorts.begin(), uniquePorts.end(), this->_servers[i].getListenPort()) == uniquePorts.end())
+			uniquePorts.push_back(this->_servers[i].getListenPort());
 	}
+	return (uniquePorts);
 }
 
-void Config::_validate_HostPort(const ServerConfig &server)
+/**
+ * @brief Collect unique listen addresses (host+port) across all servers.
+ *
+ * The `ListenAddress` objects are copies suitable for socket setup.
+ *
+ * @return Vector of unique `ListenAddress` entries.
+ */
+std::vector<ListenAddress> Config::getUniqueListen(void) const
 {
-	if (server.port < 1 || server.port > 65535)
-		throw std::runtime_error("Config error: IP"); // ! Write error
-	if (std::count(server.host.begin(), server.host.end(), '.') != 3)
-		throw std::runtime_error("Config error: IP"); // ! Write error
-	if (server.host == "localhost" || server.host == "0.0.0.0")
-		return ;
-
-	std::string octet;
-	std::stringstream ss(server.host);
-	while (std::getline(ss, octet, '.'))
+	std::vector<ListenAddress> uniqueListen;
+	std::vector<std::string> listenAdded;
+	for (size_t i = 0; i < this->_servers.size(); ++i)
 	{
-		if (octet.empty())
-			throw std::runtime_error("Config error: IP"); // ! Write error
-		for (size_t i = 0; i < octet.length(); i++)
+		if (std::find(listenAdded.begin(), listenAdded.end(), this->_servers[i].getListenString()) == listenAdded.end())
 		{
-			if (!std::isdigit(octet[i]))
-				throw std::runtime_error("Config error: IP"); // ! Write error
-		}
-		int octet_value = std::atoi(octet.c_str());
-		if (octet_value < 0 || octet_value > 255)
-			throw std::runtime_error("Config error: IP"); // ! Write error
-	}	
-}
-
-void Config::_validate_ServerNames(const ServerConfig &server)
-{
-	for (size_t i = 0; i < server.serverNames.size(); ++i)
-	{
-		const std::string &currentName = server.serverNames[i];
-		if (currentName == "_")
-			continue ;
-		if (currentName[0] == '.' || currentName[0] == '-' || 
-				currentName[currentName.length() - 1] == '.' ||
-				currentName[currentName.length() - 1] == '-')
-			throw std::runtime_error("Config error: Server Names"); // ! Write error
-		for (size_t j = 0; j < currentName.length(); ++j)
-		{
-			char c = currentName[j];
-			if (!std::isalnum(c) && c != '.' && c != '-')
-				throw std::runtime_error("Config error: Server Names"); // ! Write error
-			if (c == '.' && currentName[j - 1] == '.')
-				throw std::runtime_error("Config error: Server Names"); // ! Write error
+			listenAdded.push_back(this->_servers[i].getListenString());
+			uniqueListen.push_back(this->_servers[i].getListenAddress());
 		}
 	}
+	return (uniqueListen);
 }
 
-void Config::_validate_BodySize(const ServerConfig &server)
-{
-	if (server.clientMaxBodySize < 1 || server.clientMaxBodySize > ServerConfig::MAX_CLIENT_MAX_BODY_SIZE)
-		throw std::runtime_error("Config error: Client Max Body Size"); // ! Write error
-}
-
-void Config::_validate_ErrorPages(const ServerConfig &server)
-{
-	std::map<t_status_code, std::string>::const_iterator it;
-	for (it = server.errorPages.begin(); it != server.errorPages.end(); ++it)
-	{
-		int code = it->first;
-		if (code < 400 || code > 599)
-			throw std::runtime_error("Config error: Client Max Body Size"); // ! Write error
-	}
-}
-
-void Config::_validate_NameServer_Collision(const ServerConfig &server, const std::vector<std::string> &claimedNames)
-{
-	for (size_t i = 0; i < claimedNames.size(); i++)
-	{
-		const std::string &name = claimedNames[i];
-		for (size_t j = 0; j < server.serverNames.size(); ++j)
-		{
-			if (name == server.serverNames[j])
-				throw std::runtime_error("Config error: Name Server Collision"); // ! Write error
-		}
-	}
-}
-
-void Config::_add_to_ClaimedNames(const ServerConfig &server, std::vector<std::string> &dest)
-{
-	dest.insert(dest.end(), server.serverNames.begin(), server.serverNames.end());
-}
-
-
+/**
+ * @brief Pretty-print the parsed configuration for debugging.
+ * @param out Output stream to write to.
+ * @param src Config instance to print.
+ * @return Reference to the output stream.
+ */
 std::ostream &operator<<(std::ostream &out, Config const &src)
 {
 	out << "========================================\n";
 	out << "         WEBSERV CONFIGURATION          \n";
 	out << "========================================\n";
-	
-	const std::vector<ServerConfig>& servers = src.getServers(); 
-	
+    
+	const std::vector<ServerConfig>& servers = src.getallServers(); 
+    
 	for (size_t i = 0; i < servers.size(); ++i) {
 		out << servers[i];
 		out << "----------------------------------------\n";

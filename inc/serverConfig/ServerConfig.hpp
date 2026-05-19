@@ -11,30 +11,58 @@
 
 // =====>┊( CLASS )┊
 
-class ServerConfig
+struct ListenAddress
 {
-	public:
-		ServerConfig(void); 				// default constructor
-		ServerConfig(ServerConfig const &source);	// copy constructor
-		~ServerConfig(void);				// destructor
+	std::string	host;		// e.g., "127.0.0.1"
+	int			port;		// e.g., 8080
+	std::string	string;		// host:port combined into a string
 
-		ServerConfig &operator=(ServerConfig const &source); // copy assignment operator overload
+	ListenAddress() : port(-1) {};
+};
 
-		std::string					host;               // e.g., "127.0.0.1"
-		int							port;               // e.g., 8080
-		std::string					listenAddr;			// host:port combined into a string
-		std::vector<std::string>	serverNames;        // e.g., ["example.com", "www.example.com"]
-		size_t						clientMaxBodySize;  // Limit for uploads (e.g., 1048576 for 1MB)
+/**
+ * @brief Plain-data container representing a virtual server block.
+ *
+ * `ServerConfig` holds all parsed configuration for a single virtual server
+ * (listen address, server names, root, error pages and location routes).
+ * It is designed as a lightweight POD-like struct: validation and parsing
+ * responsibilities belong to the parser, while the runtime reads these
+ * fields for socket setup and request routing.
+ */
+struct ServerConfig
+{
+	ServerConfig(void); 				// default constructor
+	ServerConfig(ServerConfig const &source);	// copy constructor
+	ServerConfig &operator=(ServerConfig const &source); // copy assignment operator overload
+	~ServerConfig(void);				// destructor
 
-		// Default error pages
-		// Maps the HTTP error code to a file (e.g., 404 -> "/errors/404.html")
-		std::map<t_status_code, std::string>	errorPages;	// 400 - 599 
+	const std::string &getListenHost(void) const;
+	int getListenPort(void) const;
+	const std::string &getListenString(void) const;
+	const ListenAddress &getListenAddress(void) const;
+	const std::vector<std::string> &getServerNames(void) const;
+	bool isServerName(const std::string &serverName) const;
+	std::string getServerUrl(void) const;
+	const std::string &getRoot(void) const;
+	size_t getClientMaxBodySize(void) const;
+	std::string getErrorPage(t_status_code code) const;
 
-		// The routes that belong to this server
-		std::vector<LocationConfig>	locations;
+	const LocationConfig* matchLocation(const std::string& uri) const;
+
+	ListenAddress				listen;
+	std::vector<std::string>	serverNames;        // e.g., ["example.com", "www.example.com"]
+	std::string					root;
+	size_t						clientMaxBodySize;  // Limit for uploads (e.g., 1048576 for 1MB)
+
+	// Default error pages
+	// Maps the HTTP error code to a file (e.g., 404 -> "/errors/404.html")
+	std::map<t_status_code, std::string>	errorPages;	// 400 - 599 
+
+	// The routes that belong to this server
+	std::vector<LocationConfig>	locations;
 	
-		static const int DEFAULT_CLIENT_MAX_BODY_SIZE;
-		static const unsigned long MAX_CLIENT_MAX_BODY_SIZE;
+	static const int DEFAULT_CLIENT_MAX_BODY_SIZE;
+	static const unsigned long MAX_CLIENT_MAX_BODY_SIZE;
 };
 
 std::ostream &operator<<(std::ostream &out, ServerConfig const &source);

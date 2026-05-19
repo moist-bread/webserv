@@ -52,6 +52,8 @@ enum t_protocol
 
 enum t_status_code
 {
+	UNITIALIZED = -1,
+	NO_STATUS = 0,
 	CONTINUE = 100,
 	SWITCHING_PROTOCOL,
 	OK = 200,
@@ -115,6 +117,7 @@ public:
 	static std::string stringProtocol(const t_protocol Protocol);  // returns the string from Protocol Enum
 	static std::string getReasonPhrase(t_status_code status_code); // returns the string from Status Code Enum
 	static map_strings extract_key_value(std::string *src, std::string sep, std::string delim); 
+	static t_status_code isValidReasonPhrase(const int status_code);
 
 private:
 	HTTP(void);				  // default constructor

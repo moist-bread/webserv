@@ -20,7 +20,7 @@ MAIN_PARSE			=	main_parse.cpp
 SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp ConnectingSocket.cpp \
 					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
 
-CONF_FILES_C	= 	Lexer.cpp Parser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp \
+CONF_FILES_C	= 	Lexer.cpp ConfigParser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp TokenStream.cpp\
 
 OTHER_FILES_C	=	signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp
 

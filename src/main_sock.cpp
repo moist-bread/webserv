@@ -4,7 +4,6 @@ int main(int ac, char **av)
 {
     if (ac != 2)
         return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
-    (void)av;
 
     srand(std::time(NULL));
     std::signal(SIGINT, sigint_handler);

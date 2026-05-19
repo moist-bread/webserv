@@ -13,7 +13,7 @@
 
 extern bool running;
 
-Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getServers()[0].port, INADDR_ANY, 10), _config(config)
+Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getallServers()[0].getListenPort(), INADDR_ANY, 10), _config(config)
 {
 	std::cout << GRN "the Server ";
 	std::cout << UCYN "has been created" DEF << std::endl;
@@ -26,7 +26,7 @@ Server::Server(Server const &source) : ASimpleServer(source), _config(source._co
 {
     *this = source;
     _fdToServerConfig.clear();
-    const std::vector<ServerConfig>& servers = _config.getServers();
+    const std::vector<ServerConfig>& servers = _config.getallServers();
     for (size_t i = 0; i < _listeningFds.size() && i < servers.size(); i++)
         _fdToServerConfig[_listeningFds[i]] = &servers[i];
 }
@@ -50,12 +50,12 @@ Server &Server::operator=(Server const &source)
 
 void Server::SetupPorts()
 {
-    const std::vector<ServerConfig>& servers = _config.getServers();
+    const std::vector<ServerConfig>& servers = _config.getallServers();
     std::map<int, int> portToFd; // porta | fd já criado
 
     for (size_t i = 0; i < servers.size(); i++)
     {
-        int port = servers[i].port;
+        int port = servers[i].getListenPort();
         int fd;
 
         if (i == 0)
@@ -87,7 +87,7 @@ void Server::SetupPorts()
 	//Debug
 	std::cout << "[DEBUG] SetupPorts — mapa fd→config:" << std::endl;
     for (std::map<int, const ServerConfig*>::iterator it = _fdToServerConfig.begin(); it != _fdToServerConfig.end(); it++)
-        std::cout << "  fd=" << it->first << " porta=" << it->second->port << " serverName=" << (it->second->serverNames.empty() ? "none" : it->second->serverNames[0]) << std::endl;
+        std::cout << "  fd=" << it->first << " porta=" << it->second->getListenPort() << " serverName=" << (it->second->serverNames.empty() ? "none" : it->second->serverNames[0]) << std::endl;
 }
 
 void Server::SetNonblocking(int fd)
@@ -134,7 +134,7 @@ Descobre qual ServerConfig responde ao pedido com base no ListenFd en Host: Head
 */
 const ServerConfig* Server::resolveServerConfig(int listenFd, const std::string &hostHeader) const
 {
-    const std::vector<ServerConfig>& servers = _config.getServers();
+    const std::vector<ServerConfig>& servers = _config.getallServers();
 
     // 1ª passagem — procura pelo serverName exato
     for (size_t i = 0; i < servers.size(); i++)
@@ -250,7 +250,7 @@ void Server::accepter(int listenFd)
 	std::cout << "Cliente criado na socket " << newFd << std::endl;
 
 	// if (newClient.serverConfig)
-	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->port << std::endl;
+	std::cout << "[DEBUG] accepter — cliente " << newFd << " associado ao servidor porta=" << newClient.serverConfig->getListenPort() << std::endl;
     // else
         // std::cout << "[DEBUG] accepter — cliente " << newFd << " SEM serverConfig!" << std::endl;
 }

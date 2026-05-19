@@ -1,28 +1,32 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
 #include "../../inc/requests/HTTP.hpp"
+#include <algorithm> // find
 
-LocationConfig::LocationConfig(void) : index("index.html"), autoindex(false), returnCode(0)
-{
-	std::cout << GRN "the LocationConfig ";
-	std::cout << UCYN "has been created" DEF << std::endl;
-}
+/**
+ * @brief Default constructor.
+ *
+ * Initializes `autoindex` to -1 (unset) and `returnCode` to UNITIALIZED.
+ */
+LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(UNITIALIZED) {}
 
-LocationConfig::LocationConfig(LocationConfig const &source)
-{
-	*this = source;
-	std::cout << GRN "the LocationConfig ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
-}
+/**
+ * @brief Copy constructor.
+ * @param source Source LocationConfig to copy.
+ */
+LocationConfig::LocationConfig(LocationConfig const &source) { *this = source; }
 
-LocationConfig::~LocationConfig(void)
-{
-	std::cout << GRN "the LocationConfig ";
-	std::cout << URED "has been deleted" DEF << std::endl;
-}
+/**
+ * @brief Destructor (trivial).
+ */
+LocationConfig::~LocationConfig(void) {}
 
+/**
+ * @brief Copy assignment operator.
+ * @param source Source LocationConfig to assign from.
+ * @return Reference to this instance.
+ */
 LocationConfig &LocationConfig::operator=(LocationConfig const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 	{
 		this->path = source.path;
@@ -38,14 +42,88 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &source)
 	return (*this);
 }
 
+/**
+ * @brief Return the configured root directory for this location.
+ * @return Reference to the root directory string.
+ */
+const std::string& LocationConfig::getRoot(void) const { return (this->root); }
+
+/**
+ * @brief Return the list of index files for this location.
+ * @return Reference to the vector of index file names.
+ */
+const std::vector<std::string>& LocationConfig::getIndex(void) const { return (this->index); }
+
+/**
+ * @brief Whether directory autoindex is enabled for this location.
+ * @return true if autoindex is on, false otherwise.
+ */
+bool LocationConfig::isAutoIndexOn(void) const { return (this->autoindex == 1); }
+
+/**
+ * @brief Check whether an HTTP method is allowed for this location.
+ * @param method Method to check (type `t_method`).
+ * @return true if the method is permitted, false otherwise.
+ */
+bool LocationConfig::isMethodAllowed(t_method method) const
+{
+	return (std::find(this->allowedMethods.begin(), this->allowedMethods.end(), method) != this->allowedMethods.end());
+}
+
+/**
+ * @brief Get the configured upload storage path for this location.
+ * @return Reference to the upload store path string.
+ */
+const std::string& LocationConfig::getUploadStore(void) const { return (this->uploadStore); }
+
+/**
+ * @brief Check whether this location performs an HTTP redirect.
+ * @return true when a return code is configured, false otherwise.
+ */
+bool LocationConfig::isRedirect(void) const { return (this->returnCode != NO_STATUS); }
+
+/**
+ * @brief Return the configured HTTP status code for redirects.
+ * @return Redirect status code (e.g., 301) or `NO_STATUS` when not set.
+ */
+t_status_code LocationConfig::getReturnCode(void) const { return (this->returnCode); }
+
+/**
+ * @brief Get the redirect target URL for this location.
+ * @return Reference to the return URL string.
+ */
+const std::string& LocationConfig::getReturnUrl(void) const { return (this->returnUrl); }
+
+/**
+ * @brief Lookup CGI executable for a file extension.
+ * @param extension File extension (including the dot), e.g. ".php".
+ * @return Path to the CGI executable or empty string if none configured.
+ */
+std::string LocationConfig::getCgiExecutable(const std::string &extension) const
+{
+	std::map<std::string, std::string>::const_iterator it = this->cgi.find(extension);
+	if (it != this->cgi.end())
+		return (it->second);
+	return ("");
+}
+
+/**
+ * @brief Pretty-print a `LocationConfig` for debugging.
+ * @param out Output stream to write to.
+ * @param source LocationConfig to print.
+ * @return Reference to the output stream.
+ */
 std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 {
 	out << "    [Location] Path: " << source.path << "\n";
 	out << "      Root: " << source.root << "\n";
-	out << "      Index: " << source.index << "\n";
+	out << "      Index: ";
+	for (size_t i = 0; i < source.index.size(); ++i)
+		out << source.index[i] << " ";
+	out << "\n";
 	out << "      Autoindex: " << (source.autoindex ? "on" : "off") << "\n";
 	out << "      Upload Store: " << source.uploadStore << "\n";
-	
+    
 	if (source.returnCode != 0)
 		out << "      Return: " << source.returnCode << " -> " << source.returnUrl << "\n";
 
