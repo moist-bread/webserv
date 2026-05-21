@@ -2,9 +2,10 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <algorithm>  // sort, max, min
-#include <ctime>	  // localtime, strftime
-#include <sys/stat.h> // stat
+#include <algorithm>	// sort, max, min
+#include <ctime>		// localtime, strftime
+#include <sys/stat.h>	// stat
+#include <dirent.h>		// readdir, DIR
 
 namespace response_utils
 {
@@ -25,6 +26,60 @@ namespace response_utils
 		ss << "<body>" << std::endl;
 		ss << "<div class=\"text yellow-mark\"> ";
 		ss << "Error: " << status << " " << HTTP::getReasonPhrase(status) << "</div>" << std::endl;
+		ss << "</body>" << std::endl;
+		ss << "</html>" << std::endl;
+		return (ss.str());
+	}
+
+	std::string directory_listing(DIR *d, const std::string url, const std::string folder_str)
+	{
+		std::stringstream ss;
+		ss << "<!DOCTYPE html>" << std::endl;
+		ss << "<html lang=\"en\">" << std::endl;
+		ss << "<head>" << std::endl;
+		ss << "	<meta charset=\"UTF-8\">" << std::endl;
+		ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
+		ss << "	<title>listing directory " << folder_str << "</title>" << std::endl;
+		ss << " 	<link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
+		ss << "	</head>" << std::endl;
+		ss << "	<body>" << std::endl;
+
+		ss << "	<div id=\"wrapper\">" << std::endl;
+
+		ss << "		<h1>";
+		ss << "			<a href=\"" << url << "\">~</a> / ";
+		std::string f_link = url;
+		std::string f_name = folder_str;
+		f_name.erase(0, 1);
+		while (!f_name.empty())
+		{
+			size_t pin = f_name.find("/");
+			if (pin == std::string::npos)
+				pin = f_name.size();
+			f_link += "/" + f_name.substr(0, pin);
+			ss << "			<a href=\"" << f_link << "\">" << f_name.substr(0, pin) << "</a> / ";
+			f_name.erase(0, pin + 1);
+		}
+		ss << "		</h1>" << std::endl;
+
+		ss << "		<ul>" << std::endl;
+		struct dirent *elem = readdir(d);
+		while (elem != NULL)
+		{
+			if (elem->d_type != DT_DIR)
+			{
+				ss << "			<li>" << std::endl;
+				ss << "				<a href=\"" << url << folder_str << "/" << elem->d_name << "\"" << std::endl;
+				ss << "				title=\"" << elem->d_name << "\">" << std::endl;
+				ss << "				<span>" << elem->d_name << "</span>" << std::endl;
+				ss << "				</a>" << std::endl;
+				ss << "			</li>" << std::endl;
+			}
+			elem = readdir(d);
+		}
+		ss << "		</ul>" << std::endl;
+		
+		ss << "	</div>" << std::endl;
 		ss << "</body>" << std::endl;
 		ss << "</html>" << std::endl;
 		return (ss.str());

@@ -67,6 +67,19 @@ button {
 	}
 }
 
+.image-post {
+	background-color: #F8F8F8;
+	border: 2px solid black;
+	border-radius: 8px;
+	padding: 20px 20px;
+	margin: 15px 200px;
+	img {
+		max-width: 100%;
+		border-radius: 4px;
+		padding-bottom: 5px;
+	}
+}
+
 .post-board {
 	display: flex;
 	flex-wrap: wrap;

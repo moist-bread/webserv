@@ -1,12 +1,12 @@
 #include "../../inc/requests/Request.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <algorithm> // strtod
-#include <cmath>	 // HUGE_VAL
+#include <algorithm> // strtol
+#include <climits>	 // LONG_MAX
 
 #define URI_LIMIT 2000
 
-Request::Request(void) { clear(); }
+Request::Request(void) : conf(NULL) { clear(); }
 
 Request::Request(Request const &src) { *this = src; }
 
@@ -158,7 +158,7 @@ size_t getMaxRequestBodySize(void)
 void Request::parse_body(std::string &request)
 {
 
-	if (body.size() > getMaxRequestBodySize()) // !! error: this made the port 8080 stop working...
+	if (body.size() > getMaxRequestBodySize()) // !! error: this made the port 8080 stop working??
 		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
 
 	// !! Content-Length > Actual Length
@@ -224,11 +224,11 @@ void Request::update_content_length(std::string &request)
 	if (headers.find("content-length") != headers.end())
 	{
 		char *end = NULL;
-		content_length = HUGE_VAL;
+		content_length = LONG_MAX;
 		if (!headers["content-length"].empty())
-			content_length = std::strtod(headers["content-length"].c_str(), &end);
+			content_length = std::strtol(headers["content-length"].c_str(), &end, 10);
 
-		if (*end || content_length == HUGE_VAL || content_length == -HUGE_VAL)
+		if (*end || content_length == LONG_MAX || content_length < 0)
 			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
 	}
 	else if (headers.find("transfer-encoding") != headers.end())
@@ -245,7 +245,6 @@ void Request::update_content_length(std::string &request)
 	else if (request.size())
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
 
-	// there no request body, skip to end
 	if (!request.size() && content_length == 0)
 		return (set_state(END));
 }
@@ -269,8 +268,6 @@ void Request::parse_range_header(void)
 	// ->	<unit>=<range-start>-<range-end>, …, <range-startN>-<range-endN>
 	// 		ex: 500-600,700-800, 900-1000
 
-	// std::cout << RED "STARTING RANGE HEADER PARSING" DEF << std::endl;
-	// std::cout << RED "VALUE: " DEF << value << std::endl;
 	while (!value.empty())
 	{
 		size_t sep = value.find("-");
@@ -279,20 +276,17 @@ void Request::parse_range_header(void)
 			wanted_ranges.clear();
 			break;
 		}
-		// std::cout << RED "STARTING POINT: " DEF << sep << std::endl;
-		// std::cout << RED "REMAINING VALUE: " DEF << value << std::endl;
 
 		int range_start = VALUE_NOT_SET;
 		int range_end = VALUE_NOT_SET;
-		double tmp = HUGE_VAL;
+		long tmp = LONG_MAX;
 		char *end = NULL;
 
 		if (sep != 0)
 		{
 			end = NULL;
-			// std::cout << RED "range start string: " DEF << value.substr(0, sep) << std::endl;
-			tmp = std::strtod(value.substr(0, sep).c_str(), &end);
-			if (*end || tmp == HUGE_VAL || tmp == -HUGE_VAL || tmp < 0)
+			tmp = std::strtol(value.substr(0, sep).c_str(), &end, 10);
+			if (*end || tmp > INT_MAX || tmp < 0)
 			{
 				wanted_ranges.clear();
 				break;
@@ -306,9 +300,8 @@ void Request::parse_range_header(void)
 		if (sep != 0)
 		{
 			end = NULL;
-			// std::cout << RED "range end string: " DEF << value.substr(0, sep) << std::endl;
-			tmp = std::strtod(value.substr(0, sep).c_str(), &end);
-			if (*end || tmp == HUGE_VAL || tmp == -HUGE_VAL || tmp < 0)
+			tmp = std::strtol(value.substr(0, sep).c_str(), &end, 10);
+			if (*end || tmp > INT_MAX || tmp < 0)
 			{
 				wanted_ranges.clear();
 				break;
@@ -316,7 +309,6 @@ void Request::parse_range_header(void)
 			range_end = static_cast<int>(tmp);
 		}
 		value.erase(0, sep + 1);
-		// std::cout << RED "start: " DEF << range_start << RED " end: " DEF << range_end << std::endl;
 		wanted_ranges.push_back(std::pair<int, int>(range_start, range_end));
 	}
 	if (wanted_ranges.empty())

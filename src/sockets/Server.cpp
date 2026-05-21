@@ -461,7 +461,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 	// Chegámos ao fim do processamento deste FD nesta volta.
 	// Vamos verificar se ele está "morto" há demasiado tempo.
 	time_t now = std::time(NULL);
-	double seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+	time_t seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
 
 	// Vamos definir TIMEOUT_TIME segundos como o limite máximo de inatividade
 	if (seconds_idle > TIMEOUT_TIME)
@@ -472,7 +472,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 
 	if (_clients[fd].cgi.getCgiActivityStart() == VALUE_NOT_SET)
 		return;
-	double cgi_time = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
+	time_t cgi_time = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
 	if (cgi_time > TIMEOUT_TIME)
 	{
 		std::cout << "\n[TIMEOUT] Cgi Timed out " << fd << " inativo há " << cgi_time << " segundos. A desconectar..." << std::endl;

@@ -4,15 +4,19 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
-
 #include <unistd.h> // !! sleep for debug
 
 // TO-DO
-// [ ] adapt better for config incorporation
-// [ ] create a static Inspect class for debug prints
-// [ ] vefify LWS (linear whitespace) better
+// [+-] incorporation config into response
+// [ ]  incorporation config into request
+// [ ]  incorporation config into cgi
+// [ ]  vefify LWS (linear whitespace) better
+// [x]  switch strtod for strtol (so it doesnt accept 1.1 values)
+// [ ]  create a static Inspect class for debug prints
+// [ ]  ?? do i need to accept transfer encoding chuncked REQUESTS?
 
 // =====>┊( REQUEST )┊
+struct ServerConfig;
 
 class Request
 {
@@ -62,13 +66,14 @@ public:
 	std::string json;
 	std::vector<MultiForm> multi_form;
 
-	double content_length;
+	long content_length;
 	size_t content_read;
 	// bool chunked_body;
 
 	vector2 wanted_ranges;
 
 private:
+	const ServerConfig *conf;
 	t_request_state state;
 };
 

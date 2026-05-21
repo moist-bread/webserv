@@ -9,8 +9,8 @@
 #include <dirent.h>		// opendir, readdir, closedir, DIR
 #include <sys/stat.h>	// mkdir, stat
 #include <ctime>		// time
-#include <algorithm>	// strtod
-#include <cmath>		// HUGE_VAL
+#include <algorithm>	// strtol
+#include <climits>		// LONG_MAX, LONG_MIN
 
 #define BUFFER_SIZE 4096
 
@@ -19,6 +19,7 @@ namespace response_utils
 
 	bool is_error(t_status_code code);
 	std::string backup_error_page(t_status_code status);
+	std::string directory_listing(DIR *d, const std::string listen_str, const std::string folder_str);
 	bool range_valid(int file_len, vector2 &ranges);
 	std::string create_header_content_range(std::pair<int, int> range, t_status_code status, int size);
 	const char *define_content_type(std::string &extension);
@@ -70,14 +71,14 @@ void Response::process(void)
 		case PREP:
 			preparations_for_response();
 			break;
+		case METHODS:
+			execute_methods();
+			break;
 		case CGI:
 			cgi_response();
 			break;
 		case CHUNK:
 			chunk_response();
-			break;
-		case METHODS:
-			execute_methods();
 			break;
 		case HEADERS_RESP:
 			set_response_headers();
@@ -97,6 +98,10 @@ void Response::process(void)
 	std::cout << UYEL "has been processed" DEF << std::endl;
 	std::cout << *this << std::endl;
 }
+
+void Response::set_state(t_response_state new_state) { state = new_state; }
+
+t_response_state Response::get_state(void) const { return (state); }
 
 void Response::clear(bool all)
 {
@@ -128,7 +133,7 @@ void Response::preparations_for_response(void)
 	// 	std::cout << *loc << std::endl;
 
 
-	if (loc && loc->isRedirect()) // !! this isn't working yet, returns loc for "/" even when it isnt
+	if (loc && loc->isRedirect()) // !! this isn't working yet
 	{
 		;
 		// headers["Location"] = loc->getReturnUrl();
@@ -184,7 +189,7 @@ void Response::execute_methods(void)
 
 void Response::cgi_response(void)
 {
-	std::cout << YEL "starting cgi response..." DEF << std::endl;
+	// std::cout << YEL "starting cgi response..." DEF << std::endl;
 	clear(false);
 
 	// -- step 1: extract headers (and or line) from cgi_reply
@@ -211,20 +216,20 @@ void Response::cgi_response(void)
 	// -- step 3: update status_code based on Status header
 	if (headers.find("status") != headers.end())
 	{
-		double st = HUGE_VAL;
+		long st = LONG_MAX;
 		char *end = NULL;
 		if (!headers["status"].empty())
-			st = std::strtod(headers["status"].c_str(), &end);
-		if (*end || st == HUGE_VAL || st == -HUGE_VAL)
-			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
-		status_code = static_cast<t_status_code>(st);
+			st = std::strtol(headers["status"].c_str(), &end, 10);
+		if (!*end && st != LONG_MAX && st != LONG_MIN && HTTP::isValidReasonPhrase(static_cast<int>(st)) != NO_STATUS)
+			status_code = static_cast<t_status_code>(st);
 	}
 
 	set_state(CHUNK);
 }
+
 void Response::chunk_response(void)
 {
-	std::cout << YEL "processing chunk..." DEF << std::endl;
+	// std::cout << YEL "processing chunk..." DEF << std::endl;
 
 	std::stringstream ss;
 	ss << std::hex << cgi_reply.size() << std::dec << CRLF;
@@ -245,9 +250,58 @@ void Response::chunk_response(void)
 	}
 }
 
-void Response::set_state(t_response_state new_state) { state = new_state; }
+void Response::set_response_headers(void)
+{
+	if ((*req).wanted_ranges.size() == 1)
+		headers["Content-Range"] = response_utils::create_header_content_range((*req).wanted_ranges[0], status_code, file_length);
+	else if (status_code == RANGE_NOT_SATISFIABLE)
+		headers["Content-Range"] = response_utils::create_header_content_range(std::pair<int, int>(VALUE_NOT_SET, VALUE_NOT_SET), status_code, file_length);
 
-t_response_state Response::get_state(void) const { return (state); }
+	if (is_chunked)
+	{
+		headers["Transfer-Encoding"] = "chunked";
+		headers.erase ("content-length");
+		protocol = H1_1;
+	}
+	else
+		headers["Content-Length"] = to_str(body.size());
+
+	if (!body.empty())
+	{
+		struct stat sb;
+		if (stat((*req).path_uri.c_str(), &sb) != -1)
+			headers["Last-Modified"] = response_utils::date_format(sb.st_mtime);
+
+		if ((*req).wanted_ranges.size() < 2 && !is_chunked)
+			headers["Content-Type"] = response_utils::define_content_type((*req).file_extension);
+		else if ((*req).wanted_ranges.size() > 1)
+			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
+	}
+
+	if (status_code == CONTENT_TOO_LARGE) // close, else it will continue trying to send content
+		headers["Connection"] = "close";
+	else if ((*req).headers.find("connection") != (*req).headers.end())
+		headers["Connection"] = (*req).headers["connection"];
+	else
+		headers["Connection"] = "keep-alive";
+
+	headers["Date"] = response_utils::date_format(std::time(NULL));
+	set_state(FULL_RESP);
+}
+
+void Response::assemble_full_response(void)
+{
+	std::stringstream ss;
+
+	ss << HTTP::stringProtocol(protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
+	ss << CRLF;
+	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
+		ss << (*it).first << ": " << (*it).second << CRLF;
+	ss << CRLF;
+	ss << body;
+	full_response = ss.str();
+	set_state(SEND);
+}
 
 void Response::method_get(void)
 {
@@ -255,23 +309,20 @@ void Response::method_get(void)
 		return (error_response());
 
 	const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a variable
-	if (loc && loc->isAutoIndexOn())
+	if (loc && loc->isAutoIndexOn() && (*req).path_uri == "/uploads") // !! this isn't working yet
 	{
-		body = create_autoindexing_page();
+		body = autoindexing_page();
 		return;
 	}
-	std::ifstream file(assemble_content_path(status_code).c_str());
+	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
 	{
-		perror("File did not open");
 		if ((*req).file_extension == "html")
-			status_code = NOT_FOUND;
+			throw(Response::CreateError("File did not open", NOT_FOUND));
 		else
-			status_code = INTERNAL_SERVER_ERROR;
-		return (error_response());
+			throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
 	}
-
-	if (file.is_open())
+	else
 	{
 		file.seekg(0, file.end);
 		int len = file.tellg();
@@ -286,18 +337,12 @@ void Response::method_get(void)
 			body = to_str(file.rdbuf());
 		file.close();
 	}
-	else
-		body = response_utils::backup_error_page(status_code);
 }
 
 void Response::error_response(void)
 {
-	// -------------------------------- continue parsing incorporation here
-
-
-	
 	(*req).file_extension = "html";
-	std::ifstream file(assemble_content_path(status_code).c_str());
+	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
 	{
 		perror("Defined error file does not exist, using backup");
@@ -308,6 +353,56 @@ void Response::error_response(void)
 		body = to_str(file.rdbuf());
 		file.close();
 	}
+}
+
+std::string Response::autoindexing_page(void) const
+{
+	DIR *d = opendir((conf->getRoot() + (*req).path_uri).c_str()); // !! pending answer
+	if (!d)
+		throw(Response::CreateError("Could not find desired folder", NOT_FOUND));
+	
+	std::string indexing_page = response_utils::directory_listing(d, conf->getServerUrl(), (*req).path_uri);
+	closedir(d);
+	return (indexing_page);
+}
+
+std::string Response::assemble_content_path(void)
+{
+	std::string path;
+	if (response_utils::is_error(status_code))
+	{
+		(*req).file_extension = "html";
+		path = conf->getErrorPage(status_code);
+		if (path.empty())
+			return (path);
+		path.insert(0, conf->getRoot());
+	}
+	else
+	{
+		const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a class variable
+		if (!loc)
+			return ("");
+		//std::cout << "conf root: " << conf->getRoot() << std::endl;
+		//std::cout << "loc root: " << loc->getRoot() << std::endl;
+		//std::cout << "loc upload: " << loc->getUploadStore() << std::endl;
+
+		// !! for this part to work i'll need the matchlocation to work
+
+
+		if ((*req).file_extension == "html")
+		{
+			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location
+			if (!(*((*req).path_uri.end() - 1) == '/'))
+				(*req).path_uri.append("/");
+			std::cout << "loc idx: " << loc->getIndex()[0] << std::endl;
+			// --------- do i loop through all of the options to determin if it is ACTUALLY not found???
+			(*req).path_uri.append(loc->getIndex()[0]);
+		}
+		path = conf->getRoot() + (*req).path_uri; // !! pending answer
+	}
+	(*req).path_uri = path;
+	std::cout << RED "assembles path: " DEF << path << std::endl;
+	return (path);
 }
 
 std::string Response::create_range_response_body(std::ifstream &file, vector2 &ranges)
@@ -325,23 +420,16 @@ std::string Response::create_range_response_body(std::ifstream &file, vector2 &r
 std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 {
 	// !! MULTI RANGE
-	// -- step 1: create boundary string
-	// (translation: 1-70 digits, last can't be a space)
-
+	
 	// boundary := 0*69<bchars> bcharsnospace
 	// bchars := bcharsnospace / " "
 	// bcharsnospace :=    DIGIT / ALPHA / "'" / "(" / ")" / "+"  / "_"
 	//			/ "," / "-" / "." / "/" / ":" / "=" / "?"
+	
+	// (translation: 1-70 digits, last can't be a space)
 	boundary = response_utils::random_name_generator();
 
-	// ... in a loop
-	// -- step 2: add "--boundary" and headers
-	// -- step 3: read and add selected range part of file until end of ranges
-	// ... end of loop
-	// -- step 4: finish with "--boundary--"
-
 	std::string content;
-
 	for (size_t i = 0; i < ranges.size(); i++)
 	{
 		content += "--" + boundary + CRLF;
@@ -357,7 +445,7 @@ std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 	return (content);
 }
 
-std::string Response::single_range(std::ifstream &file, std::pair<int, int> range)
+std::string Response::single_range(std::ifstream &file, std::pair<int, int> range) const
 {
 	// !! SINGLE RANGE
 
@@ -373,123 +461,17 @@ std::string Response::single_range(std::ifstream &file, std::pair<int, int> rang
 		file.read(buffer, to_read);
 		if (!file)
 			throw(Response::CreateError("Was unable to read from file", INTERNAL_SERVER_ERROR));
-		// std::cout << "characters read: " << file.gcount() << std::endl;
-		// std::cout << YEL "BUFFER READ FROM " << read_progress << " UNTIL ";
 		read_progress += file.gcount();
 		std::string tmp(buffer, file.gcount());
 		content += tmp;
-		// std::cout << read_progress << ":\n" DEF;
-		// std::cout << tmp;
-		// std::cout << YEL "\n--end of buffer\n" DEF;
 	}
 	return (content);
-}
-
-std::string Response::create_autoindexing_page(void)
-{
-	DIR *d = opendir(("www" + (*req).path_uri).c_str());
-	struct dirent *elem;
-	if (!d)
-	{
-		// ------------- maybe throw instead
-		status_code = NOT_FOUND;
-		return (response_utils::backup_error_page(status_code));
-	}
-
-	std::stringstream ss;
-	ss << "<!DOCTYPE html>" << std::endl;
-	ss << "<html lang=\"en\">" << std::endl;
-	ss << "<head>" << std::endl;
-	ss << "	<meta charset=\"UTF-8\">" << std::endl;
-	ss << "	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" << std::endl;
-	ss << "	<title>listing directory www/" << (*req).path_uri << "</title>" << std::endl; // -- CHANGE WWW TO NEW CONFIG
-	ss << " 	<link rel=\"stylesheet\" href=\"/index.css\" type=\"text/css\">" << std::endl;
-	ss << "	</head>" << std::endl;
-	ss << "	<body>" << std::endl;
-
-	ss << "	<div id=\"wrapper\">" << std::endl;
-
-	ss << "		<h1>";
-	ss << "<a href=\"" << "http://localhost:8080/" << "\">~</a> / "; // -- CHANGE locahost TO NEW CONFIG
-	std::string folders = (*req).path_uri;
-	folders.erase(0, 1);
-	while (!folders.empty())
-	{
-		size_t pin = folders.find("/");
-		std::cout << RED << folders << std::endl;
-		if (pin != std::string::npos) // -- CHANGE locahost TO NEW CONFIG
-			ss << "<a href=\"" << "http://localhost:8080/" << "\">" << folders.substr(0, pin - 1) << "</a> / ";
-		else
-			ss << "<a href=\"" << "http://localhost:8080/" << "\">" << folders << "</a> / ";
-		if (pin != std::string::npos)
-			folders.erase(0, pin + 1);
-		else
-			folders.clear();
-	}
-	ss << "		</h1>" << std::endl;
-
-	ss << "		<ul>" << std::endl;
-	elem = readdir(d);
-	while (elem != NULL)
-	{
-		if (elem->d_type == DT_DIR)
-		{
-			elem = readdir(d);
-			continue;
-		}
-		ss << "			<li>" << std::endl; // -- CHANGE locahost TO NEW CONFIG
-		ss << "				<a href=\"" << "http://localhost:8080" << (*req).path_uri << "/" << elem->d_name << "\"" << std::endl;
-		ss << "				title=\"" << elem->d_name << "\">" << std::endl;
-		ss << "				<span>" << elem->d_name << "</span>" << std::endl;
-		ss << "				</a>" << std::endl;
-		ss << "			</li>" << std::endl;
-		elem = readdir(d);
-	}
-	closedir(d);
-	ss << "		</ul>" << std::endl;
-
-	ss << "	</div>" << std::endl;
-	ss << "</body>" << std::endl;
-	ss << "</html>" << std::endl;
-	return (ss.str());
-}
-
-std::string Response::assemble_content_path(t_status_code status_code)
-{
-	std::string path;
-	if (response_utils::is_error(status_code))
-	{
-		// --- look at the config to see which error page to send
-		path = "www/404.html";
-		(*req).file_extension = "html";
-	}
-	else
-	{
-		// in case of everything being fine
-		// do path with
-		// (later) consider locations from config
-		if ((*req).file_extension == "html")
-		{
-			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location
-			if (!(*((*req).path_uri.end() - 1) == '/'))
-				(*req).path_uri.append("/");
-			if ((*req).path_uri != "/uploads") // remove when config added
-				(*req).path_uri.append("index.html");
-		}
-		path = "www" + (*req).path_uri;
-	}
-	(*req).path_uri = path;
-	std::cout << RED "assembles path: " DEF << path << std::endl;
-	return (path);
 }
 
 void Response::method_post(void)
 {
 	// create a special default location path to store all POST info into
-	// open the file/folder and write to it
-
-	// -- later get "www" replacement from config
-	std::string path = "www" + (*req).path_uri + "database";
+	std::string path = conf->getRoot() + (*req).path_uri + "database"; // !! pending answer AND loc working
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
@@ -511,12 +493,10 @@ void Response::method_post(void)
 
 void Response::handle_application_form(void)
 {
-	// json to the body...
 	body = (*req).json + CRLF;
 	(*req).file_extension = "json";
 
-	// FOUND will make the client request a GET for a redirection location
-	status_code = FOUND;
+	status_code = FOUND; // will make the client request to a redirection location
 }
 
 void Response::handle_multipart_form(void)
@@ -528,16 +508,15 @@ void Response::handle_multipart_form(void)
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
-			// -- adapt to config
-			std::string path = "www" + (*req).path_uri + "uploads/" + response_utils::random_name_generator();
-
+			std::string path = conf->getRoot() + (*req).path_uri + "uploads/" + response_utils::random_name_generator(); // !! pending answer AND loc working
+			// ?? does upload store always come with the . ???
 			size_t len;
 			len = (*f_name).second.rfind(".");
 			if (len != std::string::npos)
 				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 
-			// -- use of mkdir is not allowed but we'll kee it commented for the useful case
-			if (!opendir(("www" + (*req).path_uri + "uploads/").c_str())) // && mkdir(("www" + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
+			// -- use of mkdir is not allowed but we'll keep it as a comment just in case
+			if (!opendir((conf->getRoot() + (*req).path_uri + "uploads/").c_str()))  // !! pending answer AND loc working // && mkdir((conf->getRoot() + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
@@ -573,7 +552,7 @@ void Response::handle_multipart_form(void)
 void Response::method_delete(void)
 {
 	// assemble the content path to delete
-	std::string file_name = "www" + (*req).path_uri; // -- adapt to config
+	std::string file_name = conf->getRoot() + (*req).path_uri; // !! pending answer 
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
@@ -591,59 +570,6 @@ void Response::method_delete(void)
 	}
 	else
 		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
-}
-
-void Response::set_response_headers(void)
-{
-	if ((*req).wanted_ranges.size() == 1)
-		headers["Content-Range"] = response_utils::create_header_content_range((*req).wanted_ranges[0], status_code, file_length);
-	else if (status_code == RANGE_NOT_SATISFIABLE)
-		headers["Content-Range"] = response_utils::create_header_content_range(std::pair<int, int>(VALUE_NOT_SET, VALUE_NOT_SET), status_code, file_length);
-
-	if (is_chunked)
-	{
-		headers["Transfer-Encoding"] = "chunked";
-		headers.erase ("content-length");
-		protocol = H1_1;
-	}
-	else
-		headers["Content-Length"] = to_str(body.size());
-
-	if (!body.empty())
-	{
-		struct stat sb;
-		if (stat((*req).path_uri.c_str(), &sb) != -1)
-			headers["Last-Modified"] = response_utils::date_format(sb.st_mtime);
-
-		if ((*req).wanted_ranges.size() < 2 && !is_chunked)
-			headers["Content-Type"] = response_utils::define_content_type((*req).file_extension);
-		else if ((*req).wanted_ranges.size() > 1)
-			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
-	}
-
-	if (status_code == CONTENT_TOO_LARGE) // close, else it will continue trying to send the file
-		headers["Connection"] = "close";
-	else if ((*req).headers.find("connection") != (*req).headers.end())
-		headers["Connection"] = (*req).headers["connection"];
-	else
-		headers["Connection"] = "keep-alive";
-
-	headers["Date"] = response_utils::date_format(std::time(NULL));
-	set_state(FULL_RESP);
-}
-
-void Response::assemble_full_response(void)
-{
-	std::stringstream ss;
-
-	ss << HTTP::stringProtocol(protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
-	ss << CRLF;
-	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
-		ss << (*it).first << ": " << (*it).second << CRLF;
-	ss << CRLF;
-	ss << body;
-	full_response = ss.str();
-	set_state(SEND);
 }
 
 std::ostream &operator<<(std::ostream &out, Response &src)
@@ -664,8 +590,8 @@ std::ostream &operator<<(std::ostream &out, Response &src)
 		out << src.body << std::endl;
 	*/
 	
-	if (!src.full_response.empty())
-		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl;
+	/* if (!src.full_response.empty())
+		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl; */
 	
 	return (out);
 }
