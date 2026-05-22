@@ -3,19 +3,19 @@
 
 #include <ctime>	// time
 
-Client::Client(void) : serverConfig(NULL), response(request, serverConfig)
+Client::Client(void) : serverConfig(NULL), request(serverConfig), response(request, serverConfig)
 {
 	updateLastActivity();
 }
 
-Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), response(request, sc)
+Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), request(serverConfig), response(request, sc)
 {
 	updateLastActivity();
 	std::cout << GRN "the Client ";
 	std::cout << UCYN "has been created" DEF << std::endl;
 }
 
-Client::Client(Client const &src) : response(request, src.serverConfig)
+Client::Client(Client const &src) : request(src.serverConfig), response(request, src.serverConfig)
 {
 	*this = src;
 	std::cout << GRN "the Client ";

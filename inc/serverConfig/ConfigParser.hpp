@@ -77,7 +77,7 @@ class ConfigParser
 		//	ServerHandler Validation functions
 		void _validate_Listen(const std::string &host, const int port);
 		void _validate_ServerNames(const std::vector<std::string> &serverNames);
-		void _validate_Root(const std::string &root);
+		void _validate_Root(std::string &root);
 		void _validate_MaxBodySize(const size_t clientMaxBodySize);
 		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
 		void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
@@ -87,7 +87,7 @@ class ConfigParser
 		void _validate_Index(const std::vector<std::string> &index);
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
 		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
-		void _validate_Cgi(const std::string &extension, const std::string &executer);
+		void _validate_Cgi(std::string &extension, const std::string &executer);
 		void _validate_UploadStore(const std::string &path);
 	
 		//	Validate Helpers
@@ -108,7 +108,7 @@ T stringToNumber(const std::string &str)
 
 	ss >> out_number;
 	if (ss.fail() || !ss.eof())
-		throw std::runtime_error("Parse Error: Invalid number convertion");
+		throw std::runtime_error("Invalid number convertion");
 	
 	return (out_number);
 }

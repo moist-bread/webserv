@@ -1,4 +1,6 @@
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/serverConfig/ServerConfig.hpp"
+
 #include "../../inc/ansi_color_codes.h"
 
 #include <algorithm> // strtol
@@ -7,6 +9,8 @@
 #define URI_LIMIT 2000
 
 Request::Request(void) : conf(NULL) { clear(); }
+
+Request::Request(const ServerConfig *sc) : conf(sc) { clear(); }
 
 Request::Request(Request const &src) { *this = src; }
 
@@ -23,13 +27,19 @@ Request &Request::operator=(Request const &src)
 		this->protocol = src.protocol;
 		this->headers = src.headers;
 		this->body = src.body;
+
 		this->json = src.json;
 		this->multi_form = src.multi_form;
+		this->wanted_ranges = src.wanted_ranges;
+
+		this->loc = src.loc;
+
+		set_state(src.get_state());
+
+		this->temp_headers = src.temp_headers;
 		this->content_length = src.content_length;
 		this->content_read = src.content_read;
 		// this->chunked_body = src.chunked_body;
-		this->wanted_ranges = src.wanted_ranges;
-		set_state(src.get_state());
 	}
 	return (*this);
 }
@@ -63,6 +73,10 @@ void Request::process(std::string request)
 	std::cout << *this << std::endl;
 }
 
+void Request::set_state(t_request_state new_state) { state = new_state; }
+
+t_request_state Request::get_state(void) const { return (state); }
+
 void Request::clear(void)
 {
 	method = UNSUPPORTED_METHOD;
@@ -72,16 +86,21 @@ void Request::clear(void)
 	protocol = UNSUPPORTED_PROTOCOL;
 	headers.clear();
 	body.clear();
+	
 	json.clear();
 	multi_form.clear();
+	wanted_ranges.clear();
 
+	loc = NULL;
+
+	set_state(BEGIN);
+
+	temp_headers.clear();
 	content_length = VALUE_NOT_SET;
 	content_read = 0;
 	// chunked_body = false;
 
-	wanted_ranges.clear();
 
-	set_state(BEGIN);
 }
 
 void Request::parse_request_line(std::string &request)
@@ -150,15 +169,10 @@ void Request::parse_request_headers(std::string &request)
 	parse_range_header();
 }
 
-size_t getMaxRequestBodySize(void)
-{
-	return (1000000);
-}
-
 void Request::parse_body(std::string &request)
 {
 
-	if (body.size() > getMaxRequestBodySize()) // !! error: this made the port 8080 stop working??
+	if (body.size() > conf->getClientMaxBodySize())
 		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
 
 	// !! Content-Length > Actual Length
@@ -187,26 +201,6 @@ void Request::parse_body(std::string &request)
 	// -- parse the body
 	parse_forms();
 	set_state(END);
-}
-
-bool acceptedMethod(t_method method, std::string loc)
-{
-	(void)loc;
-	if (method != UNSUPPORTED_METHOD)
-		return (true);
-	else
-		return (false);
-}
-
-void Request::validade_request(void)
-{
-	// !! probably will need more things
-
-	if (!acceptedMethod(method, path_uri))
-		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"" , METHOD_NOT_ALLOWED));
-
-	if (method == DELETE && !body.empty())
-		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
 }
 
 void Request::update_content_length(std::string &request)
@@ -355,27 +349,20 @@ void Request::format_multipart_form(std::string type)
 		throw(Request::ParseError("Miss formated request set bound", BAD_REQUEST));
 	std::string boundary_str = "--" + type.substr(pin + 9, type.length() - pin);
 
-	// std::cout << RED "STARTING MULTIFORM PARSING" DEF << std::endl;
-	// std::cout << RED "BOUNDARY: " DEF << boundary_str << std::endl;
-
 	std::string remaining_body = body;
 	while (!remaining_body.empty())
 	{
 		MultiForm part;
 
 		pin = remaining_body.find(boundary_str);
-		// std::cout << RED "STARTING POINT: " DEF << pin << std::endl;
-		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
 		if (pin == std::string::npos)
 			throw(Request::ParseError("Miss formated request skip first bound", BAD_REQUEST));
 		part.data = remaining_body.substr(pin + boundary_str.size() + 2);
 		pin = part.data.find(boundary_str);
-		// std::cout << RED "END: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
 			throw(Request::ParseError("Miss formated request find next bound", BAD_REQUEST));
 
 		part.data.erase(pin - 2, part.data.size() - pin + 4);
-		// std::cout << RED "PART: \n" DEF << "|" << part.data << "|" << std::endl;
 		remaining_body.erase(0, (!remaining_body.compare(0, 2, CRLF) ? 2 : 0) + boundary_str.size() + 2 + part.data.size());
 
 		std::string line;
@@ -387,7 +374,6 @@ void Request::format_multipart_form(std::string type)
 		if (pin != std::string::npos)
 		{
 			int comp = part.data.compare(pin + 21, 11, "form-data; ");
-			// std::cout << "compare: " << comp << std::endl;
 			if (comp)
 				throw(Request::ParseError("Miss formated request form data", BAD_REQUEST));
 
@@ -397,8 +383,6 @@ void Request::format_multipart_form(std::string type)
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 32);
-			// std::cout << RED "cont dis less: \n" DEF << part.data << std::endl;
-			// std::cout << RED "cont dis line: \n" DEF << line << std::endl;
 			part.content_disposition = HTTP::extract_key_value(&line, "=", "; ");
 		}
 
@@ -414,8 +398,6 @@ void Request::format_multipart_form(std::string type)
 			line = part.data.substr(pin, end_line - pin);
 			part.data.erase(pin, end_line + 2);
 			line.erase(0, 14);
-			// std::cout << RED "cont type less: \n" DEF << part.data << std::endl;
-			// std::cout << RED "cont type line: \n" DEF << line << std::endl;
 			part.content_type = line;
 		}
 		if (!part.data.compare(0, 2, CRLF))
@@ -426,14 +408,30 @@ void Request::format_multipart_form(std::string type)
 		multi_form.push_back(part);
 
 		pin = remaining_body.find(CRLF + boundary_str + "--");
-		// std::cout << RED "REMAINING BODY: \n" DEF << remaining_body << std::endl;
-		// std::cout << RED "finding: " DEF << boundary_str + "--" << std::endl;
-		// std::cout << RED "LASTPART: " DEF << pin << std::endl;
 		if (pin == std::string::npos)
 			throw(Request::ParseError("Miss formated request closing bound", BAD_REQUEST));
 		if (pin == 0)
 			break;
 	}
+}
+
+void Request::validade_request(void)
+{
+	if (method == DELETE && !body.empty())
+		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
+	
+	// ------------- probably will need more things
+
+	loc = conf->matchLocation(path_uri); // !! not working yet
+	std::cout << RED "CURRENT LOCATION" DEF << std::endl;
+	if (loc)
+		std::cout << *loc << std::endl;
+	if (!loc)
+		throw(Request::ParseError("The page you're trying to acess does not exists" , NOT_FOUND));
+
+	if (!loc->isMethodAllowed(method))
+		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"" , METHOD_NOT_ALLOWED));
+
 }
 
 std::string Request::extract(std::string *src, const char *sep) const
@@ -447,10 +445,6 @@ std::string Request::extract(std::string *src, const char *sep) const
 
 	return (segment);
 }
-
-void Request::set_state(t_request_state new_state) { state = new_state; }
-
-t_request_state Request::get_state(void) const { return (state); }
 
 std::ostream &operator<<(std::ostream &out, Request &src)
 {

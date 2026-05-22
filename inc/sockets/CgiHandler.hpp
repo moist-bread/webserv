@@ -20,7 +20,7 @@ private:
 	std::vector<std::string> _env;
 
 	void clear();
-	void update_info(Request &src);
+	void update_info(Request &req);
 	int executeCgi();
 	int InitPipes();
 	int writeBodyToCgiInput() const;
@@ -33,9 +33,9 @@ public:
 	~CgiHandler(void);
 	CgiHandler &operator=(CgiHandler const &source);
 
-	CgiHandler(Request &src);
+	CgiHandler(Request &req);
 
-	void process(Request &src);
+	void process(Request &req);
 	int getPipeOutReadFd() const;
 	time_t getCgiActivityStart(void) const;
 

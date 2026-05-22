@@ -407,7 +407,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	}
 
 	// start the cgi execution right away
-	if (allowedCGI(_clients[fd].request.file_extension, _clients[fd].request.path_uri))
+	if (!_clients[fd].request.loc->getCgiExecutable(_clients[fd].request.file_extension).empty())
 	{
 		try
 		{

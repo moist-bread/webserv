@@ -5,12 +5,12 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <fstream>		// remove, fstream, ifstream, ofstream
-#include <dirent.h>		// opendir, readdir, closedir, DIR
-#include <sys/stat.h>	// mkdir, stat
-#include <ctime>		// time
-#include <algorithm>	// strtol
-#include <climits>		// LONG_MAX, LONG_MIN
+#include <fstream>	  // remove, fstream, ifstream, ofstream
+#include <dirent.h>	  // opendir, readdir, closedir, DIR
+#include <sys/stat.h> // mkdir, stat
+#include <ctime>	  // time
+#include <algorithm>  // strtol
+#include <climits>	  // LONG_MAX, LONG_MIN
 
 #define BUFFER_SIZE 4096
 
@@ -124,22 +124,8 @@ void Response::preparations_for_response(void)
 		throw(std::runtime_error("Response was initialized without associated Request"));
 	else if (!this->conf)
 		throw(std::runtime_error("Response was initialized without associated ServerConfig"));
-	
+
 	(*req).set_state(BEGIN);
-
-	const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a class variable
-	// std::cout << RED "CURRENT LOCATION" DEF << std::endl;
-	// if (loc)
-	// 	std::cout << *loc << std::endl;
-
-
-	if (loc && loc->isRedirect()) // !! this isn't working yet
-	{
-		;
-		// headers["Location"] = loc->getReturnUrl();
-		// status_code = loc->getReturnCode();
-		// return (set_state(HEADERS_RESP));
-	}
 
 	if (!is_chunked && !cgi_reply.empty() && !response_utils::is_error(status_code))
 		return (set_state(CGI));
@@ -150,8 +136,19 @@ void Response::preparations_for_response(void)
 	if ((*req).protocol != UNSUPPORTED_PROTOCOL)
 		protocol = (*req).protocol;
 
-	if (response_utils::is_error(status_code))
-		(*req).method = GET;
+	if (!(*req).loc)
+	{
+		if (!response_utils::is_error(status_code))
+			status_code = NOT_FOUND;
+	}
+	else if ((*req).loc->isRedirect()) // !! this isn't working yet
+	{
+		;
+		// headers["Location"] = (*req).loc->getReturnUrl();
+		// status_code = (*req).loc->getReturnCode();
+		// return (set_state(HEADERS_RESP));
+	}
+	
 	set_state(METHODS);
 }
 
@@ -209,7 +206,7 @@ void Response::cgi_response(void)
 			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
 		preamble.erase(0, pin + 1);
 	}
-	
+
 	// -- step 2: add those headers
 	headers = HTTP::extract_key_value(&preamble, ":", CRLF);
 
@@ -220,7 +217,7 @@ void Response::cgi_response(void)
 		char *end = NULL;
 		if (!headers["status"].empty())
 			st = std::strtol(headers["status"].c_str(), &end, 10);
-		if (!*end && st != LONG_MAX && st != LONG_MIN && HTTP::isValidReasonPhrase(static_cast<int>(st)) != NO_STATUS)
+		if (!*end && st != LONG_MAX && st != LONG_MIN && HTTP::isValidReasonPhrase(static_cast<int>(st)) != INVALID_CODE)
 			status_code = static_cast<t_status_code>(st);
 	}
 
@@ -260,7 +257,7 @@ void Response::set_response_headers(void)
 	if (is_chunked)
 	{
 		headers["Transfer-Encoding"] = "chunked";
-		headers.erase ("content-length");
+		headers.erase("content-length");
 		protocol = H1_1;
 	}
 	else
@@ -278,7 +275,8 @@ void Response::set_response_headers(void)
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
 	}
 
-	if (status_code == CONTENT_TOO_LARGE) // close, else it will continue trying to send content
+	// close, else it will continue trying to send content
+	if (status_code == CONTENT_TOO_LARGE)
 		headers["Connection"] = "close";
 	else if ((*req).headers.find("connection") != (*req).headers.end())
 		headers["Connection"] = (*req).headers["connection"];
@@ -308,8 +306,7 @@ void Response::method_get(void)
 	if (response_utils::is_error(status_code))
 		return (error_response());
 
-	const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a variable
-	if (loc && loc->isAutoIndexOn() && (*req).path_uri == "/uploads") // !! this isn't working yet
+	if ((*req).loc && (*req).loc->isAutoIndex((*req).path_uri))
 	{
 		body = autoindexing_page();
 		return;
@@ -357,10 +354,10 @@ void Response::error_response(void)
 
 std::string Response::autoindexing_page(void) const
 {
-	DIR *d = opendir((conf->getRoot() + (*req).path_uri).c_str()); // !! pending answer
+	DIR *d = opendir(((*req).loc->getRoot() + (*req).path_uri).c_str());
 	if (!d)
 		throw(Response::CreateError("Could not find desired folder", NOT_FOUND));
-	
+
 	std::string indexing_page = response_utils::directory_listing(d, conf->getServerUrl(), (*req).path_uri);
 	closedir(d);
 	return (indexing_page);
@@ -379,26 +376,25 @@ std::string Response::assemble_content_path(void)
 	}
 	else
 	{
-		const LocationConfig *loc = (*conf).matchLocation((*req).path_uri); // !! maybe turn this into a class variable
-		if (!loc)
-			return ("");
-		//std::cout << "conf root: " << conf->getRoot() << std::endl;
-		//std::cout << "loc root: " << loc->getRoot() << std::endl;
-		//std::cout << "loc upload: " << loc->getUploadStore() << std::endl;
+		// std::cout << "conf root: " << conf->getRoot() << std::endl;
+		// std::cout << "loc root: " << loc->getRoot() << std::endl;
+		// std::cout << "loc upload: " << loc->getUploadStore() << std::endl;
 
-		// !! for this part to work i'll need the matchlocation to work
-
+		// !! focus here
 
 		if ((*req).file_extension == "html")
 		{
 			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location
 			if (!(*((*req).path_uri.end() - 1) == '/'))
 				(*req).path_uri.append("/");
-			std::cout << "loc idx: " << loc->getIndex()[0] << std::endl;
+			
+			std::cout << "loc idx: " << (*req).loc->getIndex()[0] << std::endl;
 			// --------- do i loop through all of the options to determin if it is ACTUALLY not found???
-			(*req).path_uri.append(loc->getIndex()[0]);
+			
+			(*req).path_uri.append((*req).loc->getIndex()[0]);
 		}
-		path = conf->getRoot() + (*req).path_uri; // !! pending answer
+		
+		path = (*req).loc->getRoot() + (*req).path_uri;
 	}
 	(*req).path_uri = path;
 	std::cout << RED "assembles path: " DEF << path << std::endl;
@@ -420,12 +416,12 @@ std::string Response::create_range_response_body(std::ifstream &file, vector2 &r
 std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 {
 	// !! MULTI RANGE
-	
+
 	// boundary := 0*69<bchars> bcharsnospace
 	// bchars := bcharsnospace / " "
 	// bcharsnospace :=    DIGIT / ALPHA / "'" / "(" / ")" / "+"  / "_"
 	//			/ "," / "-" / "." / "/" / ":" / "=" / "?"
-	
+
 	// (translation: 1-70 digits, last can't be a space)
 	boundary = response_utils::random_name_generator();
 
@@ -470,8 +466,12 @@ std::string Response::single_range(std::ifstream &file, std::pair<int, int> rang
 
 void Response::method_post(void)
 {
-	// create a special default location path to store all POST info into
-	std::string path = conf->getRoot() + (*req).path_uri + "database"; // !! pending answer AND loc working
+	// !! focus here
+	std::string path = (*req).loc->getUploadStore(); // !! pending loc working
+	if (!(*(path.end() - 1) == '/'))
+		path.append("/");
+	path += "database";
+	
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
@@ -508,15 +508,18 @@ void Response::handle_multipart_form(void)
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
-			std::string path = conf->getRoot() + (*req).path_uri + "uploads/" + response_utils::random_name_generator(); // !! pending answer AND loc working
-			// ?? does upload store always come with the . ???
+			std::string path = (*req).loc->getUploadStore(); // !! pending loc working
+			if (!(*(path.end() - 1) == '/'))
+				path.append("/");
+			std::string rand_name = response_utils::random_name_generator();
 			size_t len;
 			len = (*f_name).second.rfind(".");
 			if (len != std::string::npos)
-				path += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
+				rand_name += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
+			path += rand_name;
 
 			// -- use of mkdir is not allowed but we'll keep it as a comment just in case
-			if (!opendir((conf->getRoot() + (*req).path_uri + "uploads/").c_str()))  // !! pending answer AND loc working // && mkdir((conf->getRoot() + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
+			if (!opendir((conf->getRoot() + (*req).path_uri + "uploads/").c_str())) // !! pending answer AND loc working // && mkdir((conf->getRoot() + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
@@ -524,6 +527,7 @@ void Response::handle_multipart_form(void)
 
 			output << (*it).data << CRLF;
 			output.close();
+			json_values["filename"] = rand_name;
 		}
 		else
 		{
@@ -552,7 +556,7 @@ void Response::handle_multipart_form(void)
 void Response::method_delete(void)
 {
 	// assemble the content path to delete
-	std::string file_name = conf->getRoot() + (*req).path_uri; // !! pending answer 
+	std::string file_name = conf->getRoot() + (*req).path_uri; // !! pending answer
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
@@ -589,9 +593,9 @@ std::ostream &operator<<(std::ostream &out, Response &src)
 	else
 		out << src.body << std::endl;
 	*/
-	
+
 	/* if (!src.full_response.empty())
 		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl; */
-	
+
 	return (out);
 }

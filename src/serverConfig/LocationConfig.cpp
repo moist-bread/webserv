@@ -5,9 +5,9 @@
 /**
  * @brief Default constructor.
  *
- * Initializes `autoindex` to -1 (unset) and `returnCode` to UNITIALIZED.
+ * Initializes `autoindex` to -1 (unset) and `returnCode` to INVALID_CODE.
  */
-LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(UNITIALIZED) {}
+LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(INVALID_CODE) {}
 
 /**
  * @brief Copy constructor.
@@ -43,22 +43,28 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &source)
 }
 
 /**
+ * @brief Return the configured path directory for this location.
+ * @return Reference to the path directory string.
+ */
+const std::string &LocationConfig::getPath(void) const { return (this->path); }
+
+/**
  * @brief Return the configured root directory for this location.
  * @return Reference to the root directory string.
  */
-const std::string& LocationConfig::getRoot(void) const { return (this->root); }
+const std::string &LocationConfig::getRoot(void) const { return (this->root); }
 
 /**
  * @brief Return the list of index files for this location.
  * @return Reference to the vector of index file names.
  */
-const std::vector<std::string>& LocationConfig::getIndex(void) const { return (this->index); }
+const std::vector<std::string> &LocationConfig::getIndex(void) const { return (this->index); }
 
 /**
  * @brief Whether directory autoindex is enabled for this location.
  * @return true if autoindex is on, false otherwise.
  */
-bool LocationConfig::isAutoIndexOn(void) const { return (this->autoindex == 1); }
+bool LocationConfig::isAutoIndex(const std::string &path_uri) const { return (this->autoindex == 1 && getPath() == path_uri); }
 
 /**
  * @brief Check whether an HTTP method is allowed for this location.
@@ -74,17 +80,17 @@ bool LocationConfig::isMethodAllowed(t_method method) const
  * @brief Get the configured upload storage path for this location.
  * @return Reference to the upload store path string.
  */
-const std::string& LocationConfig::getUploadStore(void) const { return (this->uploadStore); }
+const std::string &LocationConfig::getUploadStore(void) const { return (this->uploadStore); }
 
 /**
  * @brief Check whether this location performs an HTTP redirect.
  * @return true when a return code is configured, false otherwise.
  */
-bool LocationConfig::isRedirect(void) const { return (this->returnCode != NO_STATUS); }
+bool LocationConfig::isRedirect(void) const { return (this->returnCode != INVALID_CODE); }
 
 /**
  * @brief Return the configured HTTP status code for redirects.
- * @return Redirect status code (e.g., 301) or `NO_STATUS` when not set.
+ * @return Redirect status code (e.g., 301) or `INVALID_CODE` when not set.
  */
 t_status_code LocationConfig::getReturnCode(void) const { return (this->returnCode); }
 
@@ -92,7 +98,7 @@ t_status_code LocationConfig::getReturnCode(void) const { return (this->returnCo
  * @brief Get the redirect target URL for this location.
  * @return Reference to the return URL string.
  */
-const std::string& LocationConfig::getReturnUrl(void) const { return (this->returnUrl); }
+const std::string &LocationConfig::getReturnUrl(void) const { return (this->returnUrl); }
 
 /**
  * @brief Lookup CGI executable for a file extension.
@@ -123,18 +129,20 @@ std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 	out << "\n";
 	out << "      Autoindex: " << (source.autoindex ? "on" : "off") << "\n";
 	out << "      Upload Store: " << source.uploadStore << "\n";
-    
+
 	if (source.returnCode != 0)
 		out << "      Return: " << source.returnCode << " -> " << source.returnUrl << "\n";
 
 	out << "      Allowed Methods: ";
-	for (size_t i = 0; i < source.allowedMethods.size(); ++i) {
+	for (size_t i = 0; i < source.allowedMethods.size(); ++i)
+	{
 		out << HTTP::stringMethod(source.allowedMethods[i]) << " ";
 	}
 	out << "\n";
 
 	out << "      CGI:\n";
-	for (std::map<std::string, std::string>::const_iterator it = source.cgi.begin(); it != source.cgi.end(); ++it) {
+	for (std::map<std::string, std::string>::const_iterator it = source.cgi.begin(); it != source.cgi.end(); ++it)
+	{
 		out << "        " << it->first << " -> " << it->second << "\n";
 	}
 	return out;

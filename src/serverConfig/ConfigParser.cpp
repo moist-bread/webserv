@@ -86,7 +86,7 @@ std::vector<ServerConfig> ConfigParser::parse(void)
  *
  * Apply defaults and perform server-local sanity checks once all directives
  * were parsed for a particular `ServerConfig`. This includes:
- * - Defaulting `listen` to `0.0.0.0:8080` when not specified.
+ * - Defaulting `listen` to `127.0.0.1:8080` when not specified.
  * - Defaulting `clientMaxBodySize` to `ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE`.
  * - Ensuring at least one `location` is present; otherwise a validation
  *   error is thrown.
@@ -100,10 +100,11 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
 	//	Listen
 	if (server.listen.string.empty())
 	{
-		server.listen.host = "0.0.0.0";
+		server.listen.host = "127.0.0.1";
 		server.listen.port = 8080;
-		server.listen.string = "0.0.0.0:8080";
+		server.listen.string = "127.0.0.1:8080";
 	}
+	
 	//?	Server Names -> keep it empty
 	//?	Server Root -> keep it empty
 	//	Client Max Body Size
@@ -131,17 +132,26 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 	for (size_t i = 0; i < server.locations.size(); ++i)
 	{
 		LocationConfig &location = server.locations[i];
-		if (location.returnCode == UNITIALIZED)
-			location.returnCode = NO_STATUS;
+		if (location.returnCode != INVALID_CODE)
+		{
+			if (!location.index.empty())
+				_ts.throwValidationError("Location with return, can't have index", "location");
+			if (!location.root.empty())
+				_ts.throwValidationError("Location with return, can't have root", "location");
+			if (!location.cgi.empty())
+				_ts.throwValidationError("Location with return, can't have cgi", "location");
+			if (!location.uploadStore.empty())
+				_ts.throwValidationError("Location with return, can't have upload_store", "location");
+			if (location.autoindex == 1)
+				_ts.throwValidationError("Location with return, can't have autoindexing", "location");
+			continue;
+		}
 		if (location.root.empty())
 		{
-			if (location.returnCode == NO_STATUS)
-			{
-				if (server.root.empty())
-					_ts.throwValidationError("No Location Root, couldnt inherit from Server Root(not inserted)", "location");
-				else
-					location.root = server.root;
-			}
+			if (server.root.empty())
+				_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+			else
+				location.root = server.root;
 		}
 		if (location.index.empty())
 			location.index.push_back("index.html");
@@ -153,9 +163,8 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 			location.allowedMethods.push_back(POST);
 			location.allowedMethods.push_back(DELETE);
 		}
-		//?	Upload Store -> keep it empty - server doesnt allow uploads
-		//?	Return URL -> keep it empty - no Status code
-		//?	CGI -> keep it empy - server doesnt execute scripts
+		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
+			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "upload_store");
 	}
 }
 
@@ -264,18 +273,24 @@ void ConfigParser::_serverListen(ServerConfig &server)
 	std::string listen;
 	_ts._extractSingleKeyword(listen);
 	size_t colonPos = listen.find(':');
-	if (colonPos != std::string::npos)
+	try
 	{
-		server.listen.string = listen;
-		server.listen.host = listen.substr(0, colonPos);
-		server.listen.port = stringToNumber<int>(listen.substr(colonPos + 1));
+		if (colonPos != std::string::npos)
+		{
+			server.listen.string = listen;
+			server.listen.host = listen.substr(0, colonPos);
+			server.listen.port = stringToNumber<int>(listen.substr(colonPos + 1));
+		}
+		else
+		{
+			server.listen.string = "0.0.0.0:" + listen;
+			server.listen.host = "0.0.0.0";
+			server.listen.port = stringToNumber<int>(listen);
+		}
 	}
-	else
-	{
-		server.listen.string = "0.0.0.0:" + listen;
-		server.listen.host = "0.0.0.0";
-		server.listen.port = stringToNumber<int>(listen);
-	}
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
+	
+	
 	_validate_Listen(server.listen.host, server.listen.port);
 	_ts._expect(TOKEN_SEMICOLON);
 }
@@ -312,9 +327,16 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
 			if (!std::isdigit(octet[i]))
 				_ts.throwValidationError("IP", "listen");
 		}
-		int octet_value = stringToNumber<int>(octet);
+		int octet_value = -1;
+		try
+		{
+			octet_value = stringToNumber<int>(octet);
+		}
+		catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
+
 		if (octet_value < 0 || octet_value > 255)
 			_ts.throwValidationError("IP", "listen");
+		
 	}	
 }
 //*	----------- *
@@ -402,8 +424,10 @@ void ConfigParser::_serverRoot(ServerConfig &server)
  *
  * @param root Filesystem path to validate.
  */
-void ConfigParser::_validate_Root(const std::string &root)
+void ConfigParser::_validate_Root(std::string &root)
 {
+	if (root.length() > 2 && *(root.end() - 1) == '/')
+		root.erase(root.end() - 1);
 	_isValidDirectory(root, R_OK | X_OK);
 }
 //*	----------- *
@@ -431,7 +455,12 @@ void ConfigParser::_serverMaxBodySize(ServerConfig &server)
 		isMegaByte = true;
 		sizeValue.erase(sizeValue.size() - 1);
 	}
-	server.clientMaxBodySize = stringToNumber<long>(sizeValue);
+	try
+	{
+		server.clientMaxBodySize = stringToNumber<long>(sizeValue);
+	}
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "client_max_body_size"); }
+
 	if (server.clientMaxBodySize == 0)
 		_ts.throwValidationError("Client Max Body Size cant be 0", "client_max_body_size");
 	if (isMegaByte)
@@ -475,11 +504,16 @@ void ConfigParser::_serverErrorPage(ServerConfig &server)
 	      	_ts.throwValidationError("error_page needs at least one code and a URI", "error_page");
 	std::string uri = tempArgs.back();
 	tempArgs.pop_back();
-	for (size_t i = 0; i < tempArgs.size(); ++i)
+	try
 	{
-		int errorCode = stringToNumber<int>(tempArgs[i]);
-		server.errorPages[static_cast <t_status_code>(errorCode)] = uri;
+		for (size_t i = 0; i < tempArgs.size(); ++i)
+		{
+			int errorCode = stringToNumber<int>(tempArgs[i]);
+			server.errorPages[static_cast <t_status_code>(errorCode)] = uri;
+		}
 	}
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "error_page"); }
+	
 	_validate_ErrorPages(server.errorPages);
 	_ts._expect(TOKEN_SEMICOLON);
 }
@@ -699,7 +733,7 @@ void ConfigParser::_validate_AllowedMethods(const std::vector<t_method> &allowed
 	for (size_t i = 0; i < allowedMethods.size(); ++i)    
 	{
 		if (allowedMethods[i] == UNSUPPORTED_METHOD)
-			_ts.throwValidationError("Unsuported Allowed Methods", "allow_methods");
+			_ts.throwValidationError("Unsupported Allowed Methods", "allow_methods");
 	}
 }
 //*	----------- *
@@ -717,11 +751,17 @@ void ConfigParser::_validate_AllowedMethods(const std::vector<t_method> &allowed
  */
 void ConfigParser::_locationReturn(LocationConfig &location)
 {
-	if (location.returnCode != UNITIALIZED)
+	if (location.returnCode != INVALID_CODE)
 		_ts.throwValidationError("Return duplicated", "return");
 	std::string keyword;
 	_ts._extractSingleKeyword(keyword);
-	int	returnCode = stringToNumber<int>(keyword);
+	int	returnCode;
+	try
+	{
+		returnCode = stringToNumber<int>(keyword);
+	}
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "return"); }
+
 	location.returnCode = HTTP::isValidReasonPhrase(returnCode);
 	_ts._extractSingleKeyword(location.returnUrl);
 	_validate_ReturnCode(location.returnCode, location.returnUrl);
@@ -739,10 +779,10 @@ void ConfigParser::_locationReturn(LocationConfig &location)
  */
 void ConfigParser::_validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL)
 {
-	if (returnCode == NO_STATUS)
+	if (returnCode == INVALID_CODE)
 		_ts.throwValidationError("Invalid code", "return");
 	if (returnCode < 300 || returnCode > 308)
-		_ts.throwValidationError("Unsuported return code", "return");
+		_ts.throwValidationError("Unsupported return code", "return");
 	if (!_isValidURL(returnURL))
 		_ts.throwValidationError("Invalid URL", "return");
 
@@ -782,10 +822,12 @@ void ConfigParser::_locationCgi(LocationConfig &location)
  * @param extension File extension token (e.g. `.py`, `.php`).
  * @param executer Filesystem path to the CGI executable.
  */
-void ConfigParser::_validate_Cgi(const std::string &extension, const std::string &executer)
+void ConfigParser::_validate_Cgi(std::string &extension, const std::string &executer)
 {
 	if (extension.length() < 2 || extension[0] != '.')
 		_ts.throwValidationError("Invalid CGI extension", "cgi");
+	else
+		extension.erase(0, 1);
 	for (size_t i = 1; i < extension.length(); ++i)
 	{
 		if (!std::isalnum(extension[i]))

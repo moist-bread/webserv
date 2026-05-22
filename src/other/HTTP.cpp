@@ -224,7 +224,7 @@ t_status_code HTTP::isValidReasonPhrase(const int status_code)
 	case HTTP_VERSION_NOT_SUPPORTED:
 		return (HTTP_VERSION_NOT_SUPPORTED);
 	default:
-		return (NO_STATUS);
+		return (INVALID_CODE);
 	}
 }
 

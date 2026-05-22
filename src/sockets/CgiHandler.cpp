@@ -1,5 +1,7 @@
 #include "../../inc/sockets/CgiHandler.hpp"
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/serverConfig/LocationConfig.hpp"
 
 #include <unistd.h>		// close, fork, pipe
 #include <ctime>		// time
@@ -35,11 +37,11 @@ CgiHandler::CgiHandler(Request &src)
 {
 	process(src);
 }
-void CgiHandler::process(Request &src)
+void CgiHandler::process(Request &req)
 {
 	std::cout << "-- THIS IS A CGI!!!!!!!" << std::endl;
 	clear();
-	update_info(src);
+	update_info(req);
 	executeCgi();
 }
 
@@ -57,36 +59,36 @@ void CgiHandler::clear()
 	time_started = VALUE_NOT_SET;
 }
 
-void CgiHandler::update_info(Request &src)
+void CgiHandler::update_info(Request &req)
 {
-	_body = src.body;
-	std::string filename = extract_script_filename(src.path_uri);
-	_scriptPath = "www" + filename;
+	_body = req.body;
+	std::string filename = extract_script_filename(req.path_uri);
+	_scriptPath = req.conf->getRoot() + filename;
 
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
 	if (!fs.is_open())
 		throw(CgiHandler::CgiExecutionFail());
 
-	this->_compiler = "/usr/bin/python3"; // BASED ON THE file extension
+	this->_compiler = req.loc->getCgiExecutable(req.file_extension);
 
 	std::string empty;
 	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
-	_env.push_back("SERVER_NAME=" + empty); // -------------------------
-	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(src.protocol));
-	_env.push_back("SERVER_PORT=" + empty); // -------------------------
+	_env.push_back("SERVER_NAME=" + req.conf->getServerNames()[0]); // -------------------------
+	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(req.protocol));
+	_env.push_back("SERVER_PORT=" + to_str(req.conf->getListenPort()));
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
-	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(src.method));
-	_env.push_back("PATH_INFO=" + extract_path_info(src.path_uri));
-	_env.push_back("QUERY_STRING=" + src.query);
+	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(req.method));
+	_env.push_back("PATH_INFO=" + extract_path_info(req.path_uri));
+	_env.push_back("QUERY_STRING=" + req.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);
 	_env.push_back("SCRIPT_FILENAME=" + filename);
-	_env.push_back("REMOTE_ADDR=" + src.headers["x-forwarded-for"]);
-	_env.push_back("REQUEST_URI=" + src.path_uri + src.query);
+	_env.push_back("REMOTE_ADDR=" + req.headers["x-forwarded-for"]);
+	_env.push_back("REQUEST_URI=" + req.path_uri + req.query);
 	_env.push_back("CONTENT_LENGTH=" + to_str(_body.size()));
-	_env.push_back("CONTENT_TYPE=" + src.headers["content-type"]);
+	_env.push_back("CONTENT_TYPE=" + req.headers["content-type"]);
 
-	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
+	for (map_strings::iterator it = req.headers.begin(); it != req.headers.end(); it++)
 	{
 		// add "HTTP_" before all keys, the "-" become "_" and all uppercase
 		std::string key = (*it).first;
@@ -152,7 +154,6 @@ int CgiHandler::executeCgi()
 		argv[1] = const_cast<char *>(this->_scriptPath.c_str());
 		argv[2] = NULL;
 
-		// -- turning the env into char **
 		std::vector<char *> exec_env;
 		for (size_t i = 0; i < _env.size(); i++)
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
