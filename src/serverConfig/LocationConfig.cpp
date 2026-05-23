@@ -58,7 +58,7 @@ const std::string &LocationConfig::getRoot(void) const { return (this->root); }
  * @brief Return the list of index files for this location.
  * @return Reference to the vector of index file names.
  */
-const std::vector<std::string> &LocationConfig::getIndex(void) const { return (this->index); }
+const std::vector<std::string> &LocationConfig::getIndexes(void) const { return (this->index); }
 
 /**
  * @brief Whether directory autoindex is enabled for this location.

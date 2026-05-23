@@ -27,14 +27,14 @@ class Response
 {
 public:
 	Response(Request &req_ref, const ServerConfig *sc);
-	Response(Response const &src);
+	Response(const Response &src);
 	~Response(void);
-	Response &operator=(Response const &src);
+	Response &operator=(const Response &src);
 
 	void process(void);
 
-	void set_state(t_response_state new_state);
-	t_response_state get_state(void) const;
+	void set_state(const t_response_state &new_state);
+	const t_response_state &get_state(void) const;
 
 	class CreateError : public std::runtime_error
 	{
@@ -74,8 +74,8 @@ private:
 	std::string autoindexing_page(void) const;
 	std::string assemble_content_path(void);
 	std::string create_range_response_body(std::ifstream &file, vector2 &ranges);
-	std::string multiple_range(std::ifstream &file, vector2 &ranges);
-	std::string single_range(std::ifstream &file, std::pair<int, int> range) const;
+	std::string multiple_range(std::ifstream &file, const vector2 &ranges);
+	std::string single_range(std::ifstream &file, const std::pair<int, int> &range) const;
 
 	// -- method POST
 	void method_post(void);

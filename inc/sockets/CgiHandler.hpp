@@ -19,27 +19,28 @@ private:
 	std::string _scriptPath;
 	std::vector<std::string> _env;
 
+	time_t time_started;
+
 	void clear();
 	void update_info(Request &req);
 	int executeCgi();
 	int InitPipes();
 	int writeBodyToCgiInput() const;
-	static std::string extract_script_filename(std::string full_path);
-	static std::string extract_path_info(std::string full_path);
+	static std::string extract_script_filename(const std::string full_path, const std::string ext);
+	static std::string extract_path_info(const std::string full_path, const std::string ext);
 
 public:
 	CgiHandler(void);
-	CgiHandler(CgiHandler const &source);
+	CgiHandler(CgiHandler const &src);
 	~CgiHandler(void);
-	CgiHandler &operator=(CgiHandler const &source);
+	CgiHandler &operator=(CgiHandler const &src);
 
 	CgiHandler(Request &req);
 
 	void process(Request &req);
 	int getPipeOutReadFd() const;
-	time_t getCgiActivityStart(void) const;
-
-	time_t time_started; // use to detect CGI timeout
+	const time_t &getCgiActivityStart(void) const;
+	void setCgiActivityStart(const time_t &t);
 	
 	class CgiExecutionFail : public std::exception
 	{

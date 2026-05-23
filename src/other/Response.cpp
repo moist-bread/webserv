@@ -5,12 +5,13 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <fstream>	  // remove, fstream, ifstream, ofstream
-#include <dirent.h>	  // opendir, readdir, closedir, DIR
-#include <sys/stat.h> // mkdir, stat
-#include <ctime>	  // time
-#include <algorithm>  // strtol
-#include <climits>	  // LONG_MAX, LONG_MIN
+#include <fstream>		// remove, fstream, ifstream, ofstream
+#include <dirent.h>		// opendir, readdir, closedir, DIR
+#include <sys/stat.h>	// mkdir, stat
+#include <unistd.h>		// access
+#include <ctime>		// time
+#include <algorithm>	// strtol
+#include <climits>		// LONG_MAX, LONG_MIN
 
 #define BUFFER_SIZE 4096
 
@@ -32,14 +33,11 @@ Response::Response(void) : req(NULL), conf(NULL) { clear(true); }
 
 Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc) { clear(true); }
 
-Response::Response(Response const &src)
-{
-	*this = src;
-}
+Response::Response(const Response &src) { *this = src; }
 
 Response::~Response(void) {}
 
-Response &Response::operator=(Response const &src)
+Response &Response::operator=(const Response &src)
 {
 	if (this != &src)
 	{
@@ -99,9 +97,9 @@ void Response::process(void)
 	std::cout << *this << std::endl;
 }
 
-void Response::set_state(t_response_state new_state) { state = new_state; }
+void Response::set_state(const t_response_state &new_state) { state = new_state; }
 
-t_response_state Response::get_state(void) const { return (state); }
+const t_response_state &Response::get_state(void) const { return (state); }
 
 void Response::clear(bool all)
 {
@@ -141,12 +139,12 @@ void Response::preparations_for_response(void)
 		if (!response_utils::is_error(status_code))
 			status_code = NOT_FOUND;
 	}
-	else if ((*req).loc->isRedirect()) // !! this isn't working yet
+	else if ((*req).loc->isRedirect())
 	{
-		;
-		// headers["Location"] = (*req).loc->getReturnUrl();
-		// status_code = (*req).loc->getReturnCode();
-		// return (set_state(HEADERS_RESP));
+		// !! this isn't working properly yet
+		headers["Location"] = (*req).loc->getReturnUrl();
+		status_code = (*req).loc->getReturnCode();
+		return (set_state(HEADERS_RESP));
 	}
 	
 	set_state(METHODS);
@@ -376,25 +374,34 @@ std::string Response::assemble_content_path(void)
 	}
 	else
 	{
-		// std::cout << "conf root: " << conf->getRoot() << std::endl;
-		// std::cout << "loc root: " << loc->getRoot() << std::endl;
-		// std::cout << "loc upload: " << loc->getUploadStore() << std::endl;
-
-		// !! focus here
+		path = (*req).loc->getRoot();
 
 		if ((*req).file_extension == "html")
 		{
-			// -- ISSUES: if a random file doenst have a file extention its just assumed as a location
-			if (!(*((*req).path_uri.end() - 1) == '/'))
-				(*req).path_uri.append("/");
-			
-			std::cout << "loc idx: " << (*req).loc->getIndex()[0] << std::endl;
-			// --------- do i loop through all of the options to determin if it is ACTUALLY not found???
-			
-			(*req).path_uri.append((*req).loc->getIndex()[0]);
+			// -- see which of the indexes is valid
+			std::string index;
+			for (size_t i = 0; i < (*req).loc->getIndexes().size() && index.empty(); i++)
+			{
+				if (access((path + "/" + (*req).loc->getIndexes()[i]).c_str(), R_OK) != 0)
+					continue;
+				struct stat path_stat;
+				if (stat((path + "/" + (*req).loc->getIndexes()[i]).c_str(), &path_stat) != 0)
+					continue;
+				if (S_ISDIR(path_stat.st_mode))
+					continue;
+				index = (*req).loc->getIndexes()[i];
+			}
+
+			// -- if one of them was valid, add to the path
+			if (!index.empty())
+			{
+				if ((*req).path_uri[(*req).path_uri.length() - 1] != '/')
+					(*req).path_uri.append("/");
+				(*req).path_uri.append(index);
+			}
 		}
 		
-		path = (*req).loc->getRoot() + (*req).path_uri;
+		path += (*req).path_uri;
 	}
 	(*req).path_uri = path;
 	std::cout << RED "assembles path: " DEF << path << std::endl;
@@ -413,7 +420,7 @@ std::string Response::create_range_response_body(std::ifstream &file, vector2 &r
 		return (single_range(file, *(ranges.begin())));
 }
 
-std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
+std::string Response::multiple_range(std::ifstream &file, const vector2 &ranges)
 {
 	// !! MULTI RANGE
 
@@ -441,7 +448,7 @@ std::string Response::multiple_range(std::ifstream &file, vector2 &ranges)
 	return (content);
 }
 
-std::string Response::single_range(std::ifstream &file, std::pair<int, int> range) const
+std::string Response::single_range(std::ifstream &file, const std::pair<int, int> &range) const
 {
 	// !! SINGLE RANGE
 
@@ -466,9 +473,8 @@ std::string Response::single_range(std::ifstream &file, std::pair<int, int> rang
 
 void Response::method_post(void)
 {
-	// !! focus here
-	std::string path = (*req).loc->getUploadStore(); // !! pending loc working
-	if (!(*(path.end() - 1) == '/'))
+	std::string path = (*req).loc->getUploadStore();
+	if (path[path.length() - 1] != '/') // ----------------- remove soon
 		path.append("/");
 	path += "database";
 	
@@ -496,7 +502,8 @@ void Response::handle_application_form(void)
 	body = (*req).json + CRLF;
 	(*req).file_extension = "json";
 
-	status_code = FOUND; // will make the client request to a redirection location
+	// will make the client request to a redirection location
+	status_code = FOUND;
 }
 
 void Response::handle_multipart_form(void)
@@ -508,9 +515,15 @@ void Response::handle_multipart_form(void)
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
+			// -- see if the uploads folder exists
 			std::string path = (*req).loc->getUploadStore(); // !! pending loc working
-			if (!(*(path.end() - 1) == '/'))
+			if (path[path.length() - 1] != '/') // ----------------- remove soon
 				path.append("/");
+			
+			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // -- use of mkdir is not allowed
+				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
+			
+			// -- create a file with a randomly generated name
 			std::string rand_name = response_utils::random_name_generator();
 			size_t len;
 			len = (*f_name).second.rfind(".");
@@ -518,19 +531,18 @@ void Response::handle_multipart_form(void)
 				rand_name += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 			path += rand_name;
 
-			// -- use of mkdir is not allowed but we'll keep it as a comment just in case
-			if (!opendir((conf->getRoot() + (*req).path_uri + "uploads/").c_str())) // !! pending answer AND loc working // && mkdir((conf->getRoot() + (*req).path_uri + "uploads/").c_str(), 0777) == -1)
-				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 			std::fstream output(path.c_str(), std::ios::out);
 			if (!output.is_open())
 				throw(Response::CreateError("Was unable to upload file", INTERNAL_SERVER_ERROR));
 
+			// -- write to the file, and save the info to later put in the database
 			output << (*it).data << CRLF;
 			output.close();
 			json_values["filename"] = rand_name;
 		}
 		else
 		{
+			// -- save the info to later put in the database
 			map_strings::iterator elem_name = (*it).content_disposition.find("name");
 			std::string name = "name";
 			if (elem_name != (*it).content_disposition.end())
@@ -538,8 +550,10 @@ void Response::handle_multipart_form(void)
 			json_values[name] = (*it).data;
 		}
 	}
+
 	if (!json_values.empty())
 	{
+		// -- converting the info into json and into the body to later put in the database
 		body += "{";
 		for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
 		{
@@ -556,13 +570,13 @@ void Response::handle_multipart_form(void)
 void Response::method_delete(void)
 {
 	// assemble the content path to delete
-	std::string file_name = conf->getRoot() + (*req).path_uri; // !! pending answer
+	std::string file_name = (*req).loc->getRoot() + (*req).path_uri;
 
 	struct stat sb;
-	if (stat(file_name.c_str(), &sb) == -1) // resource doesn't exist
+	if (stat(file_name.c_str(), &sb) == -1)
 		throw(Response::CreateError("Could not find desired file", NOT_FOUND));
 
-	if ((sb.st_mode & S_IFMT) == S_IFDIR) // don't allow folder DELETE
+	if (S_ISDIR(sb.st_mode)) // don't allow folder DELETE
 		throw(Response::CreateError("Action not permited", FORBIDDEN));
 
 	int res = std::remove(file_name.c_str());

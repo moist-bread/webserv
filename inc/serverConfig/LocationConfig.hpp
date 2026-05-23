@@ -28,7 +28,7 @@ struct LocationConfig
 	//	Getters
 	const std::string &getPath(void) const;
 	const std::string &getRoot(void) const;
-	const std::vector<std::string> &getIndex(void) const;
+	const std::vector<std::string> &getIndexes(void) const;
 	bool isAutoIndex(const std::string &path_uri) const;
 	bool isMethodAllowed(t_method method) const;
 	const std::string &getUploadStore(void) const;

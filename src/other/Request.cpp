@@ -73,9 +73,9 @@ void Request::process(std::string request)
 	std::cout << *this << std::endl;
 }
 
-void Request::set_state(t_request_state new_state) { state = new_state; }
+void Request::set_state(const t_request_state &new_state) { state = new_state; }
 
-t_request_state Request::get_state(void) const { return (state); }
+const t_request_state &Request::get_state(void) const { return (state); }
 
 void Request::clear(void)
 {
@@ -99,8 +99,6 @@ void Request::clear(void)
 	content_length = VALUE_NOT_SET;
 	content_read = 0;
 	// chunked_body = false;
-
-
 }
 
 void Request::parse_request_line(std::string &request)
@@ -337,7 +335,7 @@ void Request::format_application_form(void)
 		file_extension = "json";
 }
 
-void Request::format_multipart_form(std::string type)
+void Request::format_multipart_form(const std::string &type)
 {
 	// -- boundary string
 	// 		-- headers
@@ -420,14 +418,11 @@ void Request::validade_request(void)
 	if (method == DELETE && !body.empty())
 		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
 	
-	// ------------- probably will need more things
-
-	loc = conf->matchLocation(path_uri); // !! not working yet
-	std::cout << RED "CURRENT LOCATION" DEF << std::endl;
-	if (loc)
-		std::cout << *loc << std::endl;
+	loc = conf->matchLocation(path_uri);
 	if (!loc)
 		throw(Request::ParseError("The page you're trying to acess does not exists" , NOT_FOUND));
+	std::cout << RED "CURRENT LOCATION" DEF << std::endl;
+	std::cout << *loc << std::endl;
 
 	if (!loc->isMethodAllowed(method))
 		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"" , METHOD_NOT_ALLOWED));

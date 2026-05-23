@@ -8,8 +8,9 @@
 // TO-DO
 // [+-] incorporation config into response
 // [+-] incorporation config into request
-// [+-]  incorporation config into cgi
+// [+-] incorporation config into cgi
 // [ ]  vefify LWS (linear whitespace) better
+// [ ]  make the gallery work like the boardby going by the database file
 // [x]  switch strtod for strtol (so it doesnt accept 1.1 values)
 // [ ]  create a static Inspect class for debug prints
 // [ ]  ?? do i need to accept transfer encoding chuncked REQUESTS?
@@ -30,8 +31,8 @@ public:
 
 	void process(std::string request);
 
-	void set_state(t_request_state new_state);
-	t_request_state get_state(void) const;
+	void set_state(const t_request_state &new_state);
+	const t_request_state &get_state(void) const;
 
 	class ParseError : public std::runtime_error
 	{
@@ -68,7 +69,7 @@ private:
 	void parse_range_header(void);
 	void parse_forms(void);
 	void format_application_form(void);
-	void format_multipart_form(std::string type);
+	void format_multipart_form(const std::string &type);
 	
 	void validade_request(void);
 	std::string extract(std::string *src, const char *sep) const;

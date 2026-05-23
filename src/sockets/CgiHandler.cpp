@@ -10,18 +10,15 @@
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
-CgiHandler::CgiHandler(CgiHandler const &source)
-{
-	*this = source;
-}
+CgiHandler::CgiHandler(CgiHandler const &src) {	*this = src; }
 
 CgiHandler::~CgiHandler(void) { clear(); }
 
-CgiHandler &CgiHandler::operator=(CgiHandler const &source)
+CgiHandler &CgiHandler::operator=(CgiHandler const &src)
 {
-	if (this != &source)
+	if (this != &src)
 	{
-		(void)source;
+		(void)src;
 	}
 	return (*this);
 }
@@ -33,9 +30,9 @@ int screaming_snake_case(int i)
 	return toupper(i);
 }
 
-CgiHandler::CgiHandler(Request &src)
+CgiHandler::CgiHandler(Request &req)
 {
-	process(src);
+	process(req);
 }
 void CgiHandler::process(Request &req)
 {
@@ -52,26 +49,30 @@ void CgiHandler::clear()
 	_pipeOut[0] = 0;
 	_pipeOut[1] = 0;
 	_pid = 0;
+	
 	_body.clear();
 	_compiler.clear();
 	_scriptPath.clear();
 	_env.clear();
-	time_started = VALUE_NOT_SET;
+	
+	setCgiActivityStart(VALUE_NOT_SET);
 }
 
 void CgiHandler::update_info(Request &req)
 {
 	_body = req.body;
-	std::string filename = extract_script_filename(req.path_uri);
+	std::string filename = extract_script_filename(req.path_uri, req.file_extension);
 	_scriptPath = req.conf->getRoot() + filename;
 
+	// std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
 	if (!fs.is_open())
 		throw(CgiHandler::CgiExecutionFail());
 
-	this->_compiler = req.loc->getCgiExecutable(req.file_extension);
+	_compiler = req.loc->getCgiExecutable(req.file_extension);
+	// std::cout << BLU "COMPILER: " DEF << _compiler << std::endl;
 
-	std::string empty;
+	// std::string empty;
 	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
 	_env.push_back("SERVER_NAME=" + req.conf->getServerNames()[0]); // -------------------------
 	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(req.protocol));
@@ -79,14 +80,17 @@ void CgiHandler::update_info(Request &req)
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
 	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(req.method));
-	_env.push_back("PATH_INFO=" + extract_path_info(req.path_uri));
+	_env.push_back("PATH_INFO=" + extract_path_info(req.path_uri, req.file_extension));
 	_env.push_back("QUERY_STRING=" + req.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);
 	_env.push_back("SCRIPT_FILENAME=" + filename);
-	_env.push_back("REMOTE_ADDR=" + req.headers["x-forwarded-for"]);
+	
+	if (req.headers.find("x-forwarded-for") != req.headers.end())
+		_env.push_back("REMOTE_ADDR=" + req.headers["x-forwarded-for"]);
 	_env.push_back("REQUEST_URI=" + req.path_uri + req.query);
 	_env.push_back("CONTENT_LENGTH=" + to_str(_body.size()));
-	_env.push_back("CONTENT_TYPE=" + req.headers["content-type"]);
+	if (req.headers.find("content-type") != req.headers.end())
+		_env.push_back("CONTENT_TYPE=" + req.headers["content-type"]);
 
 	for (map_strings::iterator it = req.headers.begin(); it != req.headers.end(); it++)
 	{
@@ -97,28 +101,24 @@ void CgiHandler::update_info(Request &req)
 	}
 }
 
-std::string CgiHandler::extract_script_filename(std::string full_path)
+std::string CgiHandler::extract_script_filename(const std::string full_path, const std::string ext)
 {
 	// script filename is everything until the end of the script extention
-	size_t pos = full_path.find(".py"); // OR ANY OTHER THING WE DECIDE FOR THE CGI
+	size_t pos = full_path.rfind("." + ext);
 	if (pos == std::string::npos)
 		return (full_path);
-	else if (pos + 3 < full_path.size())
-		return (full_path.substr(0, pos + 3));
-	else
-		return (full_path);
+	return (full_path.substr(0, pos + ext.length() + 1));
 }
 
-std::string CgiHandler::extract_path_info(std::string full_path)
+std::string CgiHandler::extract_path_info(const std::string full_path, const std::string ext)
 {
-	// "path info is whatever comes after the program name in the url"
-	size_t pos = full_path.rfind(".py"); // OR ANY OTHER THING WE DECIDE FOR THE CGI
+	// path info is whatever comes after the program name in the url
+	size_t pos = full_path.rfind("." + ext);
 	if (pos == std::string::npos)
 		return (full_path);
-	else if (pos + 3 < full_path.size())
-		return (full_path.substr(pos + 3));
-	else
+	if (pos + ext.length() + 1 == full_path.size())
 		return (to_str("/"));
+	return (full_path.substr(pos + ext.length() + 1));
 }
 
 int CgiHandler::executeCgi()
@@ -156,15 +156,18 @@ int CgiHandler::executeCgi()
 
 		std::vector<char *> exec_env;
 		for (size_t i = 0; i < _env.size(); i++)
+		{
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
+			std::cerr << _env[i] << std::endl;
+		}
 		exec_env.push_back(NULL);
 
 		execve(argv[0], argv, &exec_env[0]);
+		setCgiActivityStart(VALUE_NOT_SET);
 		perror("execve failed");
 		_exit(EXIT_FAILURE);
-		time_started = VALUE_NOT_SET;
 	}
-	time_started = std::time(NULL);
+	setCgiActivityStart(std::time(NULL));
 	return 1;
 }
 
@@ -202,12 +205,8 @@ int CgiHandler::writeBodyToCgiInput() const // does this really need to retyurn 
 	return 0;
 }
 
-int CgiHandler::getPipeOutReadFd() const
-{
-	return this->_pipeOut[0];
-}
+int CgiHandler::getPipeOutReadFd() const { return this->_pipeOut[0]; }
 
-time_t CgiHandler::getCgiActivityStart(void) const
-{
-	return (time_started);
-}
+const time_t &CgiHandler::getCgiActivityStart(void) const { return (time_started); }
+
+void CgiHandler::setCgiActivityStart(const time_t &t) { time_started = t; }

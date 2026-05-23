@@ -258,34 +258,21 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
 
-	_clients[clientFd].cgi.time_started = VALUE_NOT_SET;
+	_clients[clientFd].cgi.setCgiActivityStart(std::time(NULL));
 
 	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
 	if (_pollfds[*pollfds_idx].revents & POLLERR)
 	{
 		std::cerr << "[CGI] POLLERR no pipe — a gerar resposta de erro\n";
+
+		// !! close cgi connection
 		close(fd);
 		_cgiMap.erase(fd);
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--;
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
 
-		for (size_t j = 0; j < _pollfds.size(); j++)
-			if (_pollfds[j].fd == clientFd)
-			{
-				_pollfds[j].events = POLLOUT;
-				break;
-			}
-		return;
-	}
-
-	//  Ler do tubo
-	char buffer[READ_BUFFER_SIZE];
-	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
-
-	if (bytesRead > 0)
-	{
-		_clients[clientFd].response.cgi_reply = std::string(buffer, bytesRead);
+		// !! switch to sending response (POLLOUT)
 		for (size_t j = 0; j < _pollfds.size(); j++)
 		{
 			if (_pollfds[j].fd == clientFd)
@@ -294,15 +281,25 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 				break;
 			}
 		}
-		// !! maybe send right away here with encoding chunked
-		// and then later send the finishing chunck when it gets the 0
+		return;
 	}
-	else if (bytesRead == 0) // 0 = EOF, -1 aqui só pode ser erro real (poll garantiu que havia dados)
+
+	char buffer[READ_BUFFER_SIZE];
+	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
+
+	if (bytesRead > 0)
 	{
+		// -- recieved content -> send it and wait for more
+		_clients[clientFd].response.cgi_reply = std::string(buffer, bytesRead);
+	}
+	else if (bytesRead == 0)
+	{
+		// -- recieved EOF -> send to signal that the cgi ended
+		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
 		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
 		_clients[clientFd].response.cgi_reply.clear();
 
-		//  Fechar e limpar o tubo
+		// !! close cgi connection
 		close(fd);
 		_cgiMap.erase(fd);
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
@@ -320,42 +317,30 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
 			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
-
-		// Acordar o Cliente! Passar o cliente para POLLOUT para ele enviar a resposta
-		for (size_t j = 0; j < _pollfds.size(); j++)
-		{
-			if (_pollfds[j].fd == clientFd)
-			{
-				_pollfds[j].events = POLLOUT;
-				break;
-			}
-		}
 	}
-	else // will see if all of this is necessary in the future
+	else
 	{
+		// -- read failed -> send error response
+		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
 		std::cout << "CGI read error " << clientFd << std::endl;
+
+		// !! close cgi connection
 		close(fd);
 		_cgiMap.erase(fd);
 		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
 		(*pollfds_idx)--;
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-
-		for (size_t j = 0; j < _pollfds.size(); j++)
-			if (_pollfds[j].fd == clientFd)
-			{
-				_pollfds[j].events = POLLOUT;
-				break;
-			}
-		return;
 	}
-}
 
-bool allowedCGI(std::string cgi_type, std::string loc)
-{
-	(void)loc;
-	if (cgi_type == "py")
-		return (true);
-	return (false);
+	// !! switch to sending response (POLLOUT)
+	for (size_t j = 0; j < _pollfds.size(); j++)
+	{
+		if (_pollfds[j].fd == clientFd)
+		{
+			_pollfds[j].events = POLLOUT;
+			break;
+		}
+	}
 }
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
@@ -478,12 +463,4 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 		std::cout << "\n[TIMEOUT] Cgi Timed out " << fd << " inativo há " << cgi_time << " segundos. A desconectar..." << std::endl;
 		return (removeClient(fd, *pollfds_idx));
 	}
-}
-
-std::ostream &operator<<(std::ostream &out, Server const &source)
-{
-	(void)source;
-	out << BLU "Server";
-	out << DEF << std::endl;
-	return (out);
 }

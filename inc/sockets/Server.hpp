@@ -62,5 +62,3 @@ public:
 
 	Server &operator=(Server const &source); // copy assignment operator overload
 };
-
-std::ostream &operator<<(std::ostream &out, Server const &source);
