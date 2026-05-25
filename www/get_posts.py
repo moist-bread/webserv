@@ -9,10 +9,10 @@ import json
 
 html_response_head = f"""<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/index.css">
-    <title>get_posts</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css">
+	<title>get_posts</title>
 </head>
 <body>
 """
@@ -23,9 +23,9 @@ html_response_end = f"""
 
 def print_posts():
 	database = []
-	with open("www/database", mode="r", encoding="utf-8") as read_file:
-	    for line in read_file:
-       		database.append(json.loads(line))
+	with open("www/uploads/database", mode="r", encoding="utf-8") as read_file:
+		for line in read_file:
+			database.append(json.loads(line))
 	for dict_elem in database:
 		if "notes" in dict_elem and "username" in dict_elem and "title" in dict_elem:
 			post_list_item = f"""	<li class="post-it">

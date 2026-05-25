@@ -512,6 +512,11 @@ void Response::handle_multipart_form(void)
 
 	for (std::vector<MultiForm>::iterator it = (*req).multi_form.begin(); it != (*req).multi_form.end(); it++)
 	{
+		map_strings::iterator elem_name = (*it).content_disposition.find("name");
+		std::string name = "name";
+		if (elem_name != (*it).content_disposition.end())
+			name = (*elem_name).second;
+		
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
@@ -538,15 +543,13 @@ void Response::handle_multipart_form(void)
 			// -- write to the file, and save the info to later put in the database
 			output << (*it).data << CRLF;
 			output.close();
-			json_values["filename"] = rand_name;
+			
+			// -- save the info to later put in the database
+			json_values[name] = rand_name;
 		}
 		else
 		{
 			// -- save the info to later put in the database
-			map_strings::iterator elem_name = (*it).content_disposition.find("name");
-			std::string name = "name";
-			if (elem_name != (*it).content_disposition.end())
-				name = (*elem_name).second;
 			json_values[name] = (*it).data;
 		}
 	}

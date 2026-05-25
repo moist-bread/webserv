@@ -7,67 +7,86 @@
 	<title>Banana</title>
 </head>
 <body>
-	<div class="text yellow-mark">overview of all pages/features</div>
-	<br>
-	<div class="table">
-
-		<div class="pages-overview">
-			
-			<div class="text green-mark">thing 1</div>
-			<br>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/'">main</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/video'">video player</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/board'">post board</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/gallery'">gallery</button>
-			</div>
-			
+	<div class="note-markers">
+		<div class="page-paper blue-strip shadow" >
+			<button onclick="history.back()">wait go back...</button>
 		</div>
-
-		<div class="pages-overview">
-			
-			<div class="text red-mark">thing 2</div>
-			<br>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/'">main</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/video'">video player</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/board'">post board</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/gallery'">gallery</button>
-			</div>
-			
+		<div class="page-paper yellow-strip shadow" >
+			<button onclick="history.forward()">go forward!</button>
 		</div>
-
-		<div class="pages-overview">
-			
-			<div class="text  yellow-mark">thing 3</div>
-			<br>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/'">main</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/video'">video player</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/board'">post board</button>
-			</div>
-			<div class="page-paper-strip shadow">
-				<button onclick="location.href='/gallery'">gallery</button>
-			</div>
-			
-		</div>
-
 	</div>
+
+	<div class="text blue-mark">welcome to our homepage</div>
+	Here you can expect to find the overview of all the pages showings off the features we developed for this webserver
+	<table>
+		<tr>
+			<th>
+				<div class="text green-mark">test</div>
+			</th>
+			<th>
+				<div class="text pink-mark">view</div>
+			</th>
+			<th>
+				<div class="text  yellow-mark">create</div>
+				
+			</th>
+		</tr>
+		
+		<tr>
+			<th>
+				<div class="page-paper green-strip shadow">
+					<button onclick="location.href='/'">main</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper pink-strip shadow">
+					<button onclick="location.href='/video'">video player</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper yellow-strip shadow">
+					<button onclick="location.href='/board'">post board</button>
+				</div>
+			</th>
+		</tr>
+
+		<tr>
+			<th>
+				<div class="page-paper green-strip shadow">
+					<button onclick="location.href='/write'">write</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper pink-strip shadow">
+					<button onclick="location.href='/video'">video player</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper yellow-strip shadow">
+					<button onclick="location.href='/board'">post board</button>
+				</div>
+			</th>
+			
+		</tr>
+		<tr>
+			<th>
+				<div class="page-paper green-strip shadow">
+					<button onclick="location.href='/gallery'">gallery</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper pink-strip shadow">
+					<button onclick="location.href='/gallery'">gallery</button>
+				</div>
+			</th>
+			<th>
+				<div class="page-paper yellow-strip shadow">
+					<button onclick="location.href='/gallery'">gallery</button>
+				</div>
+			</th>
+		</tr>
+		
+	</table>
+
 </body>
 </html>

@@ -458,7 +458,8 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
-	/* if (!src.body.empty())
+	/*
+	if (!src.body.empty())
 	{
 		out << BLU "Body..." DEF << std::endl;
 		out << src.body << std::endl;
@@ -484,7 +485,8 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 			out << BLU "Data..." DEF << std::endl;
 			out << "|" << (*it).data << "|" << std::endl;
 		}
-	} */
+	} 
+	*/
 	if (!src.wanted_ranges.empty())
 	{
 		out << BLU "Wanted ranges from header..." DEF << std::endl;

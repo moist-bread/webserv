@@ -70,7 +70,7 @@ private:
 	void parse_forms(void);
 	void format_application_form(void);
 	void format_multipart_form(const std::string &type);
-	
+
 	void validade_request(void);
 	std::string extract(std::string *src, const char *sep) const;
 

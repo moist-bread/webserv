@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>Banana</title>
+</head>
+<body>
+	<div class="note-markers">
+		<div class="page-paper blue-strip shadow" >
+			<button onclick="location.href='/home'">back home...</button>
+		</div>
+		<div class="page-paper pink-strip shadow" >
+			<button onclick="location.href='/board'">see the note board !</button>
+		</div>
+	</div>
+
+	<div class="text yellow-mark">leave your note here !!</div>
+	
+	<form action="/board" method="POST">
+		<p>Store Body in location POST request:</p>
+		<label for="username">username:</label>
+		<input type="text" id="username" name="username"><br><br>
+		<label for="title">post title:</label>
+		<input type="text" id="title" name="title"><br><br>
+		<label for="notes">notes:</label>
+		<input type="text" id="notes" name="notes"><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	
+</body>
+</html>

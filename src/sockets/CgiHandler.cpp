@@ -158,7 +158,7 @@ int CgiHandler::executeCgi()
 		for (size_t i = 0; i < _env.size(); i++)
 		{
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
-			std::cerr << _env[i] << std::endl;
+			// std::cerr << _env[i] << std::endl;
 		}
 		exec_env.push_back(NULL);
 
