@@ -12,22 +12,44 @@
 			<button onclick="location.href='/home'">back home...</button>
 		</div>
 		<div class="page-paper pink-strip shadow" >
-			<button onclick="location.href='/board'">see the note board !</button>
+			<button onclick="location.href='/board'">see all notes !</button>
 		</div>
 	</div>
 
 	<div class="text yellow-mark">leave your note here !!</div>
 	
-	<form action="/board" method="POST">
-		<p>Store Body in location POST request:</p>
-		<label for="username">username:</label>
-		<input type="text" id="username" name="username"><br><br>
-		<label for="title">post title:</label>
-		<input type="text" id="title" name="title"><br><br>
-		<label for="notes">notes:</label>
-		<input type="text" id="notes" name="notes"><br><br>
-		<input type="submit" value="Submit">
-	</form>
+	<div class="post-it big">
+
+		<form action="/board" method="POST">
+			<!-- <p>Store Body in location POST request:</p> -->
+			<div class="form-group">
+				<label for="title">TITLE:</label>
+				<input type="text" id="title" name="title">
+			</div>
+			<div class="form-group">
+				<label class="subtitle" for="username">BY:</label>
+				<input type="text" id="username" name="username">
+			</div>
+			<label for="notes">NOTE:</label>
+			<textarea type="text" id="notes" name="notes"></textarea>
+			<div class="page-paper pink-strip shadow" >
+				<input type="submit" value="Submit">
+			</div>
+		</form>
+	</div>
+
+	<br>
+	<br>
+
+	<p class="paper">
+		<b><u>More about this page:</u></b><br>
+		Here you can see an example of how to make a <b>POST request</b> with an html form.<br>
+		The form is sent in the Body of the HTTP request in the following format:<br>
+		<br>
+		title=Example+Title&username=http& notes=Lorem+ipsum<br>
+		<br>
+		It's then <b>converted into JSON format</b> and saved in the server's database.<br>
+	</p>
 	
 </body>
 </html>

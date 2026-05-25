@@ -7,31 +7,28 @@
 	<title>Banana</title>
 </head>
 <body>
-	<div class="text yellow-mark">this is important</div>
-	<div class="text green-mark">wait, this is also important</div>
-	<div class="text pink-mark">wow, almost forgot this</div>
+	<div class="note-markers">
+		<div class="page-paper blue-strip shadow" >
+			<button onclick="location.href='/home'">back home...</button>
+		</div>
+		<div class="page-paper yellow-strip shadow" >
+			<button onclick="location.href='/write'">leave a note !</button>
+		</div>
+	</div>
+
+	<div class="text green-mark">main</div>
 	<form action="/main.py" method="GET">
 		<label for="fname">Query GET request:</label>
 		<input type="text" id="query" name="query"><br><br>
 		<input type="submit" value="Submit">
 	</form>
-	<br><br><br>
+	<br>
 	<form action="/main.py" method="POST">
 		<label for="fname">Script w/ Body POST request:</label>
 		<input type="text" id="body" name="body"><br><br>
 		<input type="submit" value="Submit">
 	</form>
-	<br><br><br>
-	<form action="/" method="POST">
-		<p>Store Body in location POST request:</p>
-		<label for="username">username:</label>
-		<input type="text" id="username" name="username"><br><br>
-		<label for="title">post title:</label>
-		<input type="text" id="title" name="title"><br><br>
-		<label for="notes">notes:</label>
-		<input type="text" id="notes" name="notes"><br><br>
-		<input type="submit" value="Submit">
-	</form>
+	<br>
 	<form id="basic_file_upload" action="/" method="POST" enctype="multipart/form-data">
 		<p>Basic file upload:</p>
 		<label for="file">file:</label>
