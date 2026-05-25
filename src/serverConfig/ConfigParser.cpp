@@ -283,8 +283,8 @@ void ConfigParser::_serverListen(ServerConfig &server)
 		}
 		else
 		{
-			server.listen.string = "0.0.0.0:" + listen;
-			server.listen.host = "0.0.0.0";
+			server.listen.string = "127.0.0.1:" + listen;
+			server.listen.host = "127.0.0.1";
 			server.listen.port = stringToNumber<int>(listen);
 		}
 	}
@@ -311,7 +311,7 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
 {
 	if (port < 1 || port > 65535)
 		_ts.throwValidationError("IP", "listen");
-	if (host == "localhost" || host == "0.0.0.0")
+	if (host == "localhost" || host == "127.0.0.1")
 		return ;
 	if (std::count(host.begin(), host.end(), '.') != 3)
 		_ts.throwValidationError("IP", "listen");
@@ -503,6 +503,8 @@ void ConfigParser::_serverErrorPage(ServerConfig &server)
 	if (tempArgs.size() < 2)
 	      	_ts.throwValidationError("error_page needs at least one code and a URI", "error_page");
 	std::string uri = tempArgs.back();
+	if (!_isValidURI(uri))
+	    _ts.throwValidationError("Invalid URI - must start with '/", "error_page");
 	tempArgs.pop_back();
 	try
 	{
@@ -863,8 +865,10 @@ void ConfigParser::_locationUploadStore(LocationConfig &location)
  *
  * @param path Filesystem path to validate.
  */
-void ConfigParser::_validate_UploadStore(const std::string &path)
+void ConfigParser::_validate_UploadStore(std::string &path)
 {
+	if (path[path.length() - 1] != '/')
+		path.append(1, '/');
 	if (!_isValidDirectory(path, W_OK | X_OK))
 		_ts.throwValidationError("Upload Store", "upload_store");
 }

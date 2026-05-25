@@ -88,7 +88,7 @@ class ConfigParser
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
 		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
 		void _validate_Cgi(std::string &extension, const std::string &executer);
-		void _validate_UploadStore(const std::string &path);
+		void _validate_UploadStore(std::string &path);
 	
 		//	Validate Helpers
 		bool _isValidURI(const std::string &uri) const;
