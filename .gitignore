@@ -14,3 +14,5 @@ webserv
 */*/.nfs*
 www/uploads/*
 www/assets/test_video.mp4
+tester
+cgi_tester

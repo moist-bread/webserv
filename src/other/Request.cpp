@@ -1,5 +1,6 @@
 #include "../../inc/requests/Request.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/string_utils.tpp"
 
 #include "../../inc/ansi_color_codes.h"
 
@@ -36,10 +37,9 @@ Request &Request::operator=(Request const &src)
 
 		set_state(src.get_state());
 
-		this->temp_headers = src.temp_headers;
+		this->temp_str = src.temp_str;
 		this->content_length = src.content_length;
 		this->content_read = src.content_read;
-		// this->chunked_body = src.chunked_body;
 	}
 	return (*this);
 }
@@ -61,6 +61,9 @@ void Request::process(std::string request)
 		case HEADERS_REQ:
 			parse_request_headers(request);
 			break;
+		case CHUNK_BODY:
+			parse_chunk(request);
+			break;
 		case BODY:
 			parse_body(request);
 			break;
@@ -68,9 +71,9 @@ void Request::process(std::string request)
 			request.clear();
 		}
 	}
-
-	validade_request();
 	std::cout << *this << std::endl;
+	if (state == END)
+		validade_request();
 }
 
 void Request::set_state(const t_request_state &new_state) { state = new_state; }
@@ -86,7 +89,7 @@ void Request::clear(void)
 	protocol = UNSUPPORTED_PROTOCOL;
 	headers.clear();
 	body.clear();
-	
+
 	json.clear();
 	multi_form.clear();
 	wanted_ranges.clear();
@@ -95,14 +98,28 @@ void Request::clear(void)
 
 	set_state(BEGIN);
 
-	temp_headers.clear();
+	temp_str.clear();
 	content_length = VALUE_NOT_SET;
 	content_read = 0;
-	// chunked_body = false;
 }
 
 void Request::parse_request_line(std::string &request)
 {
+
+	if (!temp_str.empty())
+	{
+		request.insert(0, temp_str);
+		temp_str.clear();
+	}
+
+	// see if the end of the request line is present or not
+	// if not: keep waiting for for requets (until timeout if needed)
+	if (request.find(CRLF) == std::string::npos)
+	{
+		temp_str = request;
+		return (request.clear());
+	}
+
 	size_t len;
 
 	// -- GET METHOD
@@ -145,21 +162,21 @@ void Request::parse_request_line(std::string &request)
 }
 
 void Request::parse_request_headers(std::string &request)
-{	
-	if (!temp_headers.empty())
+{
+	if (!temp_str.empty())
 	{
-		request.insert(0, temp_headers);
-		temp_headers.clear();
+		request.insert(0, temp_str);
+		temp_str.clear();
 	}
 
 	// see if the end of the header already exists or not
 	// if not: keep waiting for for requets (until timeout if needed)
 	if (request.find(CRLF CRLF) == std::string::npos)
 	{
-		temp_headers = request;
+		temp_str = request;
 		return (request.clear());
 	}
-	
+
 	headers = HTTP::extract_key_value(&request, ":", CRLF);
 	request.erase(0, 2);
 	set_state(BODY);
@@ -201,6 +218,76 @@ void Request::parse_body(std::string &request)
 	set_state(END);
 }
 
+void Request::parse_chunk(std::string &request)
+{
+
+	if (!temp_str.empty())
+	{
+		request.insert(0, temp_str);
+		temp_str.clear();
+	}
+
+	size_t pin;
+
+	// -- step 1: wait until you have your first CRLF
+	if (content_length == VALUE_NOT_SET)
+	{
+		// see if the end of the size of chunk data line is present or not
+		pin = request.find(CRLF);
+		if (pin == std::string::npos)
+		{
+			temp_str = request;
+			return (request.clear());
+		}
+		else
+		{
+			// -- step 2: save the hex number as your content length for the chunck
+			try
+			{
+				content_length = stringToNumber<long>(request.substr(0, pin), std::hex);
+				request.erase(0, pin + 2);
+			}
+			catch(const std::exception& e)
+			{
+				throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST));
+			}
+		}
+	}
+	else
+	{
+		pin = request.find(CRLF);
+		if (pin == std::string::npos)
+		{
+			temp_str = request;
+			return (request.clear());
+		}
+		else
+		{
+			body += request.substr(0, pin);
+			if (content_length == 0)
+				set_state(END);
+			else
+				return ((content_length = VALUE_NOT_SET), request.clear());
+		}
+	}
+	
+	// -- step 3: wait until the next CRLF
+	pin = request.find(CRLF);
+	if (pin == std::string::npos)
+	{
+		temp_str = request;
+		return (request.clear());
+	}
+	else
+	{
+		body += request.substr(0, pin);
+		if (content_length == 0)
+			return (set_state(END), request.clear());
+		else
+			return ((content_length = VALUE_NOT_SET), request.clear());
+	}
+}
+
 void Request::update_content_length(std::string &request)
 {
 	// !! if content length hasn't been registered before, update it
@@ -227,12 +314,13 @@ void Request::update_content_length(std::string &request)
 	{
 		// when the request has transfer encoding chunked
 		// request body will have to be read differently?
+		content_length = VALUE_NOT_SET;
 		if (protocol != H1_1)
 			throw(Request::ParseError("Transfer-Encoding not supported for specified HTTP version", BAD_REQUEST));
-		// if (headers["transfer-encoding"] == "chunked")
-			// chunked_body = true;
-		// else
-		throw(Request::ParseError("Unsupported Transfer-Encoding directive", BAD_REQUEST));
+		if (headers["transfer-encoding"] == "chunked")
+			return (set_state(CHUNK_BODY));
+		else
+			throw(Request::ParseError("Unsupported Transfer-Encoding directive", BAD_REQUEST));
 	}
 	else if (request.size())
 		throw(Request::ParseError("Missing required headers", LENGTH_REQUIRED));
@@ -417,16 +505,15 @@ void Request::validade_request(void)
 {
 	if (method == DELETE && !body.empty())
 		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
-	
+
 	loc = conf->matchLocation(path_uri);
 	if (!loc)
-		throw(Request::ParseError("The page you're trying to acess does not exists" , NOT_FOUND));
+		throw(Request::ParseError("The page you're trying to acess does not exists", NOT_FOUND));
 	std::cout << RED "CURRENT LOCATION" DEF << std::endl;
 	std::cout << *loc << std::endl;
 
 	if (!loc->isMethodAllowed(method))
-		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"" , METHOD_NOT_ALLOWED));
-
+		throw(Request::ParseError("Invalid method \"" + HTTP::stringMethod(method) + "\"", METHOD_NOT_ALLOWED));
 }
 
 std::string Request::extract(std::string *src, const char *sep) const
@@ -485,7 +572,7 @@ std::ostream &operator<<(std::ostream &out, Request &src)
 			out << BLU "Data..." DEF << std::endl;
 			out << "|" << (*it).data << "|" << std::endl;
 		}
-	} 
+	}
 	*/
 	if (!src.wanted_ranges.empty())
 	{

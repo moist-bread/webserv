@@ -18,7 +18,7 @@ enum t_response_state
 	CHUNK,
 	HEADERS_RESP,
 	FULL_RESP,
-	SEND
+SEND
 };
 
 // =====>┊( RESPONSE )┊
@@ -84,6 +84,9 @@ private:
 
 	// -- method DELETE
 	void method_delete(void);
+
+	// -- method HEAD
+	void method_head(void);
 	
 	Request *req;
 	const ServerConfig *conf;

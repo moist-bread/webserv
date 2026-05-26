@@ -1,5 +1,8 @@
 #include "../../inc/serverConfig/ServerConfig.hpp"
 
+#include <sstream>	// ostringstream
+
+
 const int ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE = 1048576;
 const unsigned long ServerConfig::MAX_CLIENT_MAX_BODY_SIZE = 524288000;
 

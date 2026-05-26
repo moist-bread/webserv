@@ -2,6 +2,7 @@
 #include "../../inc/requests/Request.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/LocationConfig.hpp"
+#include "../../inc/string_utils.tpp"
 
 #include <unistd.h>		// close, fork, pipe
 #include <ctime>		// time

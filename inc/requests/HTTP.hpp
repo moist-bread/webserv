@@ -30,6 +30,7 @@ enum t_request_state
 	LINE,
 	HEADERS_REQ,
 	BODY,
+	CHUNK_BODY,
 	END
 };
 
@@ -39,6 +40,7 @@ enum t_method
 	POST,
 	PUT,
 	DELETE,
+	HEAD,
 	PATCH,
 	UNSUPPORTED_METHOD
 };
@@ -93,17 +95,6 @@ enum t_status_code
 	SERVICE_UNAVAILABLE,
 	GATEWAY_TIMEOUT,
 	HTTP_VERSION_NOT_SUPPORTED
-};
-
-// == template
-#include <sstream>
-
-template <typename T>
-std::string to_str(const T &value)
-{
-	std::stringstream ss;
-	ss << value;
-	return ss.str();
 };
 
 // == classes

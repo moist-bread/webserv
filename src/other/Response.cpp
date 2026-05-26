@@ -3,6 +3,7 @@
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/LocationConfig.hpp"
 
+#include "../../inc/string_utils.tpp"
 #include "../../inc/ansi_color_codes.h"
 
 #include <fstream>		// remove, fstream, ifstream, ofstream
@@ -167,6 +168,9 @@ void Response::execute_methods(void)
 		case DELETE:
 			method_delete();
 			break;
+		case HEAD:
+			method_head();
+			break;
 		default:
 			throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
 			break;
@@ -258,7 +262,7 @@ void Response::set_response_headers(void)
 		headers.erase("content-length");
 		protocol = H1_1;
 	}
-	else
+	else if (headers.find("Content-Length") == headers.end())
 		headers["Content-Length"] = to_str(body.size());
 
 	if (!body.empty())
@@ -376,12 +380,18 @@ std::string Response::assemble_content_path(void)
 	{
 		path = (*req).loc->getRoot();
 
+		// ------------------- not working for /location with a non default index
+		// !! need to: cut the matched location part
+		// !! see if theres anything left over
+		// !! if so DONT ADD INDEX
+
 		if ((*req).file_extension == "html")
 		{
 			// -- see which of the indexes is valid
 			std::string index;
 			for (size_t i = 0; i < (*req).loc->getIndexes().size() && index.empty(); i++)
 			{
+				// std::cout << "which index is valid: " <<  (path + "/" + (*req).loc->getIndexes()[i]) << std::endl;
 				if (access((path + "/" + (*req).loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
 				struct stat path_stat;
@@ -389,6 +399,7 @@ std::string Response::assemble_content_path(void)
 					continue;
 				if (S_ISDIR(path_stat.st_mode))
 					continue;
+				// std::cout << "found ..." << std::endl;
 				index = (*req).loc->getIndexes()[i];
 			}
 
@@ -397,6 +408,8 @@ std::string Response::assemble_content_path(void)
 			{
 				if ((*req).path_uri[(*req).path_uri.length() - 1] != '/')
 					(*req).path_uri.append("/");
+				// problem here, just adding the index to the WHOLE path
+				// meaning the part that matched doesnt get replaced by the ROOT
 				(*req).path_uri.append(index);
 			}
 		}
@@ -473,10 +486,7 @@ std::string Response::single_range(std::ifstream &file, const std::pair<int, int
 
 void Response::method_post(void)
 {
-	std::string path = (*req).loc->getUploadStore();
-	if (path[path.length() - 1] != '/') // ----------------- remove soon
-		path.append("/");
-	path += "database";
+	std::string path = (*req).loc->getUploadStore() + "database";
 	
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
@@ -521,9 +531,7 @@ void Response::handle_multipart_form(void)
 		if (f_name != (*it).content_disposition.end())
 		{
 			// -- see if the uploads folder exists
-			std::string path = (*req).loc->getUploadStore(); // !! pending loc working
-			if (path[path.length() - 1] != '/') // ----------------- remove soon
-				path.append("/");
+			std::string path = (*req).loc->getUploadStore();
 			
 			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // -- use of mkdir is not allowed
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
@@ -591,6 +599,12 @@ void Response::method_delete(void)
 	}
 	else
 		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
+}
+void Response::method_head(void)
+{
+	method_get();
+	headers["Content-Length"] = to_str(body.size());
+	body.clear();
 }
 
 std::ostream &operator<<(std::ostream &out, Response &src)

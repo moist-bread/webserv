@@ -4,6 +4,7 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
+#include <unistd.h>
 
 // TO-DO
 // [+-] incorporation config into response
@@ -64,6 +65,7 @@ private:
 	void parse_request_line(std::string &request);
 	void parse_request_headers(std::string &request);
 	void parse_body(std::string &request);
+	void parse_chunk(std::string &request);
 
 	void update_content_length(std::string &request);
 	void parse_range_header(void);
@@ -76,10 +78,9 @@ private:
 
 	t_request_state state;
 
-	std::string temp_headers;
+	std::string temp_str;
 	long content_length;
 	size_t content_read;
-	// bool chunked_body;
 };
 
 std::ostream &operator<<(std::ostream &out, Request &src);

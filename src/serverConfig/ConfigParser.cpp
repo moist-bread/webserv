@@ -1,5 +1,6 @@
 #include "../../inc/serverConfig/ConfigParser.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
+#include "../../inc/string_utils.tpp"
 #include <stdexcept>
 #include <algorithm> // find
 #include <sys/stat.h>
@@ -279,13 +280,13 @@ void ConfigParser::_serverListen(ServerConfig &server)
 		{
 			server.listen.string = listen;
 			server.listen.host = listen.substr(0, colonPos);
-			server.listen.port = stringToNumber<int>(listen.substr(colonPos + 1));
+			server.listen.port = stringToNumber<int>(listen.substr(colonPos + 1), std::dec);
 		}
 		else
 		{
 			server.listen.string = "127.0.0.1:" + listen;
 			server.listen.host = "127.0.0.1";
-			server.listen.port = stringToNumber<int>(listen);
+			server.listen.port = stringToNumber<int>(listen, std::dec);
 		}
 	}
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
@@ -327,7 +328,7 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
 				_ts.throwValidationError("invalid host format - must be a digit", "listen");
 		}
 		int octet_value = -1;
-		try { octet_value = stringToNumber<int>(octet); }
+		try { octet_value = stringToNumber<int>(octet, std::dec); }
 		catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
 
 		if (octet_value < 0 || octet_value > 255)
@@ -451,7 +452,7 @@ void ConfigParser::_serverMaxBodySize(ServerConfig &server)
 		isMegaByte = true;
 		sizeValue.erase(sizeValue.size() - 1);
 	}
-	try { server.clientMaxBodySize = stringToNumber<long>(sizeValue); }
+	try { server.clientMaxBodySize = stringToNumber<long>(sizeValue, std::dec); }
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "client_max_body_size"); }
 
 	if (server.clientMaxBodySize == 0)
@@ -503,7 +504,7 @@ void ConfigParser::_serverErrorPage(ServerConfig &server)
 	{
 		for (size_t i = 0; i < tempArgs.size(); ++i)
 		{
-			int errorCode = stringToNumber<int>(tempArgs[i]);
+			int errorCode = stringToNumber<int>(tempArgs[i], std::dec);
 			server.errorPages[static_cast <t_status_code>(errorCode)] = uri;
 		}
 	}
@@ -752,7 +753,7 @@ void ConfigParser::_locationReturn(LocationConfig &location)
 	std::string keyword;
 	_ts._extractSingleKeyword(keyword);
 	int	returnCode;
-	try { returnCode = stringToNumber<int>(keyword); }
+	try { returnCode = stringToNumber<int>(keyword, std::dec); }
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "return"); }
 
 	location.returnCode = HTTP::isValidReasonPhrase(returnCode);

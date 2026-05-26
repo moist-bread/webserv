@@ -99,16 +99,3 @@ class ConfigParser
 
 		TokenStream _ts;
 };
-
-template <typename T>
-T stringToNumber(const std::string &str)
-{
-	std::stringstream ss(str);	
-	T out_number;
-
-	ss >> out_number;
-	if (ss.fail() || !ss.eof())
-		throw std::runtime_error("Invalid number convertion");
-	
-	return (out_number);
-}

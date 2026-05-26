@@ -354,8 +354,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	std::string rec = std::string(tmp, ret);
 	std::cout << std::endl;
-	// std::cout << "Raw Request:" << std::endl;
-	// std::cout << rec << std::endl;
+	std::cout << "Raw Request:" << std::endl;
+	std::cout << rec << std::endl;
 	std::cout << "Bytes recebidos: " << ret << std::endl;
 
 	_clients[fd].response.status_code = OK;
