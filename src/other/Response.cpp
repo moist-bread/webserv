@@ -153,6 +153,10 @@ void Response::preparations_for_response(void)
 
 void Response::execute_methods(void)
 {
+	if (response_utils::is_error(status_code) && (*req).method == HEAD)
+		return(set_state(HEADERS_RESP));
+
+
 	if (response_utils::is_error(status_code))
 		(*req).method = GET;
 	try
@@ -602,7 +606,21 @@ void Response::method_delete(void)
 }
 void Response::method_head(void)
 {
-	method_get();
+	// HEAD is like a scouting version of GET
+	// it only wants to see the size of the content and ignores the response body
+	
+	try
+	{
+		method_get();
+	}
+	catch (const Response::CreateError &e)
+	{
+		std::cerr << e.what() << std::endl;
+		status_code = e.response_status;
+		(*req).wanted_ranges.clear();
+		body.clear();
+	}
+	
 	headers["Content-Length"] = to_str(body.size());
 	body.clear();
 }
