@@ -224,7 +224,7 @@ void ConfigParser::_validate_ServerCollision(const std::vector<ServerConfig> &se
 			const ServerConfig &server_B = servers[j];
 			if (server_A.listen.string == server_B.listen.string)
 			{
-				_ts.throwValidationError("Server Name/Listen Address collision between servers", "server");
+				_ts.throwValidationError("Collision between servers - shared listen: '" + server_A.listen.string + "'", "server");
 				_validate_ServerNamesCollision(server_A, server_B);
 			}
 		}
@@ -248,7 +248,7 @@ void ConfigParser::_validate_ServerNamesCollision(const ServerConfig &server_A, 
 		for (size_t j = 0; j < server_B.serverNames.size(); ++j)
 		{
 			if (server_A.serverNames[i] == server_B.serverNames[j])
-				_ts.throwValidationError("Server Name/Listen Address collision between servers", "server_name");
+				_ts.throwValidationError("Collision between servers - shared server name: '" + server_A.serverNames[i] + "'", "server_name");
 		}
 	}
 }
@@ -269,7 +269,7 @@ void ConfigParser::_validate_ServerNamesCollision(const ServerConfig &server_A, 
 void ConfigParser::_serverListen(ServerConfig &server)
 {
 	if (!server.listen.string.empty())
-		_ts.throwValidationError("Listen duplicated", "listen");
+		_ts.throwValidationError("Duplicated", "listen");
 	std::string listen;
 	_ts._extractSingleKeyword(listen);
 	size_t colonPos = listen.find(':');
@@ -290,7 +290,6 @@ void ConfigParser::_serverListen(ServerConfig &server)
 	}
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
 	
-	
 	_validate_Listen(server.listen.host, server.listen.port);
 	_ts._expect(TOKEN_SEMICOLON);
 }
@@ -310,33 +309,29 @@ void ConfigParser::_serverListen(ServerConfig &server)
 void ConfigParser::_validate_Listen(const std::string &host, const int port)
 {
 	if (port < 1 || port > 65535)
-		_ts.throwValidationError("IP", "listen");
+		_ts.throwValidationError("Out of range", "listen");
 	if (host == "localhost" || host == "127.0.0.1")
 		return ;
 	if (std::count(host.begin(), host.end(), '.') != 3)
-		_ts.throwValidationError("IP", "listen");
+		_ts.throwValidationError("invalid host format", "listen");
 
 	std::string octet;
 	std::stringstream ss(host);
 	while (std::getline(ss, octet, '.'))
 	{
 		if (octet.empty())
-			_ts.throwValidationError("IP", "listen");
+			_ts.throwValidationError("invalid host format - empty host octet", "listen");
 		for (size_t i = 0; i < octet.length(); i++)
 		{
 			if (!std::isdigit(octet[i]))
-				_ts.throwValidationError("IP", "listen");
+				_ts.throwValidationError("invalid host format - must be a digit", "listen");
 		}
 		int octet_value = -1;
-		try
-		{
-			octet_value = stringToNumber<int>(octet);
-		}
+		try { octet_value = stringToNumber<int>(octet); }
 		catch(const std::exception& e) { _ts.throwValidationError(e.what(), "listen"); }
 
 		if (octet_value < 0 || octet_value > 255)
-			_ts.throwValidationError("IP", "listen");
-		
+			_ts.throwValidationError("invalid host - out of range octet", "listen");
 	}	
 }
 //*	----------- *
@@ -383,14 +378,14 @@ void ConfigParser::_validate_ServerNames(const std::vector<std::string> &serverN
 		if (currentName[0] == '.' || currentName[0] == '-' || 
 				currentName[currentName.length() - 1] == '.' ||
 				currentName[currentName.length() - 1] == '-')
-			_ts.throwValidationError("Server Names", "server_name");
+			_ts.throwValidationError("invalid server name", "server_name");
 		for (size_t j = 0; j < currentName.length(); ++j)
 		{
 			char c = currentName[j];
 			if (!std::isalnum(c) && c != '.' && c != '-')
-				_ts.throwValidationError("Server Names", "server_name");
+				_ts.throwValidationError("invalid server name", "server_name");
 			if (c == '.' && currentName[j - 1] == '.')
-				_ts.throwValidationError("Server Names", "server_name");
+				_ts.throwValidationError("invalid server name", "server_name");
 		}
 	}
 }
@@ -410,7 +405,7 @@ void ConfigParser::_validate_ServerNames(const std::vector<std::string> &serverN
 void ConfigParser::_serverRoot(ServerConfig &server)
 {
 	if (!server.root.empty())
-		_ts.throwValidationError("Root duplicated", "root");
+		_ts.throwValidationError("Duplicated", "root");
 	_ts._extractSingleKeyword(server.root);
 	_validate_Root(server.root);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -428,7 +423,8 @@ void ConfigParser::_validate_Root(std::string &root)
 {
 	if (root.length() > 2 && *(root.end() - 1) == '/')
 		root.erase(root.end() - 1);
-	_isValidDirectory(root, R_OK | X_OK);
+	try { _isValidDirectory(root, R_OK | X_OK); }
+	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "root"); }
 }
 //*	----------- *
 
@@ -446,7 +442,7 @@ void ConfigParser::_validate_Root(std::string &root)
 void ConfigParser::_serverMaxBodySize(ServerConfig &server)
 {
 	if (server.clientMaxBodySize != 0)
-		_ts.throwValidationError("Client Max Body Size duplicated", "client_max_body_size");
+		_ts.throwValidationError("Duplicated", "client_max_body_size");
 	std::string sizeValue;
 	_ts._extractSingleKeyword(sizeValue);
 	bool isMegaByte = false;
@@ -455,14 +451,11 @@ void ConfigParser::_serverMaxBodySize(ServerConfig &server)
 		isMegaByte = true;
 		sizeValue.erase(sizeValue.size() - 1);
 	}
-	try
-	{
-		server.clientMaxBodySize = stringToNumber<long>(sizeValue);
-	}
+	try { server.clientMaxBodySize = stringToNumber<long>(sizeValue); }
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "client_max_body_size"); }
 
 	if (server.clientMaxBodySize == 0)
-		_ts.throwValidationError("Client Max Body Size cant be 0", "client_max_body_size");
+		_ts.throwValidationError("cant be 0", "client_max_body_size");
 	if (isMegaByte)
 		server.clientMaxBodySize *= 1048576;
 	_validate_MaxBodySize(server.clientMaxBodySize);
@@ -481,7 +474,7 @@ void ConfigParser::_serverMaxBodySize(ServerConfig &server)
 void ConfigParser::_validate_MaxBodySize(const size_t clientMaxBodySize)
 {
 	if (clientMaxBodySize < 1 || clientMaxBodySize > ServerConfig::MAX_CLIENT_MAX_BODY_SIZE)
-		_ts.throwValidationError("Client Max Body Size", "client_max_body_size");
+		_ts.throwValidationError("Out of range", "client_max_body_size");
 }
 //*	----------- *
 
@@ -501,10 +494,10 @@ void ConfigParser::_serverErrorPage(ServerConfig &server)
 	std::vector<std::string> tempArgs;
 	_ts._extractKeywordVector(tempArgs);
 	if (tempArgs.size() < 2)
-	      	_ts.throwValidationError("error_page needs at least one code and a URI", "error_page");
+	      	_ts.throwValidationError("needs at least one code and a URI", "error_page");
 	std::string uri = tempArgs.back();
-	if (!_isValidURI(uri))
-	    _ts.throwValidationError("Invalid URI - must start with '/", "error_page");
+	try { _isValidURI(uri); }
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "error_page"); }
 	tempArgs.pop_back();
 	try
 	{
@@ -536,7 +529,7 @@ void ConfigParser::_validate_ErrorPages(const std::map<t_status_code, std::strin
 	{
 		int code = it->first;
 		if (code < 400 || code > 599)
-			_ts.throwValidationError("Error Pages", "error_page");
+			_ts.throwValidationError("Invalid CODE", "error_page");
 	}
 }
 //*	----------- *
@@ -583,10 +576,11 @@ void ConfigParser::_serverLocation(ServerConfig &server, std::set<std::string> &
  */
 void ConfigParser::_validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord)
 {
-	if (!_isValidURI(path))
-		_ts.throwValidationError("Invalid URI", "location");
+	try { _isValidURI(path); }
+	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "location path"); }
+
 	if (locationsPathRecord.insert(path).second == false)
-		_ts.throwValidationError("Duplicated Location Path", "location");
+		_ts.throwValidationError("Duplicated", "location");
 }
 //*	----------- *
 
@@ -630,7 +624,7 @@ void ConfigParser::_parseLocationBlock(LocationConfig &newLocation)
 void ConfigParser::_locationRoot(LocationConfig &location)
 {
 	if (!location.root.empty())
-		_ts.throwValidationError("Root duplicated", "root");
+		_ts.throwValidationError("Duplicated", "root");
 	_ts._extractSingleKeyword(location.root);
 	_validate_Root(location.root);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -687,11 +681,11 @@ void ConfigParser::_validate_Index(const std::vector<std::string> &index)
 void ConfigParser::_locationAutoIndex(LocationConfig &location)
 {
 	if (location.autoindex != -1)
-		_ts.throwValidationError("Auto Index duplicated", "autoindex");
+		_ts.throwValidationError("Duplicated", "autoindex");
 	std::string autoindex;
 	_ts._extractSingleKeyword(autoindex);
 	if (autoindex != "on" && autoindex != "off")
-		_ts.throwSyntaxError("autoindex must be on/off", _ts._currentToken().line);
+		_ts.throwSyntaxError("invalid - must be 'on'/'off'", _ts._currentToken().line);
 	location.autoindex = autoindex == "on" ?  true : false;
 	_ts._expect(TOKEN_SEMICOLON);
 }
@@ -731,11 +725,11 @@ void ConfigParser::_locationAllowMethods(LocationConfig &location)
 void ConfigParser::_validate_AllowedMethods(const std::vector<t_method> &allowedMethods)
 {
 	if (allowedMethods.empty())
-		_ts.throwValidationError("allow_methods directive is empty", "allow_methods");
+		_ts.throwValidationError("directive is empty", "allow_methods");
 	for (size_t i = 0; i < allowedMethods.size(); ++i)    
 	{
 		if (allowedMethods[i] == UNSUPPORTED_METHOD)
-			_ts.throwValidationError("Unsupported Allowed Methods", "allow_methods");
+			_ts.throwValidationError("Unsupported METHOD", "allow_methods");
 	}
 }
 //*	----------- *
@@ -754,14 +748,11 @@ void ConfigParser::_validate_AllowedMethods(const std::vector<t_method> &allowed
 void ConfigParser::_locationReturn(LocationConfig &location)
 {
 	if (location.returnCode != INVALID_CODE)
-		_ts.throwValidationError("Return duplicated", "return");
+		_ts.throwValidationError("Duplicated", "return");
 	std::string keyword;
 	_ts._extractSingleKeyword(keyword);
 	int	returnCode;
-	try
-	{
-		returnCode = stringToNumber<int>(keyword);
-	}
+	try { returnCode = stringToNumber<int>(keyword); }
 	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "return"); }
 
 	location.returnCode = HTTP::isValidReasonPhrase(returnCode);
@@ -782,12 +773,11 @@ void ConfigParser::_locationReturn(LocationConfig &location)
 void ConfigParser::_validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL)
 {
 	if (returnCode == INVALID_CODE)
-		_ts.throwValidationError("Invalid code", "return");
+		_ts.throwValidationError("Invalid CODE", "return");
 	if (returnCode < 300 || returnCode > 308)
-		_ts.throwValidationError("Unsupported return code", "return");
-	if (!_isValidURL(returnURL))
-		_ts.throwValidationError("Invalid URL", "return");
-
+		_ts.throwValidationError("Unsupported CODE", "return");
+	try { _isValidURL(returnURL); }
+	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "return"); }
 }
 //*	----------- *
 
@@ -827,16 +817,16 @@ void ConfigParser::_locationCgi(LocationConfig &location)
 void ConfigParser::_validate_Cgi(std::string &extension, const std::string &executer)
 {
 	if (extension.length() < 2 || extension[0] != '.')
-		_ts.throwValidationError("Invalid CGI extension", "cgi");
+		_ts.throwValidationError("Invalid extension", "cgi");
 	else
 		extension.erase(0, 1);
 	for (size_t i = 1; i < extension.length(); ++i)
 	{
 		if (!std::isalnum(extension[i]))
-			_ts.throwValidationError("Invalid CGI extension", "cgi");
+			_ts.throwValidationError("Invalid extension", "cgi");
 	}
-	if (!_isValidFile(executer, R_OK | X_OK))
-		_ts.throwValidationError("Invalid CGI executable", "cgi");
+	try { _isValidFile(executer, R_OK | X_OK); }
+	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "cgi"); }
 }
 //*	----------- *
 
@@ -852,7 +842,7 @@ void ConfigParser::_validate_Cgi(std::string &extension, const std::string &exec
 void ConfigParser::_locationUploadStore(LocationConfig &location)
 {
 	if (!location.uploadStore.empty())
-		_ts.throwValidationError("Upload Store duplicated", "upload_store");
+		_ts.throwValidationError("Duplicated", "upload_store");
 	_ts._extractSingleKeyword(location.uploadStore);
 	_validate_UploadStore(location.uploadStore);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -869,8 +859,8 @@ void ConfigParser::_validate_UploadStore(std::string &path)
 {
 	if (path[path.length() - 1] != '/')
 		path.append(1, '/');
-	if (!_isValidDirectory(path, W_OK | X_OK))
-		_ts.throwValidationError("Upload Store", "upload_store");
+	try { _isValidDirectory(path, W_OK | X_OK); }
+	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "upload_store"); }
 }
 //*	----------- *
 
@@ -886,11 +876,10 @@ void ConfigParser::_validate_UploadStore(std::string &path)
  * @param uri URI string to validate.
  * @return true if it is a non-empty path starting with '/', false otherwise.
  */
-bool ConfigParser::_isValidURI(const std::string &uri) const
+void ConfigParser::_isValidURI(const std::string &uri) const
 {
 	if (uri.empty() || uri[0] != '/')
-		return (false);
-	return (true);
+		throw std::runtime_error("Invalid URI - must start with '/'");
 }
 
 /**
@@ -903,23 +892,22 @@ bool ConfigParser::_isValidURI(const std::string &uri) const
  * @param url URL string to validate.
  * @return true if syntactically valid, false otherwise.
  */
-bool ConfigParser::_isValidURL(const std::string &url) const
+void ConfigParser::_isValidURL(const std::string &url) const
 {
 	if (url.empty())
-		return (false);
+		throw std::runtime_error("Empty URL");
 	if (url.length() >= 7 && url.compare(0, 7, "http://") == 0)
 	{
 		if (url.length() == 7)
-			return (false);
+			throw std::runtime_error("Invalid URL - empty 'http://'");
 	}
 	else if (url.length() >= 8 && url.compare(0, 8, "https://") == 0)
 	{
 		if (url.length() == 8)
-			return (false);
+			throw std::runtime_error("Invalid URL - empty 'https://'");
 	}
 	else if (url[0] != '/')
-		return (false);
-	return (true);
+		throw std::runtime_error("Invalid URL");
 }
 
 /**
@@ -932,11 +920,10 @@ bool ConfigParser::_isValidURL(const std::string &url) const
  * @param flags Permission flags as accepted by `access(2)` (e.g. R_OK).
  * @return true if accessible with given flags, false otherwise.
  */
-bool ConfigParser::_isValidAccess(const std::string &path, const int flags) const
+void ConfigParser::_isValidAccess(const std::string &path, const int flags) const
 {
 	if (access(path.c_str(), flags) != 0)
-		return (false);
-	return (true);
+		throw std::runtime_error("Couldn't access given path");
 }
 
 /**
@@ -950,16 +937,14 @@ bool ConfigParser::_isValidAccess(const std::string &path, const int flags) cons
  * @param flags Permission flags to check with `access(2)`.
  * @return true if the path is a file and accessible, false otherwise.
  */
-bool ConfigParser::_isValidFile(const std::string &path, const int flags) const
+void ConfigParser::_isValidFile(const std::string &path, const int flags) const
 {
-	if (!_isValidAccess(path, flags))
-		return (false);
+	_isValidAccess(path, flags);
 	struct stat path_stat;
 	if (stat(path.c_str(), &path_stat) != 0)
-		return (false);
+		throw std::runtime_error("Couldn't access given path");
 	if (S_ISDIR(path_stat.st_mode))
-		return (false);
-	return (true);
+		throw std::runtime_error("Given path is not a File");
 }
 
 /**
@@ -973,16 +958,14 @@ bool ConfigParser::_isValidFile(const std::string &path, const int flags) const
  * @param flags Permission flags to check with `access(2)`.
  * @return true if the path is a directory and accessible, false otherwise.
  */
-bool ConfigParser::_isValidDirectory(const std::string &path, const int flags) const
+void ConfigParser::_isValidDirectory(const std::string &path, const int flags) const
 {
-	if (!_isValidAccess(path, flags))
-		return (false);
+	_isValidAccess(path, flags);
 	struct stat path_stat;
 	if (stat(path.c_str(), &path_stat) != 0)
-		return (false);
+		throw std::runtime_error("Couldn't access given path");
 	if (!S_ISDIR(path_stat.st_mode))
-		return (false);
-	return (true);
+		throw std::runtime_error("Given path is not a Directory");
 }
 
 
@@ -991,5 +974,11 @@ bool ConfigParser::_isValidDirectory(const std::string &path, const int flags) c
 	! CHECK ERROR MESSAGES -> NOTE TO ADD LINE NUMBER / *COLLUMN?*
 
 	! CHECK FILE NAME EXTENSION -> LEXER
+
+	! CHECK what auotindex do, must have index filled if autoindex on?
+
+	! ERROR LINE SERVER COLLISION NAME AND LISTEN
+
+	! fix -> servername collision -> void ConfigParser::_validate_ServerCollision(const std::vector<ServerConfig> &servers)
 
 */

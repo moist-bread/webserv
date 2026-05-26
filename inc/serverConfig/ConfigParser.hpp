@@ -91,11 +91,11 @@ class ConfigParser
 		void _validate_UploadStore(std::string &path);
 	
 		//	Validate Helpers
-		bool _isValidURI(const std::string &uri) const;
-		bool _isValidURL(const std::string &url) const;
-		bool _isValidAccess(const std::string &path, const int flags) const;
-		bool _isValidFile(const std::string &path, const int flags) const;
-		bool _isValidDirectory(const std::string &path, const int flags) const;
+		void _isValidURI(const std::string &uri) const;
+		void _isValidURL(const std::string &url) const;
+		void _isValidAccess(const std::string &path, const int flags) const;
+		void _isValidFile(const std::string &path, const int flags) const;
+		void _isValidDirectory(const std::string &path, const int flags) const;
 
 		TokenStream _ts;
 };
