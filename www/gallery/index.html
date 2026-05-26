@@ -12,89 +12,55 @@
 			<button onclick="location.href='/home'">back home...</button>
 		</div>
 		<div class="page-paper yellow-strip shadow" >
-			<button onclick="location.href='/uploads'">post a pic !</button>
+			<button onclick="location.href='/'">post an picture !</button>
 		</div>
 	</div>
-	
-	<div class="text pink-mark">gallery</div>
+
+	<div class="text pink-mark">picture gallery</div>
 	<br>
-	<div id="file-list">Loading Images...</div>
+	<ul class="gallery" id="image-list">Loading Images...</ul>
+	
+	<br>
+	<br>
+
+	<p class="paper">
+		<b><u>More about this page:</u></b><br>
+		These pictures were created retrieved based on the <b>information from the server's database.</b><br>
+		<br>
+		To do that we used a script inside this page to request the <b>execution of a CGI</b><br>
+		The CGI in this case is actually a python script that goes through the database, sees any image text pair,
+		sees if the image exists and from it <b>creates the html</b> for a page containing all registered images.<br>
+	</p>
 	
 	<script>
 		async function load_images()
 		{
 			try
 			{
-				const response = await fetch("/uploads");
+				const response = await fetch("/get_images.py");
 				const text = await response.text();
 				if (!response.ok)
-					throw "Couldn't load the files...";
-
+					throw "Couldn't load the images...";
+	
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
-				const links = Array.from(doc.querySelectorAll("li > a"));
+				const links = Array.from(doc.querySelectorAll("li"));
 				if (links.length === 0)
-					throw "No files to load...";
+					throw "No images to load...";
 
-				const listContainer = document.getElementById("file-list");
+				const listContainer = document.getElementById("image-list");
 				listContainer.innerHTML = "";
-				links.forEach((link) => {
-					const href = link.getAttribute("href");
-					const name = link.textContent;
-					
-					if (href !== ".." && name !== "..")
-					{
-						const card = document.createElement("div");
-						console.log(href);
-						card.className = "file-card";
-						card.innerHTML = `
-						<div class='image-post'>
-							<img src="${href}" alt="${name}">
-							<br>
-							<span>${name}</span>
-							<div class="actions">
-								<button onclick="delete_file('${href}')" 
-								style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px;">
-									Delete
-								</button>
-							</div>
-						</div>
-						`;
-						listContainer.appendChild(card);
-					}
-				});
+				links.forEach((link) => { listContainer.appendChild(link); });
 			}
 			catch (error)
 			{
-				console.error("Error loading files:", error);
-				document.getElementById("file-list").innerHTML = error;
-			}
-		}
-
-		async function delete_file(file_name)
-		{
-			if (!confirm(`do you want to delete the following file? \"${file_name}\"`))
-				return;
-
-			try
-			{
-				const response = await fetch(`${file_name}`, {method: "DELETE"});
-				if (response.ok)
-				{
-					alert("File deleted successfully");
-					load_images();
-				}
-				else
-					throw response.status;
-			}
-			catch (error)
-			{
-				console.error("Error when trying to delete: ", error);
-				alert("Failed to delete file");
+				console.error("Error loading posts:", error);
+				document.getElementById("image-list").innerHTML = error;
 			}
 		}
 
 		load_images();
+
 	</script>
 </body>
 </html>
