@@ -320,10 +320,11 @@ void Response::method_get(void)
 	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
 	{
-		if ((*req).file_extension == "html")
-			throw(Response::CreateError("File did not open", NOT_FOUND));
-		else
-			throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
+		// ---------------- see if 404 is really the only option
+		throw(Response::CreateError("File did not open", NOT_FOUND));
+		// if ((*req).file_extension == "html")
+		//else
+		//	throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
 	}
 	else
 	{
@@ -384,11 +385,6 @@ std::string Response::assemble_content_path(void)
 	{
 		path = (*req).loc->getRoot();
 
-		// ------------------- not working for /location with a non default index
-		// !! need to: cut the matched location part
-		// !! see if theres anything left over
-		// !! if so DONT ADD INDEX
-
 		if ((*req).file_extension == "html")
 		{
 			// -- see which of the indexes is valid
@@ -412,16 +408,14 @@ std::string Response::assemble_content_path(void)
 			{
 				if ((*req).path_uri[(*req).path_uri.length() - 1] != '/')
 					(*req).path_uri.append("/");
-				// problem here, just adding the index to the WHOLE path
-				// meaning the part that matched doesnt get replaced by the ROOT
 				(*req).path_uri.append(index);
 			}
 		}
 		
-		path += (*req).path_uri;
+		path += (*req).path_uri.substr((*req).loc->getPath().length());
 	}
 	(*req).path_uri = path;
-	std::cout << RED "assembles path: " DEF << path << std::endl;
+	std::cout << RED "assembled path: " DEF << path << std::endl;
 	return (path);
 }
 
@@ -604,6 +598,7 @@ void Response::method_delete(void)
 	else
 		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
 }
+
 void Response::method_head(void)
 {
 	// HEAD is like a scouting version of GET

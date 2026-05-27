@@ -220,30 +220,34 @@ void Request::parse_body(std::string &request)
 
 void Request::parse_chunk(std::string &request)
 {
-
 	if (!temp_str.empty())
 	{
 		request.insert(0, temp_str);
 		temp_str.clear();
 	}
 
-	size_t pin;
-
-	// -- step 1: wait until you have your first CRLF
-	if (content_length == VALUE_NOT_SET)
+	while (!request.empty())
 	{
-		// see if the end of the size of chunk data line is present or not
+		size_t pin;
+
+		// std::cout << YEL "actual request rn:" DEF << std::endl;
+		// std::cout << request << std::endl;
+		// if (content_length == VALUE_NOT_SET)
+		// 	std::cout << YEL "size of chunck data not yet set..." DEF << std::endl;
+		
+		// -- step 1: wait until you have a CRLF
 		pin = request.find(CRLF);
 		if (pin == std::string::npos)
 		{
 			temp_str = request;
-			return (request.clear());
+			request.clear();
 		}
-		else
+		else if (content_length == VALUE_NOT_SET)
 		{
 			// -- step 2: save the hex number as your content length for the chunck
 			try
 			{
+				std::cout << YEL "getting size of chunck data..." DEF << std::endl;
 				content_length = stringToNumber<long>(request.substr(0, pin), std::hex);
 				request.erase(0, pin + 2);
 			}
@@ -252,39 +256,22 @@ void Request::parse_chunk(std::string &request)
 				throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST));
 			}
 		}
-	}
-	else
-	{
-		pin = request.find(CRLF);
-		if (pin == std::string::npos)
-		{
-			temp_str = request;
-			return (request.clear());
-		}
 		else
 		{
+			// -- step 3: wait until the chunk ending CRLF
 			body += request.substr(0, pin);
+			request.erase(0, pin + 2);
 			if (content_length == 0)
-				set_state(END);
+			{
+				std::cout << YEL "finishing chunk has been processed !!!" DEF << std::endl;
+				return (set_state(END), request.clear());
+			}
 			else
-				return ((content_length = VALUE_NOT_SET), request.clear());
+			{
+				std::cout << YEL "one chunk done, onto the next..." DEF << std::endl;
+				content_length = VALUE_NOT_SET;
+			}
 		}
-	}
-	
-	// -- step 3: wait until the next CRLF
-	pin = request.find(CRLF);
-	if (pin == std::string::npos)
-	{
-		temp_str = request;
-		return (request.clear());
-	}
-	else
-	{
-		body += request.substr(0, pin);
-		if (content_length == 0)
-			return (set_state(END), request.clear());
-		else
-			return ((content_length = VALUE_NOT_SET), request.clear());
 	}
 }
 
@@ -302,6 +289,7 @@ void Request::update_content_length(std::string &request)
 	content_length = 0;
 	if (headers.find("content-length") != headers.end())
 	{
+		// --------------------- change to string_to_number
 		char *end = NULL;
 		content_length = LONG_MAX;
 		if (!headers["content-length"].empty())
@@ -312,8 +300,6 @@ void Request::update_content_length(std::string &request)
 	}
 	else if (headers.find("transfer-encoding") != headers.end())
 	{
-		// when the request has transfer encoding chunked
-		// request body will have to be read differently?
 		content_length = VALUE_NOT_SET;
 		if (protocol != H1_1)
 			throw(Request::ParseError("Transfer-Encoding not supported for specified HTTP version", BAD_REQUEST));
@@ -364,6 +350,7 @@ void Request::parse_range_header(void)
 
 		if (sep != 0)
 		{
+			// --------------------- change to string_to_number
 			end = NULL;
 			tmp = std::strtol(value.substr(0, sep).c_str(), &end, 10);
 			if (*end || tmp > INT_MAX || tmp < 0)
@@ -379,6 +366,7 @@ void Request::parse_range_header(void)
 			sep = value.size();
 		if (sep != 0)
 		{
+			// --------------------- change to string_to_number
 			end = NULL;
 			tmp = std::strtol(value.substr(0, sep).c_str(), &end, 10);
 			if (*end || tmp > INT_MAX || tmp < 0)
