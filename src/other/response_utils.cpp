@@ -115,7 +115,7 @@ namespace response_utils
 				(*it).second = file_len;
 			}
 			if ((*it).first >= (*it).second || (*it).second > static_cast<int>(file_len) || (*it).first < 0)
-				return (std::cout << (*it).first << " " << (*it).second << std::endl, false);
+				return (false);
 		}
 
 		// -- step 2: copy map into a vector, sort and then loop to compare one to the next
@@ -125,15 +125,10 @@ namespace response_utils
 		std::sort(copy_range.begin(), copy_range.end());
 
 		for (size_t i = 0; i < size_limit; i++)
-		{
 			if (std::max(copy_range[i].first, copy_range[i + 1].first) <= std::min(copy_range[i].second, copy_range[i + 1].second))
-			{
-				std::cout << copy_range[i].first << " " << copy_range[i].second << " overlaping range...\n";
 				return (false);
-			}
-		}
 		
-		// for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
+		// for (vector2::const_iterator it = ranges.begin(); it != ranges.end(); it++)
 		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 
 		// -- step 3: force range limit size cap

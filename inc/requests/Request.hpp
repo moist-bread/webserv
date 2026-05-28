@@ -7,14 +7,8 @@
 #include <unistd.h>
 
 // TO-DO
-// [+-] incorporation config into response
-// [+-] incorporation config into request
-// [+-] incorporation config into cgi
-// [ ]  vefify LWS (linear whitespace) better
-// [ ]  make the gallery work like the boardby going by the database file
-// [x]  switch strtod for strtol (so it doesnt accept 1.1 values)
-// [ ]  create a static Inspect class for debug prints
-// [ ]  ?? do i need to accept transfer encoding chuncked REQUESTS?
+// [ ] make tester work
+// [ ] gallery post page
 
 struct ServerConfig;
 struct LocationConfig;
@@ -83,4 +77,4 @@ private:
 	size_t content_read;
 };
 
-std::ostream &operator<<(std::ostream &out, Request &src);
+std::ostream &operator<<(std::ostream &out, const Request &src);

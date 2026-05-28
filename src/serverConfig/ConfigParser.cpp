@@ -422,8 +422,8 @@ void ConfigParser::_serverRoot(ServerConfig &server)
  */
 void ConfigParser::_validate_Root(std::string &root)
 {
-	if (root.length() > 2 && *(root.end() - 1) == '/')
-		root.erase(root.end() - 1);
+	if (root.length() > 2 && *(root.end() - 1) != '/')
+		root.append("/");
 	try { _isValidDirectory(root, R_OK | X_OK); }
 	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "root"); }
 }

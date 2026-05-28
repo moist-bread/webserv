@@ -5,7 +5,8 @@
 
 #include <unistd.h> // close, read
 #include <ctime>	// time, difftime
-#include <stdio.h>	// perror
+#include <string.h>	// strerror
+#include <errno.h>	// errno
 #include <fcntl.h>	// fcntl
 
 #define TIMEOUT_TIME 120
@@ -15,8 +16,11 @@ extern bool running;
 
 Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getallServers()[0].getListenPort(), INADDR_ANY, 10), _config(config)
 {
-	std::cout << GRN "the Server ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Server ";
+		std::cout << UCYN "has been created" DEF << std::endl;
+	}
 	
 	SetupPorts();
 	launch();
@@ -33,15 +37,20 @@ Server::Server(Server const &source) : ASimpleServer(source), _config(source._co
 
 Server::~Server(void)
 {
-	std::cout << GRN "the Server ";
-	std::cout << URED "has been deleted" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Server ";
+		std::cout << URED "has been deleted" DEF << std::endl;
+	}
+
 	for (size_t i = 0; i < _extraListeners.size(); i++)
 		delete _extraListeners[i];
 }
 
 Server &Server::operator=(Server const &source)
 {
-	std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
+	if (Inspect::debug)
+		std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
 		(void)source;
 	return (*this);
@@ -84,17 +93,16 @@ void Server::SetupPorts()
         _fdToServerConfig[fd] = &servers[i];
     }
 
-	//Debug
-	std::cout << "[DEBUG] SetupPorts — mapa fd→config:" << std::endl;
-    for (std::map<int, const ServerConfig*>::iterator it = _fdToServerConfig.begin(); it != _fdToServerConfig.end(); it++)
-        std::cout << "  fd=" << it->first << " porta=" << it->second->getListenPort() << " serverName=" << (it->second->serverNames.empty() ? "none" : it->second->serverNames[0]) << std::endl;
+
+	Inspect::inspect_server_activity("started up", *this);
 }
 
 void Server::SetNonblocking(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 	{
-		perror("Something went wrong while passing to NONBLOCKING");
+		// --------------- what to do here
+		std::cout << "Something went wrong while passing to NONBLOCKING" << std::endl;
 	}
 }
 
@@ -111,9 +119,9 @@ void Server::PopulatePollInfo(int fd)
 	_pollfds.push_back(pfd);
 }
 
-void Server::removeClient(int fd, size_t &index)
+void Server::removeClient(int fd, size_t &index, const t_remove_reason &reason)
 {
-	std::cout << RED "REMOVING THE CLIENT " DEF << fd << "\n";
+	Inspect::inspect_removed_cl(reason, fd);
 	_clients.erase(fd);
 	for (std::map<int, int>::iterator it = _cgiMap.begin(); it != _cgiMap.end(); it++)
 	{
@@ -158,10 +166,7 @@ Descobre qual ServerConfig responde ao pedido com base no ListenFd en Host: Head
 void Server::launch()
 {
 	if(_pollfds.empty())
-	{
- 		std::cerr << "[Server] Nenhuma porta configurada — a sair." << std::endl;
-		return;
-	}
+		return (Inspect::inspect_server_activity("no ports configured, shuting down", *this));
 
 	running = true;
 	while (running)
@@ -170,7 +175,14 @@ void Server::launch()
 		if (pollCount <= 0)
 		{
 			// research what to do when it timesout
-			std::cout << "Timeout... " << pollCount << std::endl;
+
+			// !! zero indicates that the system call timed out before any file descriptors became ready
+			// !! On error, -1
+			std::cout << std::endl;
+			if (pollCount == 0) 
+				Inspect::inspect_server_activity("timed out", *this);
+			else 
+				Inspect::inspect_server_activity( "been stopped in poll by: " + std::string(strerror(errno)), *this);
 		}
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
@@ -179,7 +191,7 @@ void Server::launch()
 
 			if (!running && _clients.find(fd) != _clients.end())
 			{
-				removeClient(fd, i);
+				removeClient(fd, i, SERVER_CLOSE);
 				continue;
 			}
 
@@ -203,8 +215,9 @@ void Server::launch()
 			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 				inactivityTimeout(fd, &i);
 		}
-		std::cout << "== DONE ===" << std::endl;
+		// std::cout << "== DONE ===" << std::endl;
 	}
+	Inspect::inspect_server_activity("shut down", *this);
 }
 
 bool Server::isServerSocket(int fd)
@@ -233,20 +246,21 @@ void Server::accepter(int listenFd)
 
     int newFd = accept(listenFd, (struct sockaddr *)&clientAddr, (socklen_t *)&addrlen);
     if (newFd < 0)
-		return (perror("accept"));
+		return (Inspect::inspect_client_activity("failed to be accepted", newFd, 0));
 
 	if (!_fdToServerConfig.count(listenFd))
 		throw (std::runtime_error("cliente sem server config"));
-    PopulatePollInfo(newFd);
-	std::cout << RED "this is the config\n" DEF;
-	std::cout << *_fdToServerConfig[listenFd] << std::endl;
-    Client newClient(newFd, listenFd, _fdToServerConfig[listenFd]);
-
+		
+	PopulatePollInfo(newFd);
+	Client newClient(newFd, listenFd, _fdToServerConfig[listenFd]);
     _clients.insert(std::make_pair(newFd, newClient));
-	std::cout << "Cliente criado na socket " << newFd << std::endl;
+	Inspect::inspect_client_activity("been accepted", newFd, newClient.serverConfig->getListenPort());
 
-	std::cout << "[DEBUG] accepter — cliente " << newFd;
-	std::cout << " associado ao servidor porta=" << newClient.serverConfig->getListenPort() << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << RED "this is the config\n" DEF;
+		std::cout << *_fdToServerConfig[listenFd] << std::endl;
+	}
 }
 
 int Server::responder(int clientFd, const std::string &data)
@@ -263,7 +277,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
 	if (_pollfds[*pollfds_idx].revents & POLLERR)
 	{
-		std::cerr << "[CGI] POLLERR no pipe — a gerar resposta de erro\n";
+		Inspect::inspect_cgi_activity("failed to execute due to a POLLERR error", clientFd);
 
 		// !! close cgi connection
 		close(fd);
@@ -296,7 +310,6 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 	{
 		// -- recieved EOF -> send to signal that the cgi ended
 		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
-		std::cout << "CGI terminou de processar para o cliente " << clientFd << std::endl;
 		_clients[clientFd].response.cgi_reply.clear();
 
 		// !! close cgi connection
@@ -314,15 +327,16 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		*/
 		if (!_clients[clientFd].response.is_chunked)
 		{
-			std::cerr << "[CGI] Sem output — a gerar resposta de erro\n";
+			Inspect::inspect_cgi_activity("failed to execute due to an error", clientFd);
 			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
+		Inspect::inspect_cgi_activity("finished execution", clientFd);
 	}
 	else
 	{
 		// -- read failed -> send error response
 		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
-		std::cout << "CGI read error " << clientFd << std::endl;
+		Inspect::inspect_cgi_activity("failed to execute due to a read error", clientFd);
 
 		// !! close cgi connection
 		close(fd);
@@ -350,13 +364,15 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	ConnectionStatus status = getStatus(ret);
 	if (status == IO_ERROR || status == IO_CLOSED)
-		return (removeClient(fd, *pollfds_idx));
+		return (removeClient(fd, *pollfds_idx, RECV_FAIL));
 
 	std::string rec = std::string(tmp, ret);
+	/*
 	std::cout << std::endl;
 	std::cout << "Raw Request:" << std::endl;
-	std::cout << rec << std::endl;
-	std::cout << "Bytes recebidos: " << ret << std::endl;
+	std::cout << rec << std::endl; */
+	if (Inspect::debug)
+		std::cout << "Bytes recebidos: " << ret << std::endl;
 
 	_clients[fd].response.status_code = OK;
 	try
@@ -376,10 +392,10 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	}
 	catch (const Request::ParseError &e)
 	{
-		std::cerr << e.what() << std::endl;
+		Inspect::inspect_request_activity(e.what(), _clients[fd].request);
 		_clients[fd].request.set_state(END);
 		_clients[fd].response.status_code = e.request_status;
-		_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
+		_pollfds[*pollfds_idx].events = POLLOUT;
 		return;
 	}
 
@@ -387,15 +403,18 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 	if (_clients[fd].request.get_state() != END)
 	{
-		std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
+		// std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
 		return;
 	}
 
+
+	Inspect::inspect_request_activity("", _clients[fd].request);
 	// start the cgi execution right away
 	if (!_clients[fd].request.loc->getCgiExecutable(_clients[fd].request.file_extension).empty())
 	{
 		try
 		{
+			Inspect::inspect_cgi_activity("started execution", fd);
 			_clients[fd].cgi.process(_clients[fd].request);
 			int contentOfCgiFd = _clients[fd].cgi.getPipeOutReadFd();
 			PopulatePollInfo(contentOfCgiFd);
@@ -405,7 +424,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		}
 		catch (const CgiHandler::CgiExecutionFail &e)
 		{
-			std::cerr << "cgi failure: " << e.what() << std::endl;
+			Inspect::inspect_cgi_activity(e.what(), fd);
 			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
 		}
 	}
@@ -419,21 +438,21 @@ void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 	int bytesWritten = responder(fd, _clients[fd].response.full_response);
 	if (bytesWritten > 0)
 	{
+		// std::cout << BLU "response sent..." DEF << std::endl;
 		_clients[fd].updateLastActivity();
-		std::cout << YEL "response sent..." DEF << std::endl;
 		_clients[fd].response.full_response.erase(0, bytesWritten);
 		if (_clients[fd].response.full_response.empty())
 		{
 			// only continue onto the next request after being able to
 			// send everything from the previously processed request
-			std::cout << YEL "full response is empty, change to POLLIN" DEF << std::endl;
+			Inspect::inspect_response_activity("", _clients[fd].response);
 			_clients[fd].response.set_state(PREP);
 			_pollfds[*pollfds_idx].events = POLLIN;
 		}
 	}
 	else if (bytesWritten < 0)
 	{
-		removeClient(fd, *pollfds_idx);
+		removeClient(fd, *pollfds_idx, WRITE_FAIL);
 	}
 }
 
@@ -441,7 +460,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
 	if (_clients[fd].response.headers.find("Connection") != _clients[fd].response.headers.end())
 		if (_clients[fd].response.headers["Connection"] == "close")
-			return (removeClient(fd, *pollfds_idx));
+			return (removeClient(fd, *pollfds_idx, CLOSE_CONNECTION));
 
 	// Chegámos ao fim do processamento deste FD nesta volta.
 	// Vamos verificar se ele está "morto" há demasiado tempo.
@@ -450,17 +469,28 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 
 	// Vamos definir TIMEOUT_TIME segundos como o limite máximo de inatividade
 	if (seconds_idle > TIMEOUT_TIME)
-	{
-		std::cout << "\n[TIMEOUT] O cliente " << fd << " inativo há " << seconds_idle << " segundos. A desconectar..." << std::endl;
-		return (removeClient(fd, *pollfds_idx));
-	}
+		return (removeClient(fd, *pollfds_idx, TIMEOUT));
 
 	if (_clients[fd].cgi.getCgiActivityStart() == VALUE_NOT_SET)
 		return;
-	time_t cgi_time = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
-	if (cgi_time > TIMEOUT_TIME)
+	seconds_idle = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
+	if (seconds_idle > TIMEOUT_TIME)
+		return (removeClient(fd, *pollfds_idx, TIMEOUT_CGI));
+}
+
+const std::map<int, const ServerConfig*> &Server::get_fdToServerConfig() const { return (_fdToServerConfig); };
+
+std::ostream &operator<<(std::ostream &out, const Server &src)
+{
+	out << MAG "-- Server Information --" DEF << std::endl;
+
+	out << MAG "Fds → Server Configurations..." DEF << std::endl;
+	for (std::map<int, const ServerConfig*>::const_iterator it = src.get_fdToServerConfig().begin(); it != src.get_fdToServerConfig().end(); it++)
 	{
-		std::cout << "\n[TIMEOUT] Cgi Timed out " << fd << " inativo há " << cgi_time << " segundos. A desconectar..." << std::endl;
-		return (removeClient(fd, *pollfds_idx));
+		out << MAG "    [" << (*it).first << "]" DEF;
+		out << " | Port=" << (*it).second->getListenPort(); // ---------- server name PENDING
+		out << " | Server Name=" << ((*it).second->serverNames.empty() ? "none" : (*it).second->serverNames[0]) << " |" << std::endl;
+
 	}
+	return (out);
 }

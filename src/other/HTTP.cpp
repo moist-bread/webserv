@@ -228,36 +228,53 @@ t_status_code HTTP::isValidReasonPhrase(const int status_code)
 	}
 }
 
-map_strings HTTP::extract_key_value(std::string *src, std::string sep, std::string delim)
+map_strings HTTP::extract_key_value(std::string *str, std::string sep, std::string delim)
 {
 	map_strings map;
 	std::string key;
 	std::string value;
 	size_t len;
-	size_t lws;
 
-	while (!(*src).empty())
+	// LWS = [CRLF] 1*( SP | HT )
+	// (translation: if there's a new line and a space/tab after is counts as a space)
+	
+	// header field values can be folded onto multiple lines if the
+	// continuation line begins with a space or horizontal tab
+
+	// Each header field consists of a name followed by a colon (":")
+	// and the field value. Field names are case-insensitive.
+	
+	// The field value MAY be preceded by any amount of LWS, though a single SP is preferred.
+
+	while (!(*str).empty())
 	{
 		// -- get the key name
-		if ((*src).find(CRLF) == 0)
+		if ((*str).find(CRLF) == 0)
 			break;
-		len = (*src).find(sep);
+		len = (*str).find(sep);
 		if (len == std::string::npos)
 			break;
-		key = (*src).substr(0, len);
-		// a header is a case-insensitive name
+		key = (*str).substr(0, len);
+		// a header field name is case-insensitive
 		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-		(*src).erase(0, len + sep.length());
+		(*str).erase(0, len + sep.length());
 
+		// -- skip whitespaces/LWS
+		if ((*str).find(CRLF SP) == 0 || (*str).find(CRLF HT) == 0)
+			len = 3;
+		else if ((*str).find(SP) == 0)
+			len = 1;
+		else
+			len = 0;
+		(*str).erase(0, len);
+		
 		// -- get the value content
-		len = (*src).find(delim);
+		len = (*str).find(delim);
 		if (len == std::string::npos)
-			len = (*src).size();
-		lws = (*src).find_first_not_of(" \t\n\v\f\r"); // !!!!!! verify lws better
-		if (lws == std::string::npos)
-			lws = 0;
-		value = (*src).substr(lws, len - lws);
-		(*src).erase(0, len + delim.length());
+			len = (*str).size();
+		
+		value = (*str).substr(0, len);
+		(*str).erase(0, len + delim.length());
 		map[key] = value;
 	}
 	return (map);

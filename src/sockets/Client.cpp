@@ -1,4 +1,5 @@
 #include "../../inc/sockets/Client.hpp"
+#include "../../inc/requests/Inspect.hpp"
 #include "../../inc/ansi_color_codes.h"
 
 #include <ctime>	// time
@@ -11,21 +12,30 @@ Client::Client(void) : serverConfig(NULL), request(serverConfig), response(reque
 Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), request(serverConfig), response(request, sc)
 {
 	updateLastActivity();
-	std::cout << GRN "the Client ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Client ";
+		std::cout << UCYN "has been created" DEF << std::endl;
+	}
 }
 
 Client::Client(Client const &src) : request(src.serverConfig), response(request, src.serverConfig)
 {
 	*this = src;
-	std::cout << GRN "the Client ";
-	std::cout << UYEL "has been copy created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Client ";
+		std::cout << UYEL "has been copy created" DEF << std::endl;
+	}
 }
 
 Client::~Client(void)
 {
-	std::cout << GRN "the Client ";
-	std::cout << URED "has been deleted" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Client ";
+		std::cout << URED "has been deleted" DEF << std::endl;
+	}
 }
 
 Client &Client::operator=(Client const &src)

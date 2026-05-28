@@ -3,6 +3,7 @@
 #include "ASimpleServer.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/Config.hpp"
+#include "../../inc/requests/Inspect.hpp"
 #include <map>
 #include <vector>
 #include <iostream>
@@ -38,7 +39,7 @@ private:
 	void SetNonblocking(int fd);
 
 	void PopulatePollInfo(int fd);
-	void removeClient(int fd, size_t &index);
+	void removeClient(int fd, size_t &index, const t_remove_reason &reason);
 
 	void launch();
 	bool isServerSocket(int fd);
@@ -61,4 +62,7 @@ public:
 	~Server(void);				  // destructor
 
 	Server &operator=(Server const &source); // copy assignment operator overload
+	const std::map<int, const ServerConfig*> &get_fdToServerConfig() const;
 };
+
+std::ostream &operator<<(std::ostream &out, const Server &src);

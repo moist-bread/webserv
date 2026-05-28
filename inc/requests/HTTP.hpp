@@ -10,6 +10,8 @@
 
 // == defines
 #define CRLF "\r\n"
+#define SP " "
+#define HT "\t"
 #define VALUE_NOT_SET -1
 
 typedef std::map<std::string, std::string> map_strings;

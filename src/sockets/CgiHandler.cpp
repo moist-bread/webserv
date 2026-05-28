@@ -6,7 +6,7 @@
 
 #include <unistd.h>		// close, fork, pipe
 #include <ctime>		// time
-#include <fstream>		// fstream, perror
+#include <fstream>		// fstream
 #include <algorithm>	// transform, EXIT_FAILURE
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
@@ -37,7 +37,6 @@ CgiHandler::CgiHandler(Request &req)
 }
 void CgiHandler::process(Request &req)
 {
-	std::cout << "-- THIS IS A CGI!!!!!!!" << std::endl;
 	clear();
 	update_info(req);
 	executeCgi();
@@ -68,7 +67,7 @@ void CgiHandler::update_info(Request &req)
 	// std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
 	if (!fs.is_open())
-		throw(CgiHandler::CgiExecutionFail());
+		throw(CgiHandler::CgiExecutionFail("open failure"));
 
 	_compiler = req.loc->getCgiExecutable(req.file_extension);
 	// std::cout << BLU "COMPILER: " DEF << _compiler << std::endl;
@@ -93,7 +92,7 @@ void CgiHandler::update_info(Request &req)
 	if (req.headers.find("content-type") != req.headers.end())
 		_env.push_back("CONTENT_TYPE=" + req.headers["content-type"]);
 
-	for (map_strings::iterator it = req.headers.begin(); it != req.headers.end(); it++)
+	for (map_strings::const_iterator it = req.headers.begin(); it != req.headers.end(); it++)
 	{
 		// add "HTTP_" before all keys, the "-" become "_" and all uppercase
 		std::string key = (*it).first;
@@ -125,15 +124,13 @@ std::string CgiHandler::extract_path_info(const std::string full_path, const std
 int CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
-		throw(std::runtime_error("pipe failure"));
+		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
 	this->_pid = fork();
 	if (_pid == -1)
-		throw(std::runtime_error("fork failure"));
+		throw(CgiHandler::CgiExecutionFail("fork failure"));
 	else if (_pid >= 1)
 	{
-		std::cout << "------ Parent process ------" << std::endl;
-
 		close(this->_pipeIn[0]);
 		close(this->_pipeOut[1]);
 		if (writeBodyToCgiInput() == -1)
@@ -141,7 +138,6 @@ int CgiHandler::executeCgi()
 	}
 	else if (0 == this->_pid)
 	{
-		std::cout << "------ I'm the child process------" << std::endl;
 
 		// Vou usar o dup2 para mudar onde o meu texto vai ser displayed
 		dup2(this->_pipeIn[0], STDIN_FILENO);
@@ -165,8 +161,8 @@ int CgiHandler::executeCgi()
 
 		execve(argv[0], argv, &exec_env[0]);
 		setCgiActivityStart(VALUE_NOT_SET);
-		perror("execve failed");
 		_exit(EXIT_FAILURE);
+		throw(CgiHandler::CgiExecutionFail("execve failure"));
 	}
 	setCgiActivityStart(std::time(NULL));
 	return 1;
@@ -182,7 +178,7 @@ int CgiHandler::InitPipes()
 	return 0;
 }
 
-int CgiHandler::writeBodyToCgiInput() const // does this really need to retyurn when we are throwing?
+int CgiHandler::writeBodyToCgiInput() const // does this really need to return when we are throwing?
 {
 	if (!_body.empty())
 	{
@@ -190,7 +186,7 @@ int CgiHandler::writeBodyToCgiInput() const // does this really need to retyurn 
 		if (n <= 0)
 		{
 			close(this->_pipeIn[1]);
-			throw(std::runtime_error("write failure"));
+			throw(CgiHandler::CgiExecutionFail("write failure"));
 			return -1;
 		}
 	}
@@ -199,7 +195,7 @@ int CgiHandler::writeBodyToCgiInput() const // does this really need to retyurn 
 	if (close(this->_pipeIn[1]) == -1) // !!!!!!!!!!!!!!!!
 	{
 		std::cout << "close(_pipeIn[1]) failed" << std::endl;
-		throw(std::runtime_error("close failure"));
+		throw(CgiHandler::CgiExecutionFail("close failure"));
 		return -1;
 	}
 

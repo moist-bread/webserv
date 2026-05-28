@@ -1,4 +1,5 @@
 #include "../../inc/sockets/FileDescriptor.hpp"
+#include "../../inc/requests/Inspect.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
@@ -7,14 +8,20 @@
 
 FileDescriptor::FileDescriptor(void) : _fd(-1)
 {
-	std::cout << GRN "the FileDescriptor ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the FileDescriptor ";
+		std::cout << UCYN "has been created" DEF << std::endl;
+	}
 }
 
 FileDescriptor::FileDescriptor(int fd) : _fd(fd)
 {
-	std::cout << GRN "the FileDescriptor ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the FileDescriptor ";
+		std::cout << UCYN "has been created" DEF << std::endl;
+	}
 }
 
 FileDescriptor::~FileDescriptor(void)
@@ -22,7 +29,8 @@ FileDescriptor::~FileDescriptor(void)
 	if (this->_fd >= 2)
 	{
 		close(_fd);
-		std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
+		if (Inspect::debug)
+			std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
 	}
 }
 FileDescriptor::FileDescriptor(FileDescriptor const &src)
@@ -36,17 +44,8 @@ FileDescriptor &FileDescriptor::operator=(FileDescriptor const &src)
 	return (*this);
 }
 
-int FileDescriptor::getFd() const
-{
-	return _fd;
-}
+int FileDescriptor::getFd() const { return _fd; }
 
-void FileDescriptor::setFd(int fd)
-{
-	this->_fd = fd;
-}
+void FileDescriptor::setFd(int fd) { this->_fd = fd; }
 
-FileDescriptor::operator int() const
-{
-	return (_fd);
-}
+FileDescriptor::operator int() const { return (_fd); }

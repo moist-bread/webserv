@@ -94,4 +94,4 @@ private:
 	t_response_state state;
 };
 
-std::ostream &operator<<(std::ostream &out, Response &src);
+std::ostream &operator<<(std::ostream &out, const Response &src);

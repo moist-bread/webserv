@@ -1,5 +1,6 @@
 #include "../../inc/requests/Response.hpp"
 #include "../../inc/requests/Request.hpp"
+#include "../../inc/requests/Inspect.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/LocationConfig.hpp"
 
@@ -11,8 +12,6 @@
 #include <sys/stat.h>	// mkdir, stat
 #include <unistd.h>		// access
 #include <ctime>		// time
-#include <algorithm>	// strtol
-#include <climits>		// LONG_MAX, LONG_MIN
 
 #define BUFFER_SIZE 4096
 
@@ -64,7 +63,7 @@ void Response::process(void)
 {
 	while (full_response.empty())
 	{
-		std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
+		// std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
 		case PREP:
@@ -93,9 +92,7 @@ void Response::process(void)
 			break;
 	}
 
-	std::cout << GRN "New Response ";
-	std::cout << UYEL "has been processed" DEF << std::endl;
-	std::cout << *this << std::endl;
+	// std::cout << *this << std::endl;
 }
 
 void Response::set_state(const t_response_state &new_state) { state = new_state; }
@@ -182,7 +179,7 @@ void Response::execute_methods(void)
 	}
 	catch (const Response::CreateError &e)
 	{
-		std::cerr << e.what() << std::endl;
+		Inspect::inspect_response_activity(e.what(), *this);
 		status_code = e.response_status;
 		(*req).wanted_ranges.clear();
 		error_response();
@@ -201,7 +198,7 @@ void Response::cgi_response(void)
 
 	pin = cgi_reply.find(CRLF CRLF);
 	if (pin == std::string::npos)
-		return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
+		return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS)); // ------------ could be a problem
 	preamble = cgi_reply.substr(0, pin);
 	cgi_reply.erase(0, pin + 2);
 
@@ -209,7 +206,7 @@ void Response::cgi_response(void)
 	{
 		pin = preamble.find("\n");
 		if (pin == std::string::npos)
-			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
+			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS)); // ------------ could be a problem
 		preamble.erase(0, pin + 1);
 	}
 
@@ -219,14 +216,15 @@ void Response::cgi_response(void)
 	// -- step 3: update status_code based on Status header
 	if (headers.find("status") != headers.end())
 	{
-		long st = LONG_MAX;
-		char *end = NULL;
-		if (!headers["status"].empty())
-			st = std::strtol(headers["status"].c_str(), &end, 10);
-		if (!*end && st != LONG_MAX && st != LONG_MIN && HTTP::isValidReasonPhrase(static_cast<int>(st)) != INVALID_CODE)
+		try
+		{
+			int st = stringToNumber<int>(headers["status"], std::dec);
+			if (HTTP::isValidReasonPhrase(st) == INVALID_CODE)
+				throw(std::runtime_error("Invalid cgi Status header"));
 			status_code = static_cast<t_status_code>(st);
+		}
+		catch(...) { ; }
 	}
-
 	set_state(CHUNK);
 }
 
@@ -299,7 +297,7 @@ void Response::assemble_full_response(void)
 
 	ss << HTTP::stringProtocol(protocol) << " " << status_code << " " << HTTP::getReasonPhrase(status_code);
 	ss << CRLF;
-	for (map_strings::iterator it = headers.begin(); it != headers.end(); it++)
+	for (map_strings::const_iterator it = headers.begin(); it != headers.end(); it++)
 		ss << (*it).first << ": " << (*it).second << CRLF;
 	ss << CRLF;
 	ss << body;
@@ -349,7 +347,7 @@ void Response::error_response(void)
 	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
 	{
-		perror("Defined error file does not exist, using backup");
+		// std::cout << "Defined error file does not exist, using backup" << std::endl;
 		body = response_utils::backup_error_page(status_code);
 	}
 	else
@@ -361,7 +359,7 @@ void Response::error_response(void)
 
 std::string Response::autoindexing_page(void) const
 {
-	DIR *d = opendir(((*req).loc->getRoot() + (*req).path_uri).c_str());
+	DIR *d = opendir(((*req).loc->getRoot() + (*req).path_uri.substr((*req).loc->getPath().length())).c_str());
 	if (!d)
 		throw(Response::CreateError("Could not find desired folder", NOT_FOUND));
 
@@ -415,7 +413,8 @@ std::string Response::assemble_content_path(void)
 		path += (*req).path_uri.substr((*req).loc->getPath().length());
 	}
 	(*req).path_uri = path;
-	std::cout << RED "assembled path: " DEF << path << std::endl;
+	if (Inspect::debug)
+		std::cout << RED "assembled path: " DEF << path << std::endl;
 	return (path);
 }
 
@@ -564,7 +563,7 @@ void Response::handle_multipart_form(void)
 	{
 		// -- converting the info into json and into the body to later put in the database
 		body += "{";
-		for (map_strings::iterator it = json_values.begin(); it != json_values.end();)
+		for (map_strings::const_iterator it = json_values.begin(); it != json_values.end();)
 		{
 			body += (*it).first + ":\"" + (*it).second + "\"";
 			if (++it != json_values.end())
@@ -579,7 +578,7 @@ void Response::handle_multipart_form(void)
 void Response::method_delete(void)
 {
 	// assemble the content path to delete
-	std::string file_name = (*req).loc->getRoot() + (*req).path_uri;
+	std::string file_name = (*req).loc->getRoot() + (*req).path_uri.substr((*req).loc->getPath().length());
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1)
@@ -591,7 +590,6 @@ void Response::method_delete(void)
 	int res = std::remove(file_name.c_str());
 	if (res == 0)
 	{
-		std::cout << "File deleted" << std::endl;
 		// can also be 200 OK if i want to send an html describing the outcome
 		status_code = NO_CONTENT; // success
 	}
@@ -603,14 +601,13 @@ void Response::method_head(void)
 {
 	// HEAD is like a scouting version of GET
 	// it only wants to see the size of the content and ignores the response body
-	
 	try
 	{
 		method_get();
 	}
 	catch (const Response::CreateError &e)
 	{
-		std::cerr << e.what() << std::endl;
+		Inspect::inspect_response_activity(e.what(), *this);
 		status_code = e.response_status;
 		(*req).wanted_ranges.clear();
 		body.clear();
@@ -620,14 +617,14 @@ void Response::method_head(void)
 	body.clear();
 }
 
-std::ostream &operator<<(std::ostream &out, Response &src)
+std::ostream &operator<<(std::ostream &out, const Response &src)
 {
 	out << YEL "-- Response Information --" DEF "\n\n";
 	out << YEL "PROTOCOL: " DEF << HTTP::stringProtocol(src.protocol) << std::endl;
 	out << YEL "Status Code: " DEF << src.status_code << std::endl;
 	out << YEL "Reason Phrase: " DEF << HTTP::getReasonPhrase(src.status_code) << std::endl;
 	out << YEL "Headers..." DEF << std::endl;
-	for (map_strings::iterator it = src.headers.begin(); it != src.headers.end(); it++)
+	for (map_strings::const_iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	out << YEL "Body..." DEF;
 	out << " (size) " << src.body.size() << std::endl;

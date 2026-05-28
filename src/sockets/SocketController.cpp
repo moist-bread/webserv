@@ -1,8 +1,8 @@
 #include "../../inc/sockets/SocketController.hpp"
+#include "../../inc/requests/Inspect.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <stdio.h>	// perror
 #include <stdlib.h>	// exit
 
 /*
@@ -26,8 +26,11 @@ SocketController::SocketController(void) {}
 SocketController::SocketController(int domain, int type, int protocol, int port, u_long ip)
 	: _sock(socket(domain, type, protocol))
 {
-	std::cout << GRN "the SocketController ";
-	std::cout << UCYN "has been created" DEF << std::endl;
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the SocketController ";
+		std::cout << UCYN "has been created" DEF << std::endl;
+	}
 
 	test_connection(_sock);
 
@@ -52,7 +55,7 @@ void SocketController::test_connection(int test_connection)
 {
 	if (0 > test_connection)
 	{
-		perror("Trying to connect...");
+		std::cout << "Trying to connect..." << std::endl;
 		// -- CAN'T USE EXIT!!
 		exit(EXIT_FAILURE);
 	}

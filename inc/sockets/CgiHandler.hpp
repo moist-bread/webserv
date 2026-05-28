@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <exception>
+#include <stdexcept>
 #include <ctime>
 
 class Request;
@@ -42,9 +42,9 @@ public:
 	const time_t &getCgiActivityStart(void) const;
 	void setCgiActivityStart(const time_t &t);
 	
-	class CgiExecutionFail : public std::exception
+	class CgiExecutionFail : public std::runtime_error
 	{
 	public:
-		const char *what(void) const throw() { return ("cgi execution failure"); }
+		CgiExecutionFail(const std::string &msg) : runtime_error("failed to execute due to: " + msg) {};
 	};
 };

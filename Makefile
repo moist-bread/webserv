@@ -2,8 +2,9 @@
 NAME	=	webserv
 
 # =====>┊( CMDS AND FLAGS )┊
+DEBUG	 =	1
 CXX		 =	c++
-CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98
+CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98 -D DEBUG=$(DEBUG)
 VAL		 =	valgrind --leak-check=full --trace-children=yes --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
 
 # =====>┊( DIRECTORIES )┊
@@ -22,7 +23,7 @@ SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp Connectin
 
 CONF_FILES_C	= 	Lexer.cpp ConfigParser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp TokenStream.cpp\
 
-OTHER_FILES_C	=	signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp
+OTHER_FILES_C	=	signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp Inspect.cpp
 
 OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
 OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))
@@ -81,6 +82,10 @@ main_test:
 	@$(CXX) $(CXXFLAGS) src/main_sock.cpp -o $(NAME)
 	./$(NAME) config_files/nginx.conf
 
+debug: fclean
+	make all DEBUG=0
+	./$(NAME) config_files/nginx.conf
+
 # =====>┊( STANDARD RULES )┊
 clean:
 	$(M_REMOBJS)
@@ -93,7 +98,7 @@ fclean: clean
 re:	fclean all
 	$(M_RE)
 
-.PHONY: all clean fclean re rexe
+.PHONY: all clean fclean re rexe val main_test debug
 
 
 # =====>┊( COSMETICS )┊
