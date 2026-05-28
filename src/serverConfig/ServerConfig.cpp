@@ -35,9 +35,10 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 		this->listen.port = source.listen.port;
 		this->listen.string = source.listen.string;
 		this->serverNames = source.serverNames;
-		this->root = source.root;
+		this->root_default = source.root_default;
 		this->clientMaxBodySize = source.clientMaxBodySize;
 		this->errorPages = source.errorPages;
+		this->cgi_default = source.cgi_default;
 		this->locations = source.locations;
 	}
 	return (*this);
@@ -118,7 +119,7 @@ bool ServerConfig::isServerName(const std::string &serverName) const
  * @brief Get the configured document root for this server.
  * @return Reference to the root path string.
  */
-const std::string &ServerConfig::getRoot(void) const { return (this->root); }
+const std::string &ServerConfig::getRoot(void) const { return (this->root_default); }
 
 /**
  * @brief Get the client max body size limit in bytes.
@@ -138,6 +139,8 @@ std::string ServerConfig::getErrorPage(t_status_code code) const
 		return (it->second);
 	return ("");
 }
+
+const std::map<std::string, std::string> &ServerConfig::getCgi(void) const { return (this->cgi_default); }
 
 /**
  * @brief Find the best matching `LocationConfig` for a request URI.
@@ -182,8 +185,6 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "    Host: " << source.getListenHost() << "\n";
 	out << "    Port: " << source.getListenPort() << "\n";
 	out << "    Listen adress: " << source.getListenString() << "\n";
-	out << "    Root: " << source.getRoot() << "\n";
-	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
 
 	out << "    Server Names: ";
 	for (size_t i = 0; i < source.serverNames.size(); ++i) {
@@ -191,10 +192,20 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	}
 	out << "\n";
 
+	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
+
 	out << "    Error Pages:\n";
 	for (std::map<t_status_code, std::string>::const_iterator it = source.errorPages.begin(); it != source.errorPages.end(); ++it) {
 		out << "      " << it->first << " -> " << it->second << "\n";
 	}
+	
+	out << "    Default Root: " << source.getRoot() << "\n";
+	out << "    Default CGI:\n";
+	for (std::map<std::string, std::string>::const_iterator it = source.cgi_default.begin(); it != source.cgi_default.end(); ++it)
+	{
+		out << "        " << it->first << " -> " << it->second << "\n";
+	}
+	out << "\n";
 
 	out << "    Locations:\n";
 	for (size_t i = 0; i < source.locations.size(); ++i) {

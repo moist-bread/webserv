@@ -60,6 +60,7 @@ class ConfigParser
 		void _serverRoot(ServerConfig &server);
 		void _serverMaxBodySize(ServerConfig &server);
 		void _serverErrorPage(ServerConfig &server);
+		void _serverCgi(ServerConfig &server);
 		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
 		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
 		void _finalizeServer(ServerConfig &server);

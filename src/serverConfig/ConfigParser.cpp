@@ -26,6 +26,7 @@ ConfigParser::ConfigParser(const std::vector<t_token> &tokens) : _ts(tokens)
 	_serverHandlers["root"] = &ConfigParser::_serverRoot;
 	_serverHandlers["client_max_body_size"] = &ConfigParser::_serverMaxBodySize;
 	_serverHandlers["error_page"] = &ConfigParser::_serverErrorPage;
+	_serverHandlers["cgi"] = &ConfigParser::_serverCgi;
 
 	_locationHandlers["root"] = &ConfigParser::_locationRoot;
 	_locationHandlers["index"] = &ConfigParser::_locationIndex;
@@ -104,7 +105,6 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
 		server.listen.port = 8080;
 		server.listen.string = "127.0.0.1:8080";
 	}
-	
 	//?	Server Names -> keep it empty
 	//?	Server Root -> keep it empty
 	//	Client Max Body Size
@@ -148,10 +148,10 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 		}
 		if (location.root.empty())
 		{
-			if (server.root.empty())
+			if (server.root_default.empty())
 				_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
 			else
-				location.root = server.root;
+				location.root = server.root_default;
 		}
 		if (location.index.empty())
 			location.index.push_back("index.html");
@@ -165,6 +165,11 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 		}
 		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
 			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "upload_store");
+		if (location.cgi.empty())
+		{
+			if (!server.cgi_default.empty())
+				location.cgi = server.cgi_default;
+		}
 	}
 }
 
@@ -404,10 +409,10 @@ void ConfigParser::_validate_ServerNames(const std::vector<std::string> &serverN
  */
 void ConfigParser::_serverRoot(ServerConfig &server)
 {
-	if (!server.root.empty())
+	if (!server.root_default.empty())
 		_ts.throwValidationError("Duplicated", "root");
-	_ts._extractSingleKeyword(server.root);
-	_validate_Root(server.root);
+	_ts._extractSingleKeyword(server.root_default);
+	_validate_Root(server.root_default);
 	_ts._expect(TOKEN_SEMICOLON);
 }
 
@@ -531,6 +536,30 @@ void ConfigParser::_validate_ErrorPages(const std::map<t_status_code, std::strin
 		if (code < 400 || code > 599)
 			_ts.throwValidationError("Invalid CODE", "error_page");
 	}
+}
+//*	----------- *
+
+///* CGI
+/**
+ * @brief Parse the `cgi` directive mapping a file extension to an executable.
+ *
+ * Expects two tokens: the extension (e.g. `.php`) and the executable path.
+ * The extension is validated to begin with a dot and contain only
+ * alphanumeric characters; the executable is validated as an existing
+ * executable file. The mapping is stored in `location.cgi` and the
+ * terminating semicolon is consumed.
+ *
+ * @param location LocationConfig to populate (modified in-place).
+ */
+void ConfigParser::_serverCgi(ServerConfig &server)
+{
+	std::string ext;
+	std::string exec;
+	_ts._extractSingleKeyword(ext);
+	_ts._extractSingleKeyword(exec);
+	_validate_Cgi(ext, exec);	
+	server.cgi_default[ext] = exec;
+	_ts._expect(TOKEN_SEMICOLON);
 }
 //*	----------- *
 
