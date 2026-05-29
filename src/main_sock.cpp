@@ -9,7 +9,9 @@ int main(int ac, char **av)
     std::signal(SIGINT, sigint_handler);
     try
     {
+        std::cerr << "A" << std::endl;
         Config config;
+        std::cerr << "A" << std::endl;
         config.load(av[1]);
         Server t(config);
     }

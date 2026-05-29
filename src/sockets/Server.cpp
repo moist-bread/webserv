@@ -57,6 +57,14 @@ Server &Server::operator=(Server const &source)
 }
 
 
+void Server::closeCgiConnection(int fd, size_t *pollfds_idx)
+{
+    close(fd);
+    _cgiMap.erase(fd);
+    _pollfds.erase(_pollfds.begin() + *pollfds_idx);
+    (*pollfds_idx)--;
+}
+
 void Server::SetupPorts()
 {
     const std::vector<ServerConfig>& servers = _config.getallServers();
@@ -268,6 +276,18 @@ int Server::responder(int clientFd, const std::string &data)
 	return write(clientFd, data.c_str(), data.size());
 }
 
+void Server::switchToPollout(int clientFd)
+{
+    for (size_t j = 0; j < _pollfds.size(); j++)
+    {
+        if (_pollfds[j].fd == clientFd)
+        {
+            _pollfds[j].events = POLLOUT;
+            return;
+        }
+    }
+}
+
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
@@ -280,21 +300,11 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		Inspect::inspect_cgi_activity("failed to execute due to a POLLERR error", clientFd);
 
 		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--;
+		closeCgiConnection(fd,pollfds_idx);
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
 
 		// !! switch to sending response (POLLOUT)
-		for (size_t j = 0; j < _pollfds.size(); j++)
-		{
-			if (_pollfds[j].fd == clientFd)
-			{
-				_pollfds[j].events = POLLOUT;
-				break;
-			}
-		}
+		switchToPollout(clientFd);
 		return;
 	}
 
@@ -313,10 +323,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		_clients[clientFd].response.cgi_reply.clear();
 
 		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
+		closeCgiConnection(fd,pollfds_idx);
 
 		/*
 			Erro de antes: como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
@@ -339,22 +346,13 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		Inspect::inspect_cgi_activity("failed to execute due to a read error", clientFd);
 
 		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--;
+		closeCgiConnection(fd,pollfds_idx);
+
 		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
 	}
 
 	// !! switch to sending response (POLLOUT)
-	for (size_t j = 0; j < _pollfds.size(); j++)
-	{
-		if (_pollfds[j].fd == clientFd)
-		{
-			_pollfds[j].events = POLLOUT;
-			break;
-		}
-	}
+	switchToPollout(clientFd);
 }
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
@@ -395,7 +393,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		Inspect::inspect_request_activity(e.what(), _clients[fd].request);
 		_clients[fd].request.set_state(END);
 		_clients[fd].response.status_code = e.request_status;
-		_pollfds[*pollfds_idx].events = POLLOUT;
+		switchToPollout(fd);
 		return;
 	}
 
@@ -429,7 +427,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		}
 	}
 
-	_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
+	switchToPollout(fd); // switch to sending
 }
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)

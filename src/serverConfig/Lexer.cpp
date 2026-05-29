@@ -64,6 +64,9 @@ Lexer &Lexer::operator=(Lexer const &src)
  * @note Automatically adds EOF token at the end
  * @note Comments are not included in output tokens
  */
+
+ //Linha 72 Lexer.cpp no ficheiro tokenizeFile esta dar segfault ao mandar uma pasta ./webserv config_files
+
 std::vector<t_token> Lexer::tokenizeFile(const std::string &filePath)
 {
 	std::vector<t_token> outTokens;

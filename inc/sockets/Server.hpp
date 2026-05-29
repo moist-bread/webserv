@@ -47,6 +47,8 @@ private:
 
 	// const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
 
+	void closeCgiConnection(int fd, size_t *pollfds_idx);
+	void switchToPollout(int clientFd);
 	void SetupPorts();
 	void accepter(int listenFd);
 	int responder(int clientFd, const std::string &data);
