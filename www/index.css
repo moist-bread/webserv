@@ -101,6 +101,19 @@ button, input {
 		}
 	}
 
+	&.stack {
+		width:25%;
+		margin: 35px;
+		padding: 35px;
+		margin-bottom: 50px;
+		box-shadow:
+			0 1px 1px rgba(0,0,0,0.20),
+			0 10px 0 -5px #eee,
+			0 10px 1px -4px rgba(0,0,0,0.20),
+			0 20px 0 -10px #eee,
+			0 20px 1px -9px rgba(0,0,0,0.20);
+	}
+
 	&.image-post:nth-child(odd) {
 		transform: rotate(4deg);
 		left: -30px;
@@ -125,6 +138,31 @@ button, input {
 
 	&.image-post:nth-child(4n+4) {
 		background: rgb(254, 249, 255);
+	}
+}
+
+.upload-container {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: transparent;
+	padding: 40px;
+	margin-bottom: 35px;
+
+	transition: all 200ms linear;
+
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	
+	align-items: center;
+	border-radius: 10px;
+ 	border: 2.5px dashed #666;
+	cursor: pointer;
+
+	&:hover {
+		background-color: rgba(0,0,0,0.20);
+		/* cursor: pointer; */
 	}
 }
 
@@ -167,35 +205,36 @@ button, input {
 		font-size:24px;
 	}
 
-	form {
-		display: grid;
-		height: 100%;
-		textarea {
-			resize: none;
-			background: none;
-			font: inherit;
-			font-size: 18px;
-			color: grey;
-			border-radius: 6px;
-			border: 1.5px solid #888; 
-			margin: 20px 0px;
-			padding: 10px;
-			
-		}
-	}
 }
 
-.form-group {
-	display: flex;
-	padding-bottom: 15px;
-	input[type=text] {
+form {
+	display: grid;
+	height: 100%;
+	textarea {
+		resize: none;
 		background: none;
-		border-width: 0px 0px 1.5px 0px;
-		height: 70%;
-		width: 100%;
+		font: inherit;
 		font-size: 18px;
 		color: grey;
-
+		border-radius: 6px;
+		border: 1.5px solid #888; 
+		margin: 20px 0px;
+		padding: 10px;
+		
+	}
+	
+	.form-group {
+		display: flex;
+		padding-bottom: 15px;
+		input[type=text] {
+			background: none;
+			border-width: 0px 0px 1.5px 0px;
+			height: 70%;
+			width: 100%;
+			font-size: 18px;
+			color: grey;
+	
+		}
 	}
 }
 
@@ -248,6 +287,8 @@ button, input {
 	flex-wrap: wrap;
 	justify-content: space-between;
 	background-color: #ddbb98;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 2000 2000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09' numOctaves='9' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+	background-blend-mode: luminosity;
 	border: 60px ridge #b58262 ;
 	box-shadow: 20px 20px 15px -10px #777;
 	transition: background 200ms ease-in-out;

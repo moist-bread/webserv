@@ -43,13 +43,13 @@
 	
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(text, "text/html");
-				const links = Array.from(doc.querySelectorAll("li"));
-				if (links.length === 0)
+				const items = Array.from(doc.querySelectorAll("li"));
+				if (items.length === 0)
 					throw "No posts to load...";
 
 				const listContainer = document.getElementById("post-board");
 				listContainer.innerHTML = "";
-				links.forEach((link) => { listContainer.appendChild(link); });
+				items.forEach((item) => { listContainer.appendChild(item); });
 			}
 			catch (error)
 			{

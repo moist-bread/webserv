@@ -21,17 +21,16 @@
 	<div class="post-it big">
 
 		<form action="/board" method="POST">
-			<!-- <p>Store Body in location POST request:</p> -->
 			<div class="form-group">
 				<label for="title">TITLE:</label>
-				<input type="text" id="title" name="title">
+				<input type="text" id="title" name="title" required>
 			</div>
 			<div class="form-group">
 				<label class="subtitle" for="username">BY:</label>
-				<input type="text" id="username" name="username">
+				<input type="text" id="username" name="username" required>
 			</div>
 			<label for="notes">NOTE:</label>
-			<textarea type="text" id="notes" name="notes"></textarea>
+			<textarea type="text" id="notes" name="notes" required></textarea>
 			<div class="page-paper pink-strip shadow" >
 				<input type="submit" value="Submit">
 			</div>

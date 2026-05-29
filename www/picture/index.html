@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<title>Banana</title>
+</head>
+<body>
+	<div class="note-markers">
+		<div class="page-paper blue-strip shadow" >
+			<button onclick="location.href='/home'">back home...</button>
+		</div>
+		<div class="page-paper pink-strip shadow" >
+			<button onclick="location.href='/gallery'">see all pictures !</button>
+		</div>
+	</div>
+
+	<div class="text yellow-mark">leave your pictures here !!</div>
+	
+	<div class="paper stack">
+		<form id="file_upload" action="/" method="POST" enctype="multipart/form-data">
+			<label for="images" class="upload-container" id="uploadcontainer">
+				<div class="form-group">
+					<label for="file">file:</label>
+					<i class="material-icons" style="transform: scale(5);">image</i>
+					<input type="file" id="file_input" name="media" required>
+				</div>
+			</label>
+			<div class="form-group">
+				<label for="title">TITLE:</label>
+				<input type="text" id="media_title" name="title">
+			</div>
+			<div class="page-paper pink-strip shadow" >
+				<button type="submit">Submit</button>
+			</div>
+			<progress id="progressBar" value="0" max="100" hidden></progress>
+		</form>
+		<p id="result"></p>
+	</div>
+
+	<br>
+	<br>
+
+	<p class="paper">
+		<b><u>More about this page:</u></b><br>
+		Here you can see an example of how to make a <b>POST request</b> with an html form.<br>
+		The form is sent in the Body of the HTTP request in the following format:<br>
+		<br>
+		title=Example+Title&username=http& notes=Lorem+ipsum<br>
+		<br>
+		It's then <b>converted into JSON format</b> and saved in the server's database.<br>
+	</p>
+	<script>
+
+		const file_upload = document.getElementById("file_upload");
+		
+		file_upload.addEventListener("submit", function(e)
+		{
+			// this makes it so that the client doesnt lose connection whilst doing an upload that is "too large"
+			e.preventDefault();
+			
+			const file_input = document.getElementById("file_input");
+			const text_input = document.getElementById("media_title");
+			const result = document.getElementById("result");
+			const progressBar = document.getElementById("progressBar");
+			progressBar.value = 0;
+			
+			if (!file_input.files.length) {
+				result.innerText = "Please select a file...";
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append("media", file_input.files[0]);
+			formData.append("title", text_input.value);
+
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/");
+
+			progressBar.hidden = false;
+
+			xhr.upload.addEventListener("progress", (e) => {
+				if (e.lengthComputable)
+				{
+					const percent = (e.loaded / e.total) * 100;
+					progressBar.value = percent;
+				}
+			});
+
+			xhr.onload = () => {
+
+				if (xhr.status === 200 || xhr.status === 302)
+				{
+					result.innerText = "Upload successful!!";
+					load_files();
+					progressBar.value = 100;
+				}
+				else
+					result.innerText = "❌ Server error: " + xhr.status;
+			};
+
+			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
+			xhr.send(formData);
+
+		});
+	</script>
+</body>
+</html>

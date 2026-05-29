@@ -25,7 +25,6 @@ html_response = f"""<html>
 </body>
 </html>"""
 
-# print("HTTP/1.1 200 OK\r")
 print(f"Content-Length: {len(html_response)}\r")
 print("Content-Type: text/html\r")
 print("\r")
