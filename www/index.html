@@ -8,12 +8,12 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper yellow-strip shadow" >
-			<button onclick="location.href='/write'">leave a note !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper yellow-strip shadow" href='/write'>
+			<p>leave a note !</p>
+		</a>
 	</div>
 
 	<div class="text green-mark">main</div>
@@ -88,15 +88,15 @@
 
 				if (xhr.status === 200 || xhr.status === 302)
 				{
-					result.innerText = "Upload successful!!";
+					result.innerText = "Upload successful!";
 					load_files();
 					progressBar.value = 100;
 				}
 				else
-					result.innerText = "❌ Server error: " + xhr.status;
+					result.innerText = "Server error: " + xhr.status + "...";
 			};
 
-			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
+			xhr.onerror = () => { result.innerText = "Upload stopped with error: " + xhr.status; };
 			xhr.send(formData);
 
 		});

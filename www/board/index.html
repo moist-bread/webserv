@@ -8,12 +8,12 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper yellow-strip shadow" >
-			<button onclick="location.href='/write'">leave a note !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper yellow-strip shadow" href='/write'>
+			<p>leave a note !</p>
+		</a>
 	</div>
 	
 	<div class="text pink-mark">note board</div>
@@ -22,14 +22,16 @@
 	<br>
 	<br>
 
-	<p class="paper">
-		<b><u>More about this page:</u></b><br>
-		All of these post it notes were created with <b>information from the server's database.</b><br>
-		<br>
-		To do that we used a script inside this page to request the <b>execution of a CGI</b><br>
-		The CGI in this case is actually a python script that goes through the database and from it
-		<b>creates the html</b> for a page containing all possible posts.<br>
-	</p>
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			All of these post it notes were created with <b>information from the server's database.</b><br>
+			<br>
+			To do that we used a script inside this page to request the <b>execution of a CGI.</b><br>
+			The CGI in this case is actually a python script that goes through the database and from it
+			<b>creates the html</b> for a page containing all possible posts.<br>
+		</p>
+	</div>
 	
 	<script>
 		async function load_posts()

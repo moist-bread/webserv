@@ -9,63 +9,73 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper pink-strip shadow" >
-			<button onclick="location.href='/gallery'">see all pictures !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper pink-strip shadow" href='/gallery'>
+			<p>see all pictures !</p>
+		</a>
 	</div>
 
 	<div class="text yellow-mark">leave your pictures here !!</div>
 	
 	<div class="paper stack">
 		<form id="file_upload" action="/" method="POST" enctype="multipart/form-data">
-			<label for="images" class="upload-container" id="uploadcontainer">
-				<div class="form-group">
-					<label for="file">file:</label>
-					<i class="material-icons" style="transform: scale(5);">image</i>
-					<input type="file" id="file_input" name="media" required>
-				</div>
-			</label>
 			<div class="form-group">
-				<label for="title">TITLE:</label>
-				<input type="text" id="media_title" name="title">
+				<label for="file_input" class="upload-container" id="uploadcontainer">
+					<label for="file">Put your image here</label>
+					<i class="material-icons" style="font-size: 100px;">image</i>
+					<input type="file" id="file_input" name="media" accept="image/*" required>
+				</label>
+			</div>
+			<div class="form-group">
+				<label for="title" style="padding-right: 15px">TITLE:</label>
+				<input type="text" id="media_title" name="title" required>
 			</div>
 			<div class="page-paper pink-strip shadow" >
 				<button type="submit">Submit</button>
 			</div>
-			<progress id="progressBar" value="0" max="100" hidden></progress>
+			<progress id="progress_bar" value="0" max="100" hidden></progress>
+			<label id="result" style="text-align: center;"></label>
 		</form>
-		<p id="result"></p>
 	</div>
 
 	<br>
 	<br>
 
-	<p class="paper">
-		<b><u>More about this page:</u></b><br>
-		Here you can see an example of how to make a <b>POST request</b> with an html form.<br>
-		The form is sent in the Body of the HTTP request in the following format:<br>
-		<br>
-		title=Example+Title&username=http& notes=Lorem+ipsum<br>
-		<br>
-		It's then <b>converted into JSON format</b> and saved in the server's database.<br>
-	</p>
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			Here you can see an example of how to upload images using <b>Javascript inside the Html</b>.<br>
+			Instead of this Html form doing it's default behaviour we have the Javascript do a POST request as
+			a <b>"middleman" for the Client</b> viewing this page.<br>
+			<br>
+			Why is that necessary? Well, whenever you try to upload a large file, once it starts <b>it will
+			continue sending the content of the file until the very end</b>, which can be quite inconvenient for
+			the Server, which would need to keep collecting the content of the uploaded file even when it has
+			already surpassed the Upload Limit configured for the Server<br>
+			<br>
+			To force the Client to stop uploading <b>the common approach is to disconnect the client</b>, but doing so
+			would leave the User looking at the website quite confused having suddenly lost connection without a warning.
+			That's where the Javascript "middleman" comes in, if the execution of <b>the Javascript is the one that
+			gets it's connection closed</b> it can still give some informative explanation to the User as to what happened,
+			making for a clearer upload experience
+		</p>
+	</div>
 	<script>
 
 		const file_upload = document.getElementById("file_upload");
 		
 		file_upload.addEventListener("submit", function(e)
 		{
-			// this makes it so that the client doesnt lose connection whilst doing an upload that is "too large"
+			// this makes it so that the client doesn't lose connection whilst doing an upload that is "too large"
 			e.preventDefault();
 			
 			const file_input = document.getElementById("file_input");
 			const text_input = document.getElementById("media_title");
 			const result = document.getElementById("result");
-			const progressBar = document.getElementById("progressBar");
-			progressBar.value = 0;
+			const progress_bar = document.getElementById("progress_bar");
+			progress_bar.value = 0;
 			
 			if (!file_input.files.length) {
 				result.innerText = "Please select a file...";
@@ -79,13 +89,13 @@
 			const xhr = new XMLHttpRequest();
 			xhr.open("POST", "/");
 
-			progressBar.hidden = false;
+			progress_bar.hidden = false;
 
 			xhr.upload.addEventListener("progress", (e) => {
 				if (e.lengthComputable)
 				{
 					const percent = (e.loaded / e.total) * 100;
-					progressBar.value = percent;
+					progress_bar.value = percent;
 				}
 			});
 
@@ -93,15 +103,14 @@
 
 				if (xhr.status === 200 || xhr.status === 302)
 				{
-					result.innerText = "Upload successful!!";
-					load_files();
-					progressBar.value = 100;
+					result.innerText = "Upload successful!";
+					progress_bar.value = 100;
 				}
 				else
-					result.innerText = "❌ Server error: " + xhr.status;
+					result.innerText = "Upload failed with error: " + xhr.status;
 			};
 
-			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
+			xhr.onerror = () => { result.innerText += "Upload failed: Content too Large"; };
 			xhr.send(formData);
 
 		});

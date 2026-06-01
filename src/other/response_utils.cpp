@@ -178,7 +178,7 @@ namespace response_utils
 			return ("text/plain");
 
 		// image types
-		else if (extension == ".jpeg" || extension == ".jpg")
+		else if (extension == "jpeg" || extension == "jpg")
 			return ("image/jpeg");
 		else if (extension == "png")
 			return ("image/png");

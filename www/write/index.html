@@ -8,12 +8,12 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper pink-strip shadow" >
-			<button onclick="location.href='/board'">see all notes !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper pink-strip shadow" href='/board'>
+			<p>see all notes !</p>
+		</a>
 	</div>
 
 	<div class="text yellow-mark">leave your note here !!</div>
@@ -40,15 +40,16 @@
 	<br>
 	<br>
 
-	<p class="paper">
-		<b><u>More about this page:</u></b><br>
-		Here you can see an example of how to make a <b>POST request</b> with an html form.<br>
-		The form is sent in the Body of the HTTP request in the following format:<br>
-		<br>
-		title=Example+Title&username=http& notes=Lorem+ipsum<br>
-		<br>
-		It's then <b>converted into JSON format</b> and saved in the server's database.<br>
-	</p>
-	
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			Here you can see an example of how to make a <b>POST request</b> with an html form.<br>
+			The form is sent in the Body of the HTTP request in the following format:<br>
+			<br>
+			title=Example+Title&username=http& notes=Lorem+ipsum<br>
+			<br>
+			It's then <b>converted into JSON format</b> and saved in the server's database.<br>
+		</p>
+	</div>
 </body>
 </html>
