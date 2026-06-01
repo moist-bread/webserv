@@ -32,6 +32,8 @@ class Lexer
 		static t_token _getSymbol(const std::string &line, size_t &cursor, size_t lineNumber);
 		static t_token _getKeyword(const std::string &line, size_t &cursor, size_t lineNumber);
 		static void _pushEOF(size_t lineNumber, std::vector<t_token> &outTokens);
+
+		static void parsePathFile(const std::string &path, const int flag);
 };
 
 std::ostream &operator<<(std::ostream &out, const std::vector<t_token> &src);
