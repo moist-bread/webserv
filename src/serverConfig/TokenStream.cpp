@@ -76,6 +76,18 @@ const t_token &TokenStream::_currentToken(void) const
 }
 
 /**
+ * @brief Get previous token without consuming it.
+ * @return Reference to current token.
+ * @throw std::runtime_error If cursor is out of range.
+ */
+const t_token &TokenStream::_previousToken(void) const
+{
+	if (this->_cursor == 0)
+		throw std::runtime_error("TokenStream error: Unexpected end of tokens");
+	return (this->_tokens[this->_cursor - 1]);
+}
+
+/**
  * @brief Advance Configparser cursor by one token when possible.
  */
 void TokenStream::_advanceToken(void)

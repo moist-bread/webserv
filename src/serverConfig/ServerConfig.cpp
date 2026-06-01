@@ -142,6 +142,15 @@ std::string ServerConfig::getErrorPage(t_status_code code) const
 
 const std::map<std::string, std::string> &ServerConfig::getCgi(void) const { return (this->cgi_default); }
 
+
+static bool matchExtension(const std::string &uri, const std::string &ext)
+{
+	size_t extension = uri.find(ext);
+	if (extension == std::string::npos || extension != uri.length() - ext.length())
+		return (false);
+	return (true);
+}
+
 /**
  * @brief Find the best matching `LocationConfig` for a request URI.
  *
@@ -158,7 +167,13 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 	size_t longestMatchPrefix = 0;
 	for (size_t i = 0; i < this->locations.size(); ++i)
 	{
-		const std::string &pathLocation = this->locations[i].path;
+		const std::string &pathLocation = this->locations[i].getPath();
+		if (this->locations[i].isCgiPass())
+		{
+			std::string extension = pathLocation.substr(1);
+			if (matchExtension(uri, extension))
+				return (&this->locations[i]);
+		}
 		if (uri.find(pathLocation) == 0)
 		{
 			if (pathLocation == uri)
@@ -172,6 +187,7 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 	}
 	return (LocationMatched);
 }
+
 
 /**
  * @brief Pretty-print a `ServerConfig` for debugging.

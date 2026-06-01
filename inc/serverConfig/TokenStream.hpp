@@ -30,6 +30,7 @@ class TokenStream
 
 		void _advanceToken(void);
 		const t_token& _currentToken(void) const;
+		const t_token& _previousToken(void) const;
 
 		t_token _expect(e_token_type);
 		void _extractSingleKeyword(std::string&);

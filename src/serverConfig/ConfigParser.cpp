@@ -34,6 +34,7 @@ ConfigParser::ConfigParser(const std::vector<t_token> &tokens) : _ts(tokens)
 	_locationHandlers["allow_methods"] = &ConfigParser::_locationAllowMethods;
 	_locationHandlers["return"] = &ConfigParser::_locationReturn;
 	_locationHandlers["cgi"] = &ConfigParser::_locationCgi;
+	_locationHandlers["cgi_pass"] = &ConfigParser::_locationCgi;
 	_locationHandlers["upload_store"] = &ConfigParser::_locationUploadStore;
 }
 
@@ -132,18 +133,14 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 	for (size_t i = 0; i < server.locations.size(); ++i)
 	{
 		LocationConfig &location = server.locations[i];
+		if (location.CgiPass)
+		{
+			_finalizeLocationCgiPass(location, server);
+			continue;
+		}
 		if (location.returnCode != INVALID_CODE)
 		{
-			if (!location.index.empty())
-				_ts.throwValidationError("Location with return, can't have index", "location");
-			if (!location.root.empty())
-				_ts.throwValidationError("Location with return, can't have root", "location");
-			if (!location.cgi.empty())
-				_ts.throwValidationError("Location with return, can't have cgi", "location");
-			if (!location.uploadStore.empty())
-				_ts.throwValidationError("Location with return, can't have upload_store", "location");
-			if (location.autoindex == 1)
-				_ts.throwValidationError("Location with return, can't have autoindexing", "location");
+			_finalizeLocationReturn(location);
 			continue;
 		}
 		if (location.root.empty())
@@ -171,6 +168,43 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 				location.cgi = server.cgi_default;
 		}
 	}
+}
+
+void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server)
+{
+	if (location.cgi.empty())
+		_ts.throwValidationError("Location with '*.extendion', must have cgi_pass declared", "location");
+	if (location.allowedMethods.empty())
+		_ts.throwValidationError("Location with cgi pass, must have Allowed Methods declared", "location");
+	if (location.root.empty())
+	{
+		if (server.root_default.empty())
+			_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+		else
+			location.root = server.root_default;
+	}
+	if (!location.index.empty())
+		_ts.throwValidationError("Location with cgi pass, can't have index", "location");
+	if (location.autoindex == 1)
+		_ts.throwValidationError("Location with cgi pass, can't have autoindexing", "location");
+	if (location.returnCode != INVALID_CODE)
+		_ts.throwValidationError("Location with cgi pass, can't have return", "location");
+	//! if (!location.uploadStore.empty())
+	//! 	_ts.throwValidationError("Location with return, can't have upload_store", "location");
+}
+
+void ConfigParser::_finalizeLocationReturn(LocationConfig &location)
+{
+	if (!location.index.empty())
+		_ts.throwValidationError("Location with return, can't have index", "location");
+	if (!location.root.empty())
+		_ts.throwValidationError("Location with return, can't have root", "location");
+	if (!location.cgi.empty())
+		_ts.throwValidationError("Location with return, can't have cgi", "location");
+	if (!location.uploadStore.empty())
+		_ts.throwValidationError("Location with return, can't have upload_store", "location");
+	if (location.autoindex == 1)
+		_ts.throwValidationError("Location with return, can't have autoindexing", "location");
 }
 
 //*	----- ServerHandler functions ----- */
@@ -586,7 +620,7 @@ void ConfigParser::_serverLocation(ServerConfig &server, std::set<std::string> &
 
 	LocationConfig newLocation;
 	newLocation.path = pathToken.content;
-	_validate_Path(newLocation.path, locationsPathRecord);
+	_validate_Path(newLocation.path, newLocation.CgiPass,locationsPathRecord);
 	_ts._expect(TOKEN_LBRACE);
 
 	_parseLocationBlock(newLocation);
@@ -603,10 +637,19 @@ void ConfigParser::_serverLocation(ServerConfig &server, std::set<std::string> &
  * @param path Path string to validate.
  * @param locationsPathRecord Set used to detect duplicate paths.
  */
-void ConfigParser::_validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord)
+void ConfigParser::_validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord)
 {
-	try { _isValidURI(path); }
-	catch(const std::exception& e) { _ts.throwValidationError(e.what(), "location path"); }
+	if (!path.empty() && path[0] == '*')
+	{
+		cgiPass = true;
+		try { _isValidExtension(path.substr(1)); }
+		catch(const std::exception& e) { _ts.throwValidationError(e.what(), "location path"); }
+	}
+	else
+	{
+		try { _isValidURI(path); }
+		catch(const std::exception& e) { _ts.throwValidationError(e.what(), "location path"); }
+	}
 
 	if (locationsPathRecord.insert(path).second == false)
 		_ts.throwValidationError("Duplicated", "location");
@@ -826,7 +869,13 @@ void ConfigParser::_locationCgi(LocationConfig &location)
 {
 	std::string ext;
 	std::string exec;
-	_ts._extractSingleKeyword(ext);
+	if (_ts._previousToken().content == "cgi_pass")
+	{
+		ext = location.getPath().substr(1);
+		location.CgiPass = true;
+	}
+	else
+		_ts._extractSingleKeyword(ext);
 	_ts._extractSingleKeyword(exec);
 	_validate_Cgi(ext, exec);	
 	location.cgi[ext] = exec;
@@ -845,16 +894,11 @@ void ConfigParser::_locationCgi(LocationConfig &location)
  */
 void ConfigParser::_validate_Cgi(std::string &extension, const std::string &executer)
 {
-	if (extension.length() < 2 || extension[0] != '.')
-		_ts.throwValidationError("Invalid extension", "cgi");
-	else
+	try {
+		_isValidExtension(extension);
 		extension.erase(0, 1);
-	for (size_t i = 1; i < extension.length(); ++i)
-	{
-		if (!std::isalnum(extension[i]))
-			_ts.throwValidationError("Invalid extension", "cgi");
+		_isValidFile(executer, R_OK | X_OK); 
 	}
-	try { _isValidFile(executer, R_OK | X_OK); }
 	catch (const std::exception &e) { _ts.throwValidationError(e.what(), "cgi"); }
 }
 //*	----------- *
@@ -894,6 +938,17 @@ void ConfigParser::_validate_UploadStore(std::string &path)
 //*	----------- *
 
 //*	----- Helpers ----- */
+
+void ConfigParser::_isValidExtension(const std::string &ext) const
+{
+	if (ext.length() < 2 || ext[0] != '.')
+		throw std::runtime_error("Invalid extension");	
+	for (size_t i = 1; i < ext.length(); ++i)
+	{
+		if (!std::iswalpha(ext[i]))
+			throw std::runtime_error("Invalid extension");	
+	}
+}
 
 /**
  * @brief Check whether a string is a valid URI path for `location`.
