@@ -48,7 +48,7 @@ struct ServerConfig
 	std::string getErrorPage(t_status_code code) const;
 	const std::map<std::string, std::string> &getCgi(void) const;
 
-	const LocationConfig* matchLocation(const std::string& uri) const;
+	const LocationConfig* matchLocation(const std::string& uri, const t_method &method) const;
 
 	ListenAddress				listen;
 	std::vector<std::string>	serverNames;        // e.g., ["example.com", "www.example.com"]

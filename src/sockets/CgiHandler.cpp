@@ -63,8 +63,15 @@ void CgiHandler::update_info(Request &req)
 	_body = req.body;
 	std::string filename = extract_script_filename(req.path_uri, req.file_extension);
 	_scriptPath = req.conf->getRoot() + filename;
+	// if (!req.loc->isCgiPass())
+		// _scriptPath = req.loc->getRoot() + req.path_uri.substr(req.loc->getPath().length());
+	// else
+	// {
+	// }
 
-	// std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
+	std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
+	std::cout << BLU "SCRIPT FILENAME: " DEF << filename << std::endl;
+	std::cout << BLU "PATH INFO: " DEF << extract_path_info(req.path_uri, req.file_extension) << std::endl;
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
 	if (!fs.is_open())
 		throw(CgiHandler::CgiExecutionFail("open failure"));

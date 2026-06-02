@@ -164,7 +164,7 @@ static bool matchExtension(const std::string &uri, const std::string &ext)
  * @param uri Request URI to match (e.g., "/images/logo.png").
  * @return Pointer to the matched `LocationConfig`, or nullptr if none match.
  */
-const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
+const LocationConfig* ServerConfig::matchLocation(const std::string& uri, const t_method &method) const
 {
 	const LocationConfig *LocationMatched = NULL;
 	size_t longestMatchPrefix = 0;
@@ -174,10 +174,10 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 		if (this->locations[i].isCgiPass())
 		{
 			std::string extension = pathLocation.substr(1);
-			if (matchExtension(uri, extension))
+			if (matchExtension(uri, extension) && this->locations[i].isMethodAllowed(method))
 				return (&this->locations[i]);
 		}
-		if (uri.find(pathLocation) == 0)
+		else if (uri.find(pathLocation) == 0)
 		{
 			if (pathLocation == uri)
 				return (&this->locations[i]);

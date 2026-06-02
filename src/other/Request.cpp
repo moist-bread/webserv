@@ -480,7 +480,7 @@ void Request::validade_request(void)
 	if (method == DELETE && !body.empty())
 		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
 
-	loc = conf->matchLocation(path_uri);
+	loc = conf->matchLocation(path_uri, method);
 	if (!loc)
 		throw(Request::ParseError("The page you're trying to access does not exists", NOT_FOUND));
 	if (Inspect::debug)

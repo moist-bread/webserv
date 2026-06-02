@@ -162,7 +162,7 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 			location.allowedMethods.push_back(DELETE);
 		}
 		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
-			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "upload_store");
+			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
 		if (location.cgi.empty())
 		{
 			if (!server.cgi_default.empty())
@@ -177,6 +177,8 @@ void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConf
 		_ts.throwValidationError("Location with '*.extendion', must have cgi_pass declared", "location");
 	if (location.allowedMethods.empty())
 		_ts.throwValidationError("Location with cgi pass, must have Allowed Methods declared", "location");
+	else if (location.isMethodAllowed(POST) && location.uploadStore.empty())
+		_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
 	if (location.root.empty())
 	{
 		if (server.root_default.empty())
@@ -186,12 +188,10 @@ void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConf
 	}
 	if (!location.index.empty())
 		_ts.throwValidationError("Location with cgi pass, can't have index", "location");
-	if (location.autoindex == 1)
+	if (location.autoindex != -1)
 		_ts.throwValidationError("Location with cgi pass, can't have autoindexing", "location");
 	if (location.returnCode != INVALID_CODE)
 		_ts.throwValidationError("Location with cgi pass, can't have return", "location");
-	//! if (!location.uploadStore.empty())
-	//! 	_ts.throwValidationError("Location with return, can't have upload_store", "location");
 }
 
 void ConfigParser::_finalizeLocationReturn(LocationConfig &location)
