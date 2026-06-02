@@ -8,22 +8,22 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper yellow-strip shadow" >
-			<button onclick="location.href='/write'">leave a note !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper yellow-strip shadow" href='/write'>
+			<p>leave a note !</p>
+		</a>
 	</div>
 
 	<div class="text green-mark">main</div>
-	<form action="/main.py" method="GET">
+	<form action="/example_cgi.py" method="GET">
 		<label for="fname">Query GET request:</label>
 		<input type="text" id="query" name="query"><br><br>
 		<input type="submit" value="Submit">
 	</form>
 	<br>
-	<form action="/main.py" method="POST">
+	<form action="/example_cgi.py" method="POST">
 		<label for="fname">Script w/ Body POST request:</label>
 		<input type="text" id="body" name="body"><br><br>
 		<input type="submit" value="Submit">
@@ -88,15 +88,15 @@
 
 				if (xhr.status === 200 || xhr.status === 302)
 				{
-					result.innerText = "Upload successful!!";
+					result.innerText = "Upload successful!";
 					load_files();
 					progressBar.value = 100;
 				}
 				else
-					result.innerText = "❌ Server error: " + xhr.status;
+					result.innerText = "Server error: " + xhr.status + "...";
 			};
 
-			xhr.onerror = () => { result.innerText = "❌ Upload stopped with error: " + xhr.status; };
+			xhr.onerror = () => { result.innerText = "Upload stopped with error: " + xhr.status; };
 			xhr.send(formData);
 
 		});

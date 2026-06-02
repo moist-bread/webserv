@@ -8,12 +8,12 @@
 </head>
 <body>
 	<div class="note-markers">
-		<div class="page-paper blue-strip shadow" >
-			<button onclick="location.href='/home'">back home...</button>
-		</div>
-		<div class="page-paper yellow-strip shadow" >
-			<button onclick="location.href='/'">post an picture !</button>
-		</div>
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<a class="page-paper yellow-strip shadow" href='/picture'>
+			<p>post a picture !</p>
+		</a>
 	</div>
 
 	<div class="text pink-mark">picture gallery</div>
@@ -23,14 +23,16 @@
 	<br>
 	<br>
 
-	<p class="paper">
-		<b><u>More about this page:</u></b><br>
-		These pictures were created retrieved based on the <b>information from the server's database.</b><br>
-		<br>
-		To do that we used a script inside this page to request the <b>execution of a CGI</b><br>
-		The CGI in this case is actually a python script that goes through the database, sees any image text pair,
-		sees if the image exists and from it <b>creates the html</b> for a page containing all registered images.<br>
-	</p>
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			These pictures were created retrieved based on the <b>information from the server's database.</b><br>
+			<br>
+			To do that we used a script inside this page to request the <b>execution of a CGI</b><br>
+			The CGI in this case is actually a python script that goes through the database, sees any image text pair,
+			sees if the image exists and from it <b>creates the html</b> for a page containing all registered images.<br>
+		</p>
+	</div>
 	
 	<script>
 		async function load_images()
