@@ -24,6 +24,10 @@ button, input {
 	font-family: "Mansalva", sans-serif;
 }
 
+label {
+	white-space: nowrap;
+}
+
 video {
 	width: 85%;
 	min-width: 437px;
@@ -35,7 +39,6 @@ video {
 	position: relative;
 	font-size: 32px;
 	font-weight: 600;
-	user-select: none;
 	text-align: center;
 	white-space: nowrap;
 	margin: 10px 0px;

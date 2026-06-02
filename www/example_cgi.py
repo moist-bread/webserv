@@ -18,10 +18,12 @@ html_response = f"""<html>
     <title>Cgi</title>
 </head>
 <body>
-    <div class="text green-mark">Sucesso total do CGI!</div>
-    <p>request type: {request}</p>
-    <p>O C++ enviou esta query string: {query_string}</p>
-    <p>O C++ enviou este body: {body}</p>
+    <div class="text green-mark">CGI has responded with success!</div>
+    <div class="paper">
+        <p>request type: {request}</p>
+        <p>O C++ enviou esta query string: {query_string}</p>
+        <p>O C++ enviou este body: {body}</p>
+    </div>
 </body>
 </html>"""
 

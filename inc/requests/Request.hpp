@@ -7,8 +7,12 @@
 #include <unistd.h>
 
 // TO-DO
-// [ ] make tester work
-// [ ] gallery post page
+// [ ] make tester work......
+// [ ] cgi page explanation
+// [ ] create the tomoserv.py script
+// [ ] file management page
+// [ ] page to replace main (tbd)
+// [ ] write README......
 
 struct ServerConfig;
 struct LocationConfig;
