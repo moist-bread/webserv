@@ -38,9 +38,10 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 		this->listen.port = source.listen.port;
 		this->listen.string = source.listen.string;
 		this->serverNames = source.serverNames;
-		this->root = source.root;
+		this->root_default = source.root_default;
 		this->clientMaxBodySize = source.clientMaxBodySize;
 		this->errorPages = source.errorPages;
+		this->cgi_default = source.cgi_default;
 		this->locations = source.locations;
 	}
 	return (*this);
@@ -121,7 +122,7 @@ bool ServerConfig::isServerName(const std::string &serverName) const
  * @brief Get the configured document root for this server.
  * @return Reference to the root path string.
  */
-const std::string &ServerConfig::getRoot(void) const { return (this->root); }
+const std::string &ServerConfig::getRoot(void) const { return (this->root_default); }
 
 /**
  * @brief Get the client max body size limit in bytes.
@@ -142,6 +143,17 @@ std::string ServerConfig::getErrorPage(t_status_code code) const
 	return ("");
 }
 
+const std::map<std::string, std::string> &ServerConfig::getCgi(void) const { return (this->cgi_default); }
+
+
+static bool matchExtension(const std::string &uri, const std::string &ext)
+{
+	size_t extension = uri.find(ext);
+	if (extension == std::string::npos || extension != uri.length() - ext.length())
+		return (false);
+	return (true);
+}
+
 /**
  * @brief Find the best matching `LocationConfig` for a request URI.
  *
@@ -158,7 +170,13 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 	size_t longestMatchPrefix = 0;
 	for (size_t i = 0; i < this->locations.size(); ++i)
 	{
-		const std::string &pathLocation = this->locations[i].path;
+		const std::string &pathLocation = this->locations[i].getPath();
+		if (this->locations[i].isCgiPass())
+		{
+			std::string extension = pathLocation.substr(1);
+			if (matchExtension(uri, extension))
+				return (&this->locations[i]);
+		}
 		if (uri.find(pathLocation) == 0)
 		{
 			if (pathLocation == uri)
@@ -173,6 +191,7 @@ const LocationConfig* ServerConfig::matchLocation(const std::string& uri) const
 	return (LocationMatched);
 }
 
+
 /**
  * @brief Pretty-print a `ServerConfig` for debugging.
  * @param out Output stream.
@@ -185,8 +204,6 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "    Host: " << source.getListenHost() << "\n";
 	out << "    Port: " << source.getListenPort() << "\n";
 	out << "    Listen adress: " << source.getListenString() << "\n";
-	out << "    Root: " << source.getRoot() << "\n";
-	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
 
 	out << "    Server Names: ";
 	for (size_t i = 0; i < source.serverNames.size(); ++i) {
@@ -194,10 +211,20 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	}
 	out << "\n";
 
+	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
+
 	out << "    Error Pages:\n";
 	for (std::map<t_status_code, std::string>::const_iterator it = source.errorPages.begin(); it != source.errorPages.end(); ++it) {
 		out << "      " << it->first << " -> " << it->second << "\n";
 	}
+	
+	out << "    Default Root: " << source.getRoot() << "\n";
+	out << "    Default CGI:\n";
+	for (std::map<std::string, std::string>::const_iterator it = source.cgi_default.begin(); it != source.cgi_default.end(); ++it)
+	{
+		out << "        " << it->first << " -> " << it->second << "\n";
+	}
+	out << "\n";
 
 	out << "    Locations:\n";
 	for (size_t i = 0; i < source.locations.size(); ++i) {

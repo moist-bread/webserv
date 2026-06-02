@@ -7,7 +7,7 @@
  *
  * Initializes `autoindex` to -1 (unset) and `returnCode` to INVALID_CODE.
  */
-LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(INVALID_CODE) {}
+LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(INVALID_CODE), CgiPass(false) {}
 
 /**
  * @brief Copy constructor.
@@ -38,6 +38,7 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &source)
 		this->returnCode = source.returnCode;
 		this->returnUrl = source.returnUrl;
 		this->cgi = source.cgi;
+		this->CgiPass = source.CgiPass;
 	}
 	return (*this);
 }
@@ -113,6 +114,8 @@ std::string LocationConfig::getCgiExecutable(const std::string &extension) const
 	return ("");
 }
 
+bool LocationConfig::isCgiPass() const { return (CgiPass); }
+
 /**
  * @brief Pretty-print a `LocationConfig` for debugging.
  * @param out Output stream to write to.
@@ -127,7 +130,7 @@ std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 	for (size_t i = 0; i < source.index.size(); ++i)
 		out << source.index[i] << " ";
 	out << "\n";
-	out << "      Autoindex: " << (source.autoindex ? "on" : "off") << "\n";
+	out << "      Autoindex: " << (source.autoindex == 1 ? "on" : "off") << "\n";
 	out << "      Upload Store: " << source.uploadStore << "\n";
 
 	if (source.returnCode != 0)
@@ -145,5 +148,6 @@ std::ostream &operator<<(std::ostream &out, LocationConfig const &source)
 	{
 		out << "        " << it->first << " -> " << it->second << "\n";
 	}
+	out << "      CGI Pass: " << (source.CgiPass ? "yes" : "no") << std::endl;
 	return out;
 }

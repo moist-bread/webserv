@@ -4,8 +4,8 @@ int main(int ac, char **av)
 {
 	if (ac != 2)
 		return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
+	Config webServerConfig;
 	try {
-		Config webServerConfig;
 		webServerConfig.load(av[1]);
 		std::cout << webServerConfig << std::endl;
 	} catch (const std::exception& e) {
