@@ -8,6 +8,8 @@
 #include <ctime>		// time
 #include <fstream>		// fstream
 #include <algorithm>	// transform, EXIT_FAILURE
+#include <csignal>	// signal
+#include <fcntl.h>
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
@@ -145,6 +147,7 @@ int CgiHandler::executeCgi()
 	if (InitPipes() == -1)
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
+    std::signal(SIGPIPE, SIG_IGN);
 	this->_pid = fork();
 	std::cerr << "my pid: " << this->_pid << std::endl;
 	if (this->_pid == -1)
@@ -199,31 +202,46 @@ int CgiHandler::InitPipes()
 	return 0;
 }
 
-int CgiHandler::writeBodyToCgiInput() const // does this really need to return when we are throwing?
+
+int CgiHandler::writeBodyToCgiInput() const
 {
-	if (!_body.empty())
-	{
-		std::cerr << RED "going to WRITE...\n\n" DEF;
-		ssize_t n = write(this->_pipeIn[1], _body.c_str(), _body.size());
-		if (n <= 0)
-		{
-			std::cerr << RED "FAILED WRITE...\n\n" DEF;
-			close(this->_pipeIn[1]);
-			throw(CgiHandler::CgiExecutionFail("write failure"));
-			return -1;
-		}
-		std::cerr << RED "SUCCESS WRITE...\n\n" DEF;
-	}
+    if (!_body.empty())
+    {
+        fcntl(this->_pipeIn[1], F_SETFL, O_NONBLOCK);
 
-	// if we verify CLOSE SUCCESS HERE we should to the same everywhere
-	if (close(this->_pipeIn[1]) == -1) // !!!!!!!!!!!!!!!!
-	{
-		std::cerr << "close(_pipeIn[1]) failed" << std::endl;
-		throw(CgiHandler::CgiExecutionFail("close failure"));
-		return -1;
-	}
+        const size_t CHUNK = 4096;
+        size_t total = 0;
 
-	return 0;
+        while (total < _body.size())
+        {
+            size_t remaining = _body.size() - total;
+            size_t toWrite = std::min(CHUNK, remaining);
+
+            ssize_t n = write(this->_pipeIn[1], _body.c_str() + total, toWrite);
+
+            if (n > 0)
+            {
+                total += n;
+            }
+            else if (n == 0)
+            {
+                // Nothing written, pipe full — yield and retry
+                usleep(1000);
+            }
+            else // n < 0
+            {
+                // Child closed its read end (EPIPE) or pipe unavailable (EAGAIN)
+                // Either way: stop writing, not a fatal error
+                std::cerr << "CGI stopped reading stdin after " << total << " bytes\n";
+                break;
+            }
+        }
+    }
+
+    if (close(this->_pipeIn[1]) == -1)
+        throw CgiHandler::CgiExecutionFail("close failure");
+
+    return 0;
 }
 
 int CgiHandler::getPipeOutReadFd() const { return this->_pipeOut[0]; }

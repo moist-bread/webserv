@@ -7,6 +7,7 @@ int main(int ac, char **av)
 
     srand(std::time(NULL));
     std::signal(SIGINT, sigint_handler);
+    std::signal(SIGPIPE, SIG_IGN);
     try
     {
         Config config;
