@@ -88,33 +88,13 @@ void Inspect::inspect_removed_cl(const t_remove_reason &reason, const int &fd)
 	std::cout << "Reason: ";
 	switch (reason)
 	{
-	case TIMEOUT:
-		std::cout << "Client time out";
-		break;
-
-	case TIMEOUT_CGI:
-		std::cout << "CGI execution time out";
-		break;
-	
-	case RECV_FAIL:
-		std::cout << "Failed to recieve a request from the Client";
-		break;
-	
-	case WRITE_FAIL:
-		std::cout << "Failed to write a response to the Client";
-		break;
-	
-	case CLOSE_CONNECTION:
-		std::cout << "Connection has been terminated";
-		break;
-		
-	case SERVER_CLOSE:
-		std::cout << "The Server has closed";
-		break;
-
-	default:
-		std::cout << "Unknown...";
-		break;
+		case TIMEOUT:			std::cout << "Client time out";	break;
+		case TIMEOUT_CGI:		std::cout << "CGI execution time out";	break;
+		case RECV_FAIL:			std::cout << "Failed to recieve a request from the Client";	break;
+		case WRITE_FAIL:		std::cout << "Failed to write a response to the Client";	break;
+		case CLOSE_CONNECTION:	std::cout << "Connection has been terminated";	break;
+		case SERVER_CLOSE:		std::cout << "The Server has closed";	break;
+		default:				std::cout << "Unknown...";	break;
 	}
 	std::cout << DEF << std::endl;
 }

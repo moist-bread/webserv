@@ -229,15 +229,15 @@ namespace response_utils
 			const int type = std::rand() % 3;
 			switch (type)
 			{
-			case 0: // number
-				name += '0' + std::rand() % 10;
-				break;
-			case 1: // lower-case
-				name += 'a' + std::rand() % 26;
-				break;
-			default: // upper-case
-				name += 'A' + std::rand() % 26;
-				break;
+				case 0: // number
+					name += '0' + std::rand() % 10;
+					break;
+				case 1: // lower-case
+					name += 'a' + std::rand() % 26;
+					break;
+				default: // upper-case
+					name += 'A' + std::rand() % 26;
+					break;
 			}
 		}
 		return (name);

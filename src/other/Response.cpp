@@ -66,27 +66,27 @@ void Response::process(void)
 		// std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-		case PREP:
-			preparations_for_response();
-			break;
-		case METHODS:
-			execute_methods();
-			break;
-		case CGI:
-			cgi_response();
-			break;
-		case CHUNK:
-			chunk_response();
-			break;
-		case HEADERS_RESP:
-			set_response_headers();
-			break;
-		case FULL_RESP:
-			assemble_full_response();
-			break;
-		default:
-			set_state(SEND);
-			return;
+			case PREP:
+				preparations_for_response();
+				break;
+			case METHODS:
+				execute_methods();
+				break;
+			case CGI:
+				cgi_response();
+				break;
+			case CHUNK:
+				chunk_response();
+				break;
+			case HEADERS_RESP:
+				set_response_headers();
+				break;
+			case FULL_RESP:
+				assemble_full_response();
+				break;
+			default:
+				set_state(SEND);
+				return;
 		}
 		if (get_state() == SEND)
 			break;
@@ -160,21 +160,21 @@ void Response::execute_methods(void)
 	{
 		switch ((*req).method)
 		{
-		case GET:
-			method_get();
-			break;
-		case POST:
-			method_post();
-			break;
-		case DELETE:
-			method_delete();
-			break;
-		case HEAD:
-			method_head();
-			break;
-		default:
-			throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
-			break;
+			case GET:
+				method_get();
+				break;
+			case POST:
+				method_post();
+				break;
+			case DELETE:
+				method_delete();
+				break;
+			case HEAD:
+				method_head();
+				break;
+			default:
+				throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
+				break;
 		}
 	}
 	catch (const Response::CreateError &e)

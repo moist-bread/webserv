@@ -263,7 +263,7 @@ static void isValidFile(const std::string &path, const int flags)
 
 void Lexer::parsePathFile(const std::string &path, const int flag)
 {
-	size_t extension = path.find(".conf");
+	size_t extension = path.rfind(".conf");
 	if (extension == std::string::npos || extension != path.length() - 5)
 		throw std::runtime_error("Bad extension");
 	isValidFile(path, flag);
@@ -284,12 +284,12 @@ static std::string getTokenTypeName(e_token_type tokenType)
 {
 	switch (tokenType)
 	{
-		case TOKEN_KEYWORD: return "KEYWORD";
-		case TOKEN_LBRACE: return "LBRACE";
-		case TOKEN_RBRACE: return "RBRACE";
-		case TOKEN_SEMICOLON: return "SEMICOLON";
-		case TOKEN_EOF: return "EOF";
-		default: return "UNKNOWN";
+		case TOKEN_KEYWORD: 	return "KEYWORD";
+		case TOKEN_LBRACE: 		return "LBRACE";
+		case TOKEN_RBRACE: 		return "RBRACE";
+		case TOKEN_SEMICOLON: 	return "SEMICOLON";
+		case TOKEN_EOF: 		return "EOF";
+		default: 				return "UNKNOWN";
 	}
 }
 //*	----- ------ ----- //

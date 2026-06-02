@@ -49,24 +49,24 @@ void Request::process(std::string request)
 		// std::cout << CYN "looping request state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-		case BEGIN:
-			clear();
-			set_state(LINE);
-			break;
-		case LINE:
-			parse_request_line(request);
-			break;
-		case HEADERS_REQ:
-			parse_request_headers(request);
-			break;
-		case CHUNK_BODY:
-			parse_chunk(request);
-			break;
-		case BODY:
-			parse_body(request);
-			break;
-		default:
-			request.clear();
+			case BEGIN:
+				clear();
+				set_state(LINE);
+				break;
+			case LINE:
+				parse_request_line(request);
+				break;
+			case HEADERS_REQ:
+				parse_request_headers(request);
+				break;
+			case CHUNK_BODY:
+				parse_chunk(request);
+				break;
+			case BODY:
+				parse_body(request);
+				break;
+			default:
+				request.clear();
 		}
 	}
 	// std::cout << *this << std::endl;

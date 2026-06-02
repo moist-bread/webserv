@@ -54,88 +54,47 @@ std::string HTTP::getReasonPhrase(t_status_code status_code)
 {
 	switch (status_code)
 	{
-	case CONTINUE:
-		return ("Continue");
-	case SWITCHING_PROTOCOL:
-		return ("Switching Protocols");
-	case OK:
-		return ("OK");
-	case CREATED:
-		return ("Created");
-	case ACCEPTED:
-		return ("Accepted");
-	case NON_AUTHORITATIVE_INFO:
-		return ("Non-authoritative Information");
-	case NO_CONTENT:
-		return ("No Content");
-	case RESET_CONTENT:
-		return ("Reset Content");
-	case PARTIAL_CONTENT:
-		return ("Partial Content");
-	case MULTIPLE_CHOICES:
-		return ("Multiple Choices");
-	case MOVED_PERMANENTLY:
-		return ("Moved Permanently");
-	case FOUND:
-		return ("Found");
-	case SEE_OTHER:
-		return ("See Other");
-	case NOT_MODIFIED:
-		return ("Not Modified");
-	case TEMPORARY_REDIRECT:
-		return ("Temporary Redirect");
-	case PERMANENT_REDIRECT:
-		return ("Permanent Redirect");
-	case BAD_REQUEST:
-		return ("Bad Request");
-	case UNAUTHORIZED:
-		return ("Unauthorized");
-	case PAYMENT_REQUIRED:
-		return ("Payment Required");
-	case FORBIDDEN:
-		return ("Forbidden");
-	case NOT_FOUND:
-		return ("Not Found");
-	case METHOD_NOT_ALLOWED:
-		return ("Method Not Allowed");
-	case NOT_ACCEPTABLE:
-		return ("Not Acceptable");
-	case PROXY_AUTHENTICATION_REQUIRED:
-		return ("Proxy Authentication Required");
-	case REQUEST_TIMEOUT:
-		return ("Request Timeout");
-	case CONFLICT:
-		return ("Conflict");
-	case GONE:
-		return ("Gone");
-	case LENGTH_REQUIRED:
-		return ("Length Required");
-	case PRECONDITION_FAILED:
-		return ("Precondition Failed");
-	case CONTENT_TOO_LARGE:
-		return ("Content Too Large");
-	case URI_TOO_LONG:
-		return ("URI Too Long");
-	case UNSUPPORTED_MEDIA_TYPE:
-		return ("Unsupported Media Type");
-	case RANGE_NOT_SATISFIABLE:
-		return ("Range Not Satisfiable");
-	case EXPECTATION_FAILED:
-		return ("Expectation Failed");
-	case INTERNAL_SERVER_ERROR:
-		return ("Internal Server Error");
-	case NOT_IMPLEMENTED:
-		return ("Not Implemented");
-	case BAD_GATEWAY:
-		return ("Bad Gateway");
-	case SERVICE_UNAVAILABLE:
-		return ("Service Unavailable");
-	case GATEWAY_TIMEOUT:
-		return ("Gateway Timeout");
-	case HTTP_VERSION_NOT_SUPPORTED:
-		return ("HTTP Version Not Supported");
-	default:
-		return ("OK");
+		case CONTINUE:						return ("Continue");
+		case SWITCHING_PROTOCOL:			return ("Switching Protocols");
+		case OK:							return ("OK");
+		case CREATED:						return ("Created");
+		case ACCEPTED:						return ("Accepted");
+		case NON_AUTHORITATIVE_INFO:		return ("Non-authoritative Information");
+		case NO_CONTENT:					return ("No Content");
+		case RESET_CONTENT:					return ("Reset Content");
+		case PARTIAL_CONTENT:				return ("Partial Content");
+		case MULTIPLE_CHOICES:				return ("Multiple Choices");
+		case MOVED_PERMANENTLY:				return ("Moved Permanently");
+		case FOUND:							return ("Found");
+		case SEE_OTHER:						return ("See Other");
+		case NOT_MODIFIED:					return ("Not Modified");
+		case TEMPORARY_REDIRECT:			return ("Temporary Redirect");
+		case PERMANENT_REDIRECT:			return ("Permanent Redirect");
+		case BAD_REQUEST:					return ("Bad Request");
+		case UNAUTHORIZED:					return ("Unauthorized");
+		case PAYMENT_REQUIRED:				return ("Payment Required");
+		case FORBIDDEN:						return ("Forbidden");
+		case NOT_FOUND:						return ("Not Found");
+		case METHOD_NOT_ALLOWED:			return ("Method Not Allowed");
+		case NOT_ACCEPTABLE:				return ("Not Acceptable");
+		case PROXY_AUTHENTICATION_REQUIRED:	return ("Proxy Authentication Required");
+		case REQUEST_TIMEOUT:				return ("Request Timeout");
+		case CONFLICT:						return ("Conflict");
+		case GONE:							return ("Gone");
+		case LENGTH_REQUIRED:				return ("Length Required");
+		case PRECONDITION_FAILED:			return ("Precondition Failed");
+		case CONTENT_TOO_LARGE:				return ("Content Too Large");
+		case URI_TOO_LONG:					return ("URI Too Long");
+		case UNSUPPORTED_MEDIA_TYPE:		return ("Unsupported Media Type");
+		case RANGE_NOT_SATISFIABLE:			return ("Range Not Satisfiable");
+		case EXPECTATION_FAILED:			return ("Expectation Failed");
+		case INTERNAL_SERVER_ERROR:			return ("Internal Server Error");
+		case NOT_IMPLEMENTED:				return ("Not Implemented");
+		case BAD_GATEWAY:					return ("Bad Gateway");
+		case SERVICE_UNAVAILABLE:			return ("Service Unavailable");
+		case GATEWAY_TIMEOUT:				return ("Gateway Timeout");
+		case HTTP_VERSION_NOT_SUPPORTED:	return ("HTTP Version Not Supported");
+		default:							return ("OK");
 	}
 }
 
@@ -143,88 +102,47 @@ t_status_code HTTP::isValidReasonPhrase(const int status_code)
 {
 	switch (status_code)
 	{
-	case CONTINUE:
-		return (CONTINUE);
-	case SWITCHING_PROTOCOL:
-		return (SWITCHING_PROTOCOL);
-	case OK:
-		return (OK);
-	case CREATED:
-		return (CREATED);
-	case ACCEPTED:
-		return (ACCEPTED);
-	case NON_AUTHORITATIVE_INFO:
-		return (NON_AUTHORITATIVE_INFO);
-	case NO_CONTENT:
-		return (NO_CONTENT);
-	case RESET_CONTENT:
-		return (RESET_CONTENT);
-	case PARTIAL_CONTENT:
-		return (PARTIAL_CONTENT);
-	case MULTIPLE_CHOICES:
-		return (MULTIPLE_CHOICES);
-	case MOVED_PERMANENTLY:
-		return (MOVED_PERMANENTLY);
-	case FOUND:
-		return (FOUND);
-	case SEE_OTHER:
-		return (SEE_OTHER);
-	case NOT_MODIFIED:
-		return (NOT_MODIFIED);
-	case TEMPORARY_REDIRECT:
-		return (TEMPORARY_REDIRECT);
-	case PERMANENT_REDIRECT:
-		return (PERMANENT_REDIRECT);
-	case BAD_REQUEST:
-		return (BAD_REQUEST);
-	case UNAUTHORIZED:
-		return (UNAUTHORIZED);
-	case PAYMENT_REQUIRED:
-		return (PAYMENT_REQUIRED);
-	case FORBIDDEN:
-		return (FORBIDDEN);
-	case NOT_FOUND:
-		return (NOT_FOUND);
-	case METHOD_NOT_ALLOWED:
-		return (METHOD_NOT_ALLOWED);
-	case NOT_ACCEPTABLE:
-		return (NOT_ACCEPTABLE);
-	case PROXY_AUTHENTICATION_REQUIRED:
-		return (PROXY_AUTHENTICATION_REQUIRED);
-	case REQUEST_TIMEOUT:
-		return (REQUEST_TIMEOUT);
-	case CONFLICT:
-		return (CONFLICT);
-	case GONE:
-		return (GONE);
-	case LENGTH_REQUIRED:
-		return (LENGTH_REQUIRED);
-	case PRECONDITION_FAILED:
-		return (PRECONDITION_FAILED);
-	case CONTENT_TOO_LARGE:
-		return (CONTENT_TOO_LARGE);
-	case URI_TOO_LONG:
-		return (URI_TOO_LONG);
-	case UNSUPPORTED_MEDIA_TYPE:
-		return (UNSUPPORTED_MEDIA_TYPE);
-	case RANGE_NOT_SATISFIABLE:
-		return (RANGE_NOT_SATISFIABLE);
-	case EXPECTATION_FAILED:
-		return (EXPECTATION_FAILED);
-	case INTERNAL_SERVER_ERROR:
-		return (INTERNAL_SERVER_ERROR);
-	case NOT_IMPLEMENTED:
-		return (NOT_IMPLEMENTED);
-	case BAD_GATEWAY:
-		return (BAD_GATEWAY);
-	case SERVICE_UNAVAILABLE:
-		return (SERVICE_UNAVAILABLE);
-	case GATEWAY_TIMEOUT:
-		return (GATEWAY_TIMEOUT);
-	case HTTP_VERSION_NOT_SUPPORTED:
-		return (HTTP_VERSION_NOT_SUPPORTED);
-	default:
-		return (INVALID_CODE);
+		case CONTINUE:						return (CONTINUE);
+		case SWITCHING_PROTOCOL:			return (SWITCHING_PROTOCOL);
+		case OK:							return (OK);
+		case CREATED:						return (CREATED);
+		case ACCEPTED:						return (ACCEPTED);
+		case NON_AUTHORITATIVE_INFO:		return (NON_AUTHORITATIVE_INFO);
+		case NO_CONTENT:					return (NO_CONTENT);
+		case RESET_CONTENT:					return (RESET_CONTENT);
+		case PARTIAL_CONTENT:				return (PARTIAL_CONTENT);
+		case MULTIPLE_CHOICES:				return (MULTIPLE_CHOICES);
+		case MOVED_PERMANENTLY:				return (MOVED_PERMANENTLY);
+		case FOUND:							return (FOUND);
+		case SEE_OTHER:						return (SEE_OTHER);
+		case NOT_MODIFIED:					return (NOT_MODIFIED);
+		case TEMPORARY_REDIRECT:			return (TEMPORARY_REDIRECT);
+		case PERMANENT_REDIRECT:			return (PERMANENT_REDIRECT);
+		case BAD_REQUEST:					return (BAD_REQUEST);
+		case UNAUTHORIZED:					return (UNAUTHORIZED);
+		case PAYMENT_REQUIRED:				return (PAYMENT_REQUIRED);
+		case FORBIDDEN:						return (FORBIDDEN);
+		case NOT_FOUND:						return (NOT_FOUND);
+		case METHOD_NOT_ALLOWED:			return (METHOD_NOT_ALLOWED);
+		case NOT_ACCEPTABLE:				return (NOT_ACCEPTABLE);
+		case PROXY_AUTHENTICATION_REQUIRED:	return (PROXY_AUTHENTICATION_REQUIRED);
+		case REQUEST_TIMEOUT:				return (REQUEST_TIMEOUT);
+		case CONFLICT:						return (CONFLICT);
+		case GONE:							return (GONE);
+		case LENGTH_REQUIRED:				return (LENGTH_REQUIRED);
+		case PRECONDITION_FAILED:			return (PRECONDITION_FAILED);
+		case CONTENT_TOO_LARGE:				return (CONTENT_TOO_LARGE);
+		case URI_TOO_LONG:					return (URI_TOO_LONG);
+		case UNSUPPORTED_MEDIA_TYPE:		return (UNSUPPORTED_MEDIA_TYPE);
+		case RANGE_NOT_SATISFIABLE:			return (RANGE_NOT_SATISFIABLE);
+		case EXPECTATION_FAILED:			return (EXPECTATION_FAILED);
+		case INTERNAL_SERVER_ERROR:			return (INTERNAL_SERVER_ERROR);
+		case NOT_IMPLEMENTED:				return (NOT_IMPLEMENTED);
+		case BAD_GATEWAY:					return (BAD_GATEWAY);
+		case SERVICE_UNAVAILABLE:			return (SERVICE_UNAVAILABLE);
+		case GATEWAY_TIMEOUT:				return (GATEWAY_TIMEOUT);
+		case HTTP_VERSION_NOT_SUPPORTED:	return (HTTP_VERSION_NOT_SUPPORTED);
+		default:							return (INVALID_CODE);
 	}
 }
 
