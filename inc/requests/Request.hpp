@@ -9,9 +9,6 @@
 // TO-DO
 // [ ] make tester work......
 // [ ] cgi page explanation
-// [ ] create the tomoserv.py script
-// [ ] file management page
-// [ ] page to replace main (tbd)
 // [ ] write README......
 
 struct ServerConfig;

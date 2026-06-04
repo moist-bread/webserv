@@ -367,8 +367,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		return (removeClient(fd, *pollfds_idx, RECV_FAIL));
 
 	std::string rec = std::string(tmp, ret);
-	/*
-	std::cout << std::endl;
+	
+	/* std::cout << std::endl;
 	std::cout << "Raw Request:" << std::endl;
 	std::cout << rec << std::endl; */
 	if (Inspect::debug)

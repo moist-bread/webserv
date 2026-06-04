@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="/index.css" type="text/css">
-	<title>Banana</title>
+	<title>Video Hub - Banana</title>
 </head>
 
 <body>
@@ -12,9 +12,9 @@
 		<a class="page-paper blue-strip shadow" href='/home'>
 			<p>back home...</p>
 		</a>
-		<a class="page-paper yellow-strip shadow" href='/write'>
-			<p>leave a note !</p>
-		</a>
+		<div class="page-paper green-strip shadow" >
+			<button onclick="history.forward()">go forward!</button>
+		</div>
 	</div>
 
 	<div class="text yellow-mark">video hub</div>
@@ -35,15 +35,19 @@
 			The way it works is that when you try to play a video it will send a <b>GET request
 			that has a "Range" header.</b> The header will then specify what part of the content it wants to GET.
 			There are 4 ways that it can be formatted but let's go with the simplest example:<br>
-			<br>
+		</p>
+		<p class="highlight">
 			<b>Range: bytes=0-</b><br>
-			<br>
+		</p>
+		<p>
 			What that means to the Server is that the Client wants all the bytes of the requested file
 			<b>from the byte 0 up until the end</b>. 
 			The Server can then respond with an amount of bytes but has to specify which bytes were they and how big is the whole content, for example:<br>
-			<br>
+		</p>
+		<p class="highlight">
 			<b>Content-Range: bytes 0-100/5000</b><br>
-			<br>
+		</p>
+		<p>
 			Which means the request is sending all bytes from 0 until 100 and that the total is 5000.
 			Afterwards the Client can ask for the remaining bytes when it needs them.
 		</p>

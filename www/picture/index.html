@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="/index.css" type="text/css">
 	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-	<title>Banana</title>
+	<title>Picture Upload - Banana</title>
 </head>
 <body>
 	<div class="note-markers">
@@ -20,7 +20,7 @@
 	<div class="text yellow-mark">leave your pictures here !!</div>
 	
 	<div class="paper stack">
-		<form id="file_upload" action="/" method="POST" enctype="multipart/form-data">
+		<form id="file_upload" action="/picture" method="POST" enctype="multipart/form-data">
 			<div class="form-group">
 				<label for="file_input" class="upload-container" id="uploadcontainer">
 					<label for="file">Put your image here</label>
@@ -87,7 +87,7 @@
 			formData.append("title", text_input.value);
 
 			const xhr = new XMLHttpRequest();
-			xhr.open("POST", "/");
+			xhr.open("POST", "/picture");
 
 			progress_bar.hidden = false;
 

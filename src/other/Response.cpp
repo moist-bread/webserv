@@ -382,39 +382,42 @@ std::string Response::assemble_content_path(void)
 	else
 	{
 		path = (*req).loc->getRoot();
-
+		std::string remaining_uri = (*req).path_uri.substr((*req).loc->getPath().length());
+		if (!remaining_uri.empty() && remaining_uri.at(0) == '/')
+			remaining_uri.erase(0, 1);
+		path.append(remaining_uri);
+		
 		if ((*req).file_extension == "html")
 		{
-			// -- see which of the indexes is valid
 			std::string index;
+
+			// -- see which of the indexes is valid
 			for (size_t i = 0; i < (*req).loc->getIndexes().size() && index.empty(); i++)
 			{
-				// std::cout << "which index is valid: " <<  (path + "/" + (*req).loc->getIndexes()[i]) << std::endl;
 				if (access((path + "/" + (*req).loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
-				struct stat path_stat;
-				if (stat((path + "/" + (*req).loc->getIndexes()[i]).c_str(), &path_stat) != 0)
+				struct stat index_stat;
+				if (stat((path + "/" + (*req).loc->getIndexes()[i]).c_str(), &index_stat) != 0)
 					continue;
-				if (S_ISDIR(path_stat.st_mode))
+				if (S_ISDIR(index_stat.st_mode))
 					continue;
-				// std::cout << "found ..." << std::endl;
 				index = (*req).loc->getIndexes()[i];
 			}
-
-			// -- if one of them was valid, add to the path
 			if (!index.empty())
 			{
-				if ((*req).path_uri[(*req).path_uri.length() - 1] != '/')
-					(*req).path_uri.append("/");
-				(*req).path_uri.append(index);
+				if (path[path.length() - 1] != '/')
+					path.append("/");
+				path.append(index);
 			}
 		}
 		
-		path += (*req).path_uri.substr((*req).loc->getPath().length());
 	}
-	(*req).path_uri = path;
 	if (Inspect::debug)
 		std::cout << RED "assembled path: " DEF << path << std::endl;
+	struct stat index_stat;
+	if (stat(path.c_str(), &index_stat) != 0 || S_ISDIR(index_stat.st_mode))
+		path.clear();
+	(*req).path_uri = path;
 	return (path);
 }
 
