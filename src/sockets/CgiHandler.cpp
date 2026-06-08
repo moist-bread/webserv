@@ -10,6 +10,8 @@
 #include <algorithm>	// transform, EXIT_FAILURE
 #include <csignal>		// signal
 #include <fcntl.h>		// fcntl
+#include <sys/types.h>
+#include <sys/wait.h>
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
@@ -157,7 +159,14 @@ int CgiHandler::executeCgi()
 		close(this->_pipeIn[0]);
 		close(this->_pipeOut[1]);
 		if (writeBodyToCgiInput() == -1)
-			return -1;
+		{
+			kill(this->_pid,SIGKILL);
+			int status;
+			waitpid(this->_pid,&status,0);
+			this->_pid = 0;
+			throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
+		}
+		
 	}
 	else if (this->_pid == 0)
 	{
@@ -202,6 +211,7 @@ int CgiHandler::InitPipes()
 }
 
 
+
 int CgiHandler::writeBodyToCgiInput() const
 {
     if (!_body.empty())
@@ -210,6 +220,7 @@ int CgiHandler::writeBodyToCgiInput() const
 
         const size_t CHUNK = 4096;
         size_t total = 0;
+		bool writeError = false;
 
         while (total < _body.size())
         {
@@ -232,16 +243,27 @@ int CgiHandler::writeBodyToCgiInput() const
                 // Child closed its read end (EPIPE) or pipe unavailable (EAGAIN)
                 // Either way: stop writing, not a fatal error
                 std::cerr << "CGI stopped reading stdin after " << total << " bytes\n";
+				writeError = true;
                 break;
             }
         }
+		close(this->_pipeIn[1]);
+		if(writeError)
+			return -1;
     }
-
+	else{
+		close(this->_pipeIn[1]);
+		
+	}
+	/*
     if (close(this->_pipeIn[1]) == -1)
         throw CgiHandler::CgiExecutionFail("close failure");
+	*/
 
     return 0;
 }
+
+
 
 int CgiHandler::getPipeOutReadFd() const { return this->_pipeOut[0]; }
 
