@@ -272,6 +272,31 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
 
+
+	// !! FOUND PROBLEM: ele aqui cria um cliente novo VAZIO quando o cliente
+	// !! que estava associado ao CGI deixa de existir através do operador [] do mapa
+
+	// -- possivel solução
+	if (_clients.find(clientFd) == _clients.end())
+	{
+		if (Inspect::debug)
+		{
+			std::cout << RED "Cliente associated with this cgi has been disconnected..." << std::endl;
+		}
+		close(fd);
+		_cgiMap.erase(fd);
+		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
+		(*pollfds_idx)--;
+		for (size_t j = 0; j < _pollfds.size(); j++)
+		{
+			if (_pollfds[j].fd == clientFd)
+			{
+				_pollfds[j].events = POLLOUT;
+				break;
+			}
+		}
+		return;
+	}
 	_clients[clientFd].cgi.setCgiActivityStart(std::time(NULL));
 
 	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
