@@ -10,7 +10,6 @@
 // [ ] make tester work......
 // [ ] cgi page explanation
 // [ ] write README......
-// [ ] Response was initialized without associated ServerConfig
 
 struct ServerConfig;
 struct LocationConfig;

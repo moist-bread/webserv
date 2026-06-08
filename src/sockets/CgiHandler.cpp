@@ -83,7 +83,7 @@ void CgiHandler::update_info(Request &req)
 		}
 	}
 
-	std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
+	// std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
 	// std::cout << BLU "SCRIPT FILENAME: " DEF << filename << std::endl;
 	// std::cout << BLU "PATH INFO: " DEF << extract_path_info(req.path_uri, req.file_extension) << std::endl;
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
@@ -177,7 +177,7 @@ int CgiHandler::executeCgi()
 		for (size_t i = 0; i < _env.size(); i++)
 		{
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
-			std::cerr << _env[i] << std::endl;
+			// std::cerr << _env[i] << std::endl;
 		}
 		exec_env.push_back(NULL);
 
