@@ -8,8 +8,8 @@
 #include <ctime>		// time
 #include <fstream>		// fstream
 #include <algorithm>	// transform, EXIT_FAILURE
-#include <csignal>	// signal
-#include <fcntl.h>
+#include <csignal>		// signal
+#include <fcntl.h>		// fcntl
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
@@ -101,7 +101,7 @@ void CgiHandler::update_info(Request &req)
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
 	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(req.method));
-	_env.push_back("PATH_INFO=" + extract_path_info(req.path_uri, req.file_extension));
+	_env.push_back("PATH_INFO=" + req.path_uri);
 	_env.push_back("QUERY_STRING=" + req.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);
 	_env.push_back("SCRIPT_FILENAME=" + extract_script_filename(req.path_uri, req.file_extension));
@@ -131,25 +131,25 @@ std::string CgiHandler::extract_script_filename(const std::string full_path, con
 	return (full_path.substr(0, pos + ext.length() + 1));
 }
 
+/* 
 std::string CgiHandler::extract_path_info(const std::string full_path, const std::string ext)
 {
 	// path info is whatever comes after the program name in the url
 	size_t pos = full_path.rfind("." + ext);
 	if (pos == std::string::npos)
-		return (full_path);
+		return ("");
 	if (pos + ext.length() + 1 == full_path.size())
-		return (to_str("/"));
+		return ("");
 	return (full_path.substr(pos + ext.length() + 1));
 }
+*/
 
 int CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
-    std::signal(SIGPIPE, SIG_IGN);
 	this->_pid = fork();
-	std::cerr << "my pid: " << this->_pid << std::endl;
 	if (this->_pid == -1)
 		throw(CgiHandler::CgiExecutionFail("fork failure"));
 	else if (this->_pid >= 1)
@@ -181,7 +181,6 @@ int CgiHandler::executeCgi()
 		}
 		exec_env.push_back(NULL);
 
-		std::cerr << "GO EXECUTE" << std::endl;
 		execve(argv[0], argv, &exec_env[0]);
 		std::cerr << "FAILED TO EXECUTE" << std::endl;
 		setCgiActivityStart(VALUE_NOT_SET);

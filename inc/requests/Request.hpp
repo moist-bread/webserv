@@ -9,6 +9,7 @@
 // TO-DO
 // [ ] make tester work
 // [ ] gallery post page
+// [ ] Response was initialized without associated ServerConfig
 
 struct ServerConfig;
 struct LocationConfig;

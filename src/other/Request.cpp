@@ -31,6 +31,7 @@ Request &Request::operator=(Request const &src)
 		this->multi_form = src.multi_form;
 		this->wanted_ranges = src.wanted_ranges;
 
+		this->conf = src.conf;
 		this->loc = src.loc;
 
 		set_state(src.get_state());
@@ -522,6 +523,8 @@ std::ostream &operator<<(std::ostream &out, const Request &src)
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::const_iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+	out << BLU "Body..." DEF;
+	out << " (size) " << src.body.size() << std::endl;
 	/*
 	if (!src.body.empty())
 	{

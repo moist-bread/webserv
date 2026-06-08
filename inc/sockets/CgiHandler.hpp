@@ -27,7 +27,7 @@ private:
 	int InitPipes();
 	int writeBodyToCgiInput() const;
 	static std::string extract_script_filename(const std::string full_path, const std::string ext);
-	static std::string extract_path_info(const std::string full_path, const std::string ext);
+	// static std::string extract_path_info(const std::string full_path, const std::string ext);
 
 public:
 	CgiHandler(void);

@@ -9,7 +9,7 @@ Client::Client(void) : serverConfig(NULL), request(serverConfig), response(reque
 	updateLastActivity();
 }
 
-Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), request(serverConfig), response(request, sc)
+Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), request(sc), response(request, sc)
 {
 	updateLastActivity();
 	if (Inspect::debug)

@@ -2,22 +2,21 @@
 
 int main(int ac, char **av)
 {
-    if (ac != 2)
-        return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
+	if (ac != 2)
+		return (std::cout << "usage: ./webserv [configuration file]" << std::endl, 2);
 
-    srand(std::time(NULL));
-    std::signal(SIGINT, sigint_handler);
-    std::signal(SIGPIPE, SIG_IGN);
-    try
-    {
-        Config config;
-        config.load(av[1]);
-        Server t(config);
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << e.what() << std::endl;
-        return (1);
-    }
-    return (0);
+	srand(std::time(NULL));
+	std::signal(SIGINT, sigint_handler);
+	try
+	{
+		Config config;
+		config.load(av[1]);
+		Server t(config);
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr << e.what() << std::endl;
+		return (1);
+	}
+	return (0);
 }
