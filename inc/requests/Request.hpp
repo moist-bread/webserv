@@ -7,8 +7,10 @@
 #include <unistd.h>
 
 // TO-DO
-// [ ] make tester work
-// [ ] gallery post page
+// [ ] make tester work......
+// [ ] cgi page explanation
+// [ ] write README......
+// [ ] Response was initialized without associated ServerConfig
 
 struct ServerConfig;
 struct LocationConfig;

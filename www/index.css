@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Mansalva&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oldenburg&display=swap');
 
 * {
 	box-sizing: border-box;
@@ -23,13 +24,21 @@ button, input {
 	font-family: "Mansalva", sans-serif;
 }
 
+label {
+	white-space: nowrap;
+}
+
+video {
+	width: 85%;
+	min-width: 437px;
+}
+
 .text {
 	width: fit-content;
 	padding: 6px 12px;
 	position: relative;
 	font-size: 32px;
 	font-weight: 600;
-	user-select: none;
 	text-align: center;
 	white-space: nowrap;
 	margin: 10px 0px;
@@ -79,6 +88,7 @@ button, input {
 
 .paper {
 	width:50%;
+	min-width: 437px;
 	position:relative;
 	background:rgb(255, 255, 243);
 	overflow:hidden;
@@ -87,7 +97,9 @@ button, input {
 	font-size:22px;
 	text-decoration:none;
 	display:block;
-	box-shadow: 5px 5px 7px rgba(33,33,33,.7);	
+	box-shadow: 5px 5px 7px rgba(33,33,33,.7);
+	z-index: 1;
+	
 	&.image-post {
 		width:25%;
 		height: fit-content;
@@ -99,6 +111,19 @@ button, input {
 			padding-bottom: 10px;
 			object-fit: contain;
 		}
+	}
+
+	&.stack {
+		width:25%;
+		margin: 35px;
+		padding: 45px;
+		margin-bottom: 50px;
+		box-shadow:
+			0 1px 1px rgba(0,0,0,0.20),
+			0 10px 0 -5px #eee,
+			0 10px 1px -4px rgba(0,0,0,0.20),
+			0 20px 0 -10px #eee,
+			0 20px 1px -9px rgba(0,0,0,0.20);
 	}
 
 	&.image-post:nth-child(odd) {
@@ -125,6 +150,52 @@ button, input {
 
 	&.image-post:nth-child(4n+4) {
 		background: rgb(254, 249, 255);
+	}
+
+	p {
+		font-family: "Oldenburg", serif;
+		font-size: 18px;
+	}
+
+	.highlight {
+		background-color: #ececec;
+		border-radius: 10px;
+		margin: 30px;
+		padding: 30px 50px;
+		font-size: 15px;
+	}
+}
+
+.upload-container {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: transparent;
+	padding: 40px;
+	margin-bottom: 35px;
+
+	transition: all 200ms linear;
+
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	
+	border-radius: 10px;
+ 	border: 2.5px dashed #666;
+
+	label {
+		white-space: normal;
+	}
+
+	&:hover {
+		background-color: rgba(0,0,0,0.20);
+		cursor: pointer;
+	}
+
+	*:hover {
+		cursor:pointer;
 	}
 }
 
@@ -160,42 +231,54 @@ button, input {
 	}
 
 	&.big {
-		width: 437.5px;
+		z-index: 1;
+		&:hover {
+			z-index: 6;
+		}
+		width: 437px;
 		height: 420px;
 		padding: 35px;
 		margin: 35px;
-		font-size:24px;
+		font-size: 24px;
 	}
 
-	form {
-		display: grid;
-		height: 100%;
-		textarea {
-			resize: none;
-			background: none;
-			font: inherit;
-			font-size: 18px;
-			color: grey;
-			border-radius: 6px;
-			border: 1.5px solid #888; 
-			margin: 20px 0px;
-			padding: 10px;
-			
-		}
-	}
 }
 
-.form-group {
-	display: flex;
-	padding-bottom: 15px;
-	input[type=text] {
+form {
+	display: grid;
+	height: 100%;
+	textarea {
+		resize: none;
 		background: none;
-		border-width: 0px 0px 1.5px 0px;
-		height: 70%;
-		width: 100%;
+		font: inherit;
 		font-size: 18px;
 		color: grey;
-
+		border-radius: 6px;
+		border: 1.5px solid #888;
+		margin: 20px 0px;
+		padding: 10px;
+		
+	}
+	
+	.form-group {
+		display: flex;
+		padding-bottom: 15px;
+		align-content:center;
+		input[type=text] {
+			background: none;
+			border-width: 0px 0px 1.5px 0px;
+			height: 70%;
+			width: 100%;
+			font-size: 18px;
+			color: grey;
+	
+		}
+		input[type=file]{
+			text-align: center;
+		}
+		input[type=file]::file-selector-button {
+			display: none;
+		}
 	}
 }
 
@@ -244,10 +327,13 @@ button, input {
 
 .gallery {
 	width: 90%;
+	min-width: 437px;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
 	background-color: #ddbb98;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 2000 2000' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09' numOctaves='9' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+	background-blend-mode: luminosity;
 	border: 60px ridge #b58262 ;
 	box-shadow: 20px 20px 15px -10px #777;
 	transition: background 200ms ease-in-out;
@@ -268,9 +354,10 @@ button, input {
 	border-radius: 1px;
 	background: linear-gradient(to right, var(--strip-main-color) 35%, var(--strip-highlight-color) 100%);
 	margin-bottom: 10px;
-	color: darkslategray;
 	box-shadow: 1px 2px 1px -1px #777;
 	transition: background 200ms ease-in-out;
+	text-decoration: none;
+	color: #222;
 
 	&.blue-strip {
 		--strip-main-color: #6dd1f5;
@@ -316,7 +403,7 @@ button, input {
 		z-index: -10;
 	}
 
-	button, input {
+	button, input, p {
 		cursor: pointer;
 		border: none;
 		width: 100%;
@@ -327,10 +414,15 @@ button, input {
 		white-space: nowrap;
 		padding: 4px 40px;
 		overflow: hidden;
+		margin: 0px;
 	}
 }
 
 table {
+	justify-content: center;
+	max-width: 100%;
+	min-width: 437px;
+	display: flex;
 	.text {
 		margin: auto;
 	}

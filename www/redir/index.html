@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>Redir - Banana</title>
+</head>
+<body>
+	<div class="note-markers">
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<div class="page-paper green-strip shadow" >
+			<button onclick="history.forward()">go forward!</button>
+		</div>
+	</div>
+
+	<div class="text green-mark">redirections</div>
+
+	<a class="page-paper green-strip shadow" href='/yt'>
+		<p>go from /yt to youtube's homepage</p>
+	</a>
+	<a class="page-paper green-strip shadow" href='/fun'>
+		<p>go from /fun to The Useless Web</p>
+	</a>
+	<a class="page-paper green-strip shadow" href='/community'>
+		<p>go from /community to /board</p>
+	</a>
+
+	<br>
+	<br>
+
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			Here you can test out the redirection settings in the config.<br>
+			By clicking on any of those buttons they won't take you to a page with
+			the same name but instead to a different Location.<br>
+			<br>
+			To do that we use the <b>Location response header</b>, writing in it the link
+			to the location the Client should go to, and the HTTP Status Codes
+			associated with redirections (3xx) such as <b>301 Moved Permanently or
+			307 Temporary Redirect</b> among others.<br>
+			<br>
+			When the browser recieves the Location header or one of those Status Codes it
+			knows it need to follow the Location link, so it does, and you'll find
+			yourself in the "correct" page.
+		</p>
+	</div>
+	
+</body>
+</html>

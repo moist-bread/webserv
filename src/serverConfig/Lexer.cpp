@@ -5,6 +5,8 @@
 # include <fstream>
 # include <string>
 # include <stdexcept>
+# include <unistd.h>
+# include <sys/stat.h>
 
 /**
  * @brief Private default constructor (unused)
@@ -70,9 +72,10 @@ Lexer &Lexer::operator=(Lexer const &src)
 std::vector<t_token> Lexer::tokenizeFile(const std::string &filePath)
 {
 	std::vector<t_token> outTokens;
+	parsePathFile(filePath, R_OK);
 	std::ifstream file(filePath.c_str());
 	if (!file.is_open())
-		throw std::runtime_error("Failed to open file: " + filePath);
+		throw std::runtime_error("Failed to open file: '" + filePath + "'");
 
 	outTokens.clear();
 	std::string line;
@@ -83,6 +86,9 @@ std::vector<t_token> Lexer::tokenizeFile(const std::string &filePath)
 		currentLine++;
 	}
 	file.close();
+
+	if (outTokens.empty())
+		throw std::runtime_error("Empty file");
 	_pushEOF(currentLine, outTokens);
 	return (outTokens);
 }
@@ -219,9 +225,53 @@ void Lexer::_pushEOF(size_t lineNumber, std::vector<t_token> &outTokens)
 	outTokens.push_back(token);
 }
 
-//
-//	'<<' overload operator -> print vector
-//
+//* ---- Helpers ----
+
+/**
+ * @brief Wrapper around `access(2)` to check filesystem permissions.
+ *
+ * Returns true when `access(path, flags)` indicates the current process
+ * has the requested permissions; false otherwise.
+ *
+ * @param path Filesystem path to check.
+ * @param flags Permission flags as accepted by `access(2)` (e.g. R_OK).
+ * @return true if accessible with given flags, false otherwise.
+ */
+static void isValidAccess(const std::string &path, const int flags)
+{
+	if (access(path.c_str(), flags) != 0)
+		throw std::runtime_error("Couldn't access: '" + path + "'");
+}
+
+/**
+ * @brief Validate that a path refers to a regular file with the requested
+ * access permissions.
+ *
+ * Uses `_isValidAccess` and `stat(2)` to ensure the path exists, is not a
+ * directory, and the current process has the requested permissions.
+ *
+ * @param path Filesystem path to validate.
+ * @param flags Permission flags to check with `access(2)`.
+ * @return true if the path is a file and accessible, false otherwise.
+ */
+static void isValidFile(const std::string &path, const int flags)
+{
+	isValidAccess(path, flags);
+	struct stat path_stat;
+	if (stat(path.c_str(), &path_stat) != 0)
+		throw std::runtime_error("Couldn't access: '" + path + "'");
+	if (S_ISDIR(path_stat.st_mode))
+		throw std::runtime_error("'" + path + "' is not a File");
+}
+
+void Lexer::parsePathFile(const std::string &path, const int flag)
+{
+	size_t extension = path.rfind(".conf");
+	if (extension == std::string::npos || extension != path.length() - 5)
+		throw std::runtime_error("Bad extension");
+	isValidFile(path, flag);
+}
+
 
 /**
  * @brief Internal helper to convert token enum to readable name.
@@ -237,14 +287,15 @@ static std::string getTokenTypeName(e_token_type tokenType)
 {
 	switch (tokenType)
 	{
-		case TOKEN_KEYWORD: return "KEYWORD";
-		case TOKEN_LBRACE: return "LBRACE";
-		case TOKEN_RBRACE: return "RBRACE";
-		case TOKEN_SEMICOLON: return "SEMICOLON";
-		case TOKEN_EOF: return "EOF";
-		default: return "UNKNOWN";
+		case TOKEN_KEYWORD: 	return "KEYWORD";
+		case TOKEN_LBRACE: 		return "LBRACE";
+		case TOKEN_RBRACE: 		return "RBRACE";
+		case TOKEN_SEMICOLON: 	return "SEMICOLON";
+		case TOKEN_EOF: 		return "EOF";
+		default: 				return "UNKNOWN";
 	}
 }
+//*	----- ------ ----- //
 
 /**
  * @brief Outputs token vector to stream in human-readable format

@@ -60,10 +60,13 @@ class ConfigParser
 		void _serverRoot(ServerConfig &server);
 		void _serverMaxBodySize(ServerConfig &server);
 		void _serverErrorPage(ServerConfig &server);
+		void _serverCgi(ServerConfig &server);
 		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
 		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
 		void _finalizeServer(ServerConfig &server);
 		void _finalizeLocation(ServerConfig &server);
+		void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server);
+		void _finalizeLocationReturn(LocationConfig &location);
 
 		//	LocationHandler functions
 		void _locationRoot(LocationConfig &location);
@@ -83,7 +86,7 @@ class ConfigParser
 		void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
 
 		//	LocationHandler Validation functions
-		void _validate_Path(const std::string &path, std::set<std::string> &locationsPathRecord);
+		void _validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord);
 		void _validate_Index(const std::vector<std::string> &index);
 		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
 		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
@@ -93,6 +96,7 @@ class ConfigParser
 		//	Validate Helpers
 		void _isValidURI(const std::string &uri) const;
 		void _isValidURL(const std::string &url) const;
+		void _isValidExtension(const std::string &ext) const;
 		void _isValidAccess(const std::string &path, const int flags) const;
 		void _isValidFile(const std::string &path, const int flags) const;
 		void _isValidDirectory(const std::string &path, const int flags) const;

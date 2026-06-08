@@ -7,16 +7,45 @@
 
 #define URI_LIMIT 2000
 
-Request::Request(void) : conf(NULL) { clear(); }
+Request::Request(void) : conf(NULL)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UCYN "has been empty created" DEF << std::endl;
+	}
+	clear();
+}
 
-Request::Request(const ServerConfig *sc) : conf(sc) { clear(); }
+Request::Request(const ServerConfig *sc) : conf(sc)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UCYN "has been created" DEF << " my conf: " << conf << " instance adress: " << this << std::endl;
+	}
+	clear();
+}
 
-Request::Request(Request const &src) { *this = src; }
+Request::Request(Request const &src)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UYEL "has been copy created" DEF << std::endl;
+	}
+	*this = src;
+}
 
 Request::~Request(void) {}
 
 Request &Request::operator=(Request const &src)
 {
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UYEL "has been copy ASSIGNED created" DEF << std::endl;
+	}
 	if (this != &src)
 	{
 		this->method = src.method;
@@ -31,6 +60,7 @@ Request &Request::operator=(Request const &src)
 		this->multi_form = src.multi_form;
 		this->wanted_ranges = src.wanted_ranges;
 
+		this->conf = src.conf;
 		this->loc = src.loc;
 
 		set_state(src.get_state());
@@ -49,24 +79,24 @@ void Request::process(std::string request)
 		// std::cout << CYN "looping request state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-		case BEGIN:
-			clear();
-			set_state(LINE);
-			break;
-		case LINE:
-			parse_request_line(request);
-			break;
-		case HEADERS_REQ:
-			parse_request_headers(request);
-			break;
-		case CHUNK_BODY:
-			parse_chunk(request);
-			break;
-		case BODY:
-			parse_body(request);
-			break;
-		default:
-			request.clear();
+			case BEGIN:
+				clear();
+				set_state(LINE);
+				break;
+			case LINE:
+				parse_request_line(request);
+				break;
+			case HEADERS_REQ:
+				parse_request_headers(request);
+				break;
+			case CHUNK_BODY:
+				parse_chunk(request);
+				break;
+			case BODY:
+				parse_body(request);
+				break;
+			default:
+				request.clear();
 		}
 	}
 	// std::cout << *this << std::endl;
@@ -480,7 +510,7 @@ void Request::validade_request(void)
 	if (method == DELETE && !body.empty())
 		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
 
-	loc = conf->matchLocation(path_uri);
+	loc = conf->matchLocation(path_uri, method);
 	if (!loc)
 		throw(Request::ParseError("The page you're trying to access does not exists", NOT_FOUND));
 	if (Inspect::debug)
@@ -522,6 +552,8 @@ std::ostream &operator<<(std::ostream &out, const Request &src)
 	out << BLU "Headers..." DEF << std::endl;
 	for (map_strings::const_iterator it = src.headers.begin(); it != src.headers.end(); it++)
 		out << BLU "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
+	out << BLU "Body..." DEF;
+	out << " (size) " << src.body.size() << std::endl;
 	/*
 	if (!src.body.empty())
 	{

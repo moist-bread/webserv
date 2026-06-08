@@ -56,6 +56,9 @@ public:
 
 	std::string full_response;
 
+	Request *req;
+	const ServerConfig *conf;
+
 private:
 	Response(void);
 	void clear(bool all);
@@ -87,9 +90,6 @@ private:
 
 	// -- method HEAD
 	void method_head(void);
-	
-	Request *req;
-	const ServerConfig *conf;
 
 	t_response_state state;
 };

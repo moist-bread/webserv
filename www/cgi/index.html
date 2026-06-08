@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<title>CGI - Banana</title>
+</head>
+<body>
+	<div class="note-markers">
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<div class="page-paper green-strip shadow" >
+			<button onclick="history.forward()">go forward!</button>
+		</div>
+	</div>
+
+	<div class="text green-mark">Common Gateway Interface Examples</div>
+
+	<div style="display: flex; flex-wrap: wrap; justify-content: center;">
+
+		<div class="paper stack">
+			<form id="file_upload" action="/example_cgi.py" method="GET">
+				<h4 style="margin-top: 0px;">Sending a GET request with a Query in the request URI to the CGI</h4>
+				<div class="form-group">
+					<label for="query" style="padding-right: 15px">Query:</label>
+					<input type="text" id="query" name="query" required>
+				</div>
+				<div class="page-paper green-strip shadow" >
+					<button type="submit">Submit</button>
+				</div>
+			</form>
+		</div>
+
+
+		<div class="paper stack">
+			<form action="/example_cgi.py" method="POST">
+				<h4 style="margin-top: 0px;">Sending a POST request with the content in the request Body to the CGI</h4>
+				<div class="form-group">
+					<label for="body" style="padding-right: 15px">Body:</label>
+					<input type="text" id="body" name="body" required>
+				</div>
+				<div class="page-paper green-strip shadow" >
+					<button type="submit">Submit</button>
+				</div>
+			</form>
+		</div>
+
+		<div class="paper stack">
+			<form action="/tomoserv.py" method="GET">
+				<h4 style="margin-top: 0px;">Do you want to talk with this website?</h4>
+				<div class="form-group">
+					<label for="name" style="padding-right: 15px">Your Name:</label>
+					<input type="text" id="name" name="name" required>
+				</div>
+				<div class="form-group">
+					<label for="topic" style="padding-right: 15px">Topic:</label>
+					<input type="text" id="topic" name="topic" required>
+				</div>
+				<div class="page-paper green-strip shadow" >
+					<button type="submit">Submit</button>
+				</div>
+			</form>
+		</div>
+	
+	</div>
+
+	<br>
+	<br>
+
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			Common Gateway Interface, <b>CGI</b> for short, sample text.
+			<!-- For this Server we also <b>implemented Range request</b>, allowing for video streaming and more.<br>
+			<br>
+			The way it works is that when you try to play a video it will send a <b>GET request
+			that has a "Range" header.</b> The header will then specify what part of the content it wants to GET.
+			There are 4 ways that it can be formatted but let's go with the simplest example:<br>
+			<br>
+			<b>Range: bytes=0-</b><br>
+			<br>
+			What that means to the Server is that the Client wants all the bytes of the requested file
+			<b>from the byte 0 up until the end</b>. 
+			The Server can then respond with an amount of bytes but has to specify which bytes were they and how big is the whole content, for example:<br>
+			<br>
+			<b>Content-Range: bytes 0-100/5000</b><br>
+			<br>
+			Which means the request is sending all bytes from 0 until 100 and that the total is 5000.
+			Afterwards the Client can ask for the remaining bytes when it needs them. -->
+		</p>
+	</div>
+</body>
+</html>

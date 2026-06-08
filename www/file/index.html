@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/index.css" type="text/css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<title>File Management - Banana</title>
+</head>
+<body>
+	<div class="note-markers">
+		<a class="page-paper blue-strip shadow" href='/home'>
+			<p>back home...</p>
+		</a>
+		<div class="page-paper green-strip shadow" >
+			<button onclick="history.forward()">go forward!</button>
+		</div>
+	</div>
+
+	<div class="text yellow-mark">File Management Center</div>
+
+	<div class="paper stack">
+		<form id="basic_file_upload" action="/file" method="POST" enctype="multipart/form-data">
+			<h4 style="margin-top: 0px;">Basic file upload</h4>
+			<div class="form-group">
+				<label for="file_input" class="upload-container" id="uploadcontainer">
+					<label for="file_input">Select a file to upload</label>
+					<i class="material-icons" style="font-size: 100px;">file_open</i>
+					<input type="file" id="file_input" name="media" required>
+				</label>
+			</div>
+			<div class="page-paper yellow-strip shadow" >
+				<button type="submit">Submit</button>
+			</div>
+		</form>
+	</div>
+		
+	<div class="text yellow-mark">Preview or Delete any file</div>
+	<div class="paper stack" style="text-align: center;">
+		<div id="file-list">Loading files...</div>
+	</div>
+	
+	<br>
+	<br>
+
+	<div class="paper">
+		<h3><b><u>More about this page:</u></b></h3>
+		<p>
+			Unlike the Post a Picture page here the upload is made simply <b>via an Html form</b>, no special script.
+			So let's take a deeper loop at how the form sends it's content.
+			<br>
+			For starters to send a file or multiple inputs (e.g. text) your form needs to send it as a
+			multipart/form-data. The <b>multipart form-data</b> is sent in a </b>Request's body</b> and is structured as follows:<br>
+		</p>
+		<p class="highlight">
+			<b>------WebKitFormBoundaryAw0OjJFbA0LRxyB0</b><br>
+			Content-Disposition: form-data; name="media"; filename="example.png"<br>
+			Content-Type: image/png<br>
+			<br>
+			**bytes representing the image**<br>
+			<b>------WebKitFormBoundaryAw0OjJFbA0LRxyB0</b><br>
+			Content-Disposition: form-data; name="text"<br>
+			<br>
+			example text<br>
+			<b>------WebKitFormBoundaryAw0OjJFbA0LRxyB0--</b><br>
+		</p>
+		<p>
+			The main components are: the <b>Boundary String</b>, The <b>Headers for each part</b>
+			of the data and the <b>Data</b> itself.<br>
+			<br>
+			<b>Boundary String: </b> A string of up to 70 characters that serves as a <b>separator</b> for each part of the data
+			and as <b>footer</b> at the end. To know what the Boundary is you need to go check the Request Headers, not to be
+			confused with the multipart/form-data headers, where the Contente-Type header will indicate it.<br>
+			<br>
+			<i>Example:</i><br>
+			Content-Type: multipart/form-data; boundary=----Exampl3Aw0OjJFbA0LRxyB0<br>
+			<br>
+			<b>Multipart Headers: </b>These headers give information about the following Data, such as the
+			Content-Type or Content-Disposition<br>
+			<br>
+			<b>Data: </b>Acording to the headers we decide how to handle this data. For this server whenever
+			the Content-Disposition contains a "filename" parameter we <b>save the file</b> in the upload_store folder
+			defined in the configuration file and then <b>register that we saved it</b> in a "database" file in the
+			same folder, in a json format.<br>
+		</p>
+	</div>
+	<script>
+
+		async function load_files()
+		{
+			try
+			{
+				const response = await fetch("/uploads");
+				const text = await response.text();
+				if (!response.ok)
+					throw "Couldn't load the files...";
+
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(text, "text/html");
+				const links = Array.from(doc.querySelectorAll("li > a"));
+				if (links.length === 0)
+					throw "No files to load...";
+
+				const listContainer = document.getElementById("file-list");
+				listContainer.innerHTML = "";
+				links.forEach((link) => {
+					const href = link.getAttribute("href");
+					const name = link.textContent;
+					
+					if (href !== ".." && name !== "..") {
+						const card = document.createElement("div");
+						console.log(href);
+						card.className = "file-card";
+						card.innerHTML = `
+						<span>${name}</span>
+						<div class="actions" style="padding-bottom: 30px;">
+							<a href="${href}" target="_blank">Preview</a>
+							<button onclick="delete_file('${href}')" 
+							style="color: red; cursor: pointer; border: 1px solid red; background: none; border-radius: 4px; padding: 2px 8px; margin-left: 10px;">
+								Delete
+							</button>
+						</div>`;
+						listContainer.appendChild(card);
+					}
+				});
+			}
+			catch (error)
+			{
+				console.error("Error loading files:", error);
+				document.getElementById("file-list").innerHTML = error;
+			}
+		}
+
+		async function delete_file(file_name)
+		{
+			if (!confirm(`do you want to delete the following file? \"${file_name}\"`))
+				return;
+
+			try
+			{
+				const response = await fetch(`${file_name}`, {method: "DELETE"});
+				if (response.ok)
+				{
+					alert("File deleted successfully");
+					load_files();
+				}
+				else
+					throw response.status;
+			}
+			catch (error)
+			{
+				console.error("Error when trying to delete: ", error);
+				alert("Failed to delete file");
+			}
+		}
+
+		load_files();
+	</script>
+</body>
+</html>

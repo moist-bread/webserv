@@ -36,6 +36,7 @@ struct LocationConfig
 	t_status_code getReturnCode(void) const;
 	const std::string &getReturnUrl(void) const;
 	std::string getCgiExecutable(const std::string &extension) const;
+	bool isCgiPass() const;
 
 	//	Variables
 	std::string path;					  // e.g., "/images"
@@ -51,6 +52,7 @@ struct LocationConfig
 
 	// CGI execution
 	std::map<std::string, std::string> cgi; // Map extension to the executable (e.g., ".php" -> "/usr/bin/php-cgi")
+	bool CgiPass;
 };
 
 std::ostream &operator<<(std::ostream &out, LocationConfig const &source);

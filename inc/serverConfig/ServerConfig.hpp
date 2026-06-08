@@ -46,17 +46,18 @@ struct ServerConfig
 	const std::string &getRoot(void) const;
 	size_t getClientMaxBodySize(void) const;
 	std::string getErrorPage(t_status_code code) const;
+	const std::map<std::string, std::string> &getCgi(void) const;
 
-	const LocationConfig* matchLocation(const std::string& uri) const;
+	const LocationConfig* matchLocation(const std::string& uri, const t_method &method) const;
 
 	ListenAddress				listen;
 	std::vector<std::string>	serverNames;        // e.g., ["example.com", "www.example.com"]
-	std::string					root;
+	std::string					root_default;
 	size_t						clientMaxBodySize;  // Limit for uploads (e.g., 1048576 for 1MB)
 
-	// Default error pages
-	// Maps the HTTP error code to a file (e.g., 404 -> "/errors/404.html")
-	std::map<t_status_code, std::string>	errorPages;	// 400 - 599 
+	std::map<t_status_code, std::string>	errorPages;	// 400 - 599 // Maps the HTTP error code to a file (e.g., 404 -> "/errors/404.html")
+
+	std::map<std::string, std::string> 		cgi_default; // Map extension to the executable (e.g., ".php" -> "/usr/bin/php-cgi")
 
 	// The routes that belong to this server
 	std::vector<LocationConfig>	locations;
