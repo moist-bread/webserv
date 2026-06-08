@@ -29,16 +29,45 @@ namespace response_utils
 
 }
 
-Response::Response(void) : req(NULL), conf(NULL) { clear(true); }
+Response::Response(void) : req(NULL), conf(NULL)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Response ";
+		std::cout << UCYN "has been empty created" DEF << std::endl;
+	}
+	clear(true);
+}
 
-Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc) { clear(true); }
+Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Response ";
+		std::cout << UCYN "has been created" DEF << " my req: " << &req_ref << " my conf: " << sc << std::endl;
+	}
+	clear(true);
+}
 
-Response::Response(const Response &src) { *this = src; }
+Response::Response(const Response &src) : req(src.req)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Response ";
+		std::cout << UYEL "has been copy created" DEF << std::endl;
+	}
+	*this = src;
+}
 
 Response::~Response(void) {}
 
 Response &Response::operator=(const Response &src)
 {
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Response ";
+		std::cout << UYEL "has been copy ASSIGNED created" DEF << std::endl;
+	}
 	if (this != &src)
 	{
 		this->file_length = src.file_length;
@@ -55,7 +84,12 @@ Response &Response::operator=(const Response &src)
 		this->full_response = src.full_response;
 
 		// this->req = src.req; // when i uncomment this it segfaults, why
-		this->conf = src.conf;
+		if (Inspect::debug)
+		{
+			std::cout << GRN "the Response ";
+			std::cout << UYEL "has been inside copying conf: " DEF <<  src.conf  << std::endl;
+		}
+		// this->conf = src.conf;
 
 		set_state(src.get_state());
 	}

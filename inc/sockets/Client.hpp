@@ -19,7 +19,7 @@ public:
 	Response response;
 	CgiHandler cgi;
 
-	Client(void);
+	Client(void); // -------- THIS NEEDS TO BE REMOVED
 	Client(int fd, int lfd, const ServerConfig *sc);
 	Client(Client const &src);
 	~Client(void);

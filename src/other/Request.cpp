@@ -7,16 +7,45 @@
 
 #define URI_LIMIT 2000
 
-Request::Request(void) : conf(NULL) { clear(); }
+Request::Request(void) : conf(NULL)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UCYN "has been empty created" DEF << std::endl;
+	}
+	clear();
+}
 
-Request::Request(const ServerConfig *sc) : conf(sc) { clear(); }
+Request::Request(const ServerConfig *sc) : conf(sc)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UCYN "has been created" DEF << " my conf: " << conf << " instance adress: " << this << std::endl;
+	}
+	clear();
+}
 
-Request::Request(Request const &src) { *this = src; }
+Request::Request(Request const &src)
+{
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UYEL "has been copy created" DEF << std::endl;
+	}
+	*this = src;
+}
 
 Request::~Request(void) {}
 
 Request &Request::operator=(Request const &src)
 {
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Request ";
+		std::cout << UYEL "has been copy ASSIGNED created" DEF << std::endl;
+	}
 	if (this != &src)
 	{
 		this->method = src.method;

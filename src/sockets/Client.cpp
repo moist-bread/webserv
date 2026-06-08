@@ -6,6 +6,13 @@
 
 Client::Client(void) : serverConfig(NULL), request(serverConfig), response(request, serverConfig)
 {
+	// -------- THIS NEEDS TO BE REMOVED
+	if (Inspect::debug)
+	{
+		std::cout << RED "the Client ";
+		std::cout << "has been empty created" DEF << std::endl;
+		sleep (2);
+	}
 	updateLastActivity();
 }
 
@@ -40,6 +47,11 @@ Client::~Client(void)
 
 Client &Client::operator=(Client const &src)
 {
+	if (Inspect::debug)
+	{
+		std::cout << GRN "the Client ";
+		std::cout << UYEL "has been copy ASSIGNED created" DEF << std::endl;
+	}
 	if (this != &src)
 	{
 		this->_ClientFd = src._ClientFd;
