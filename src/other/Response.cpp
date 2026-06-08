@@ -83,13 +83,12 @@ Response &Response::operator=(const Response &src)
 
 		this->full_response = src.full_response;
 
-		// this->req = src.req; // when i uncomment this it segfaults, why
 		if (Inspect::debug)
 		{
 			std::cout << GRN "the Response ";
 			std::cout << UYEL "has been inside copying conf: " DEF <<  src.conf  << std::endl;
 		}
-		// this->conf = src.conf;
+		this->conf = src.conf;
 
 		set_state(src.get_state());
 	}
@@ -429,8 +428,10 @@ std::string Response::assemble_content_path(void)
 			std::string index;
 
 			// -- see which of the indexes is valid
-			for (size_t i = 0; i < req->loc->getIndexes().size() && index.empty(); i++)
+			for (size_t i = 0; i < req->loc->getIndexes().size(); i++)
 			{
+				// std::cout << "which index is valid: " <<  (path + "/" + (*req).loc->getIndexes()[i]) << std::endl;
+				index = req->loc->getIndexes()[i]; // -- will keep the last listed index 
 				if (access((path + "/" + req->loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
 				struct stat index_stat;
@@ -438,7 +439,8 @@ std::string Response::assemble_content_path(void)
 					continue;
 				if (S_ISDIR(index_stat.st_mode))
 					continue;
-				index = req->loc->getIndexes()[i];
+				break ;
+				// index = req->loc->getIndexes()[i];
 			}
 			if (!index.empty())
 			{
@@ -451,9 +453,9 @@ std::string Response::assemble_content_path(void)
 	}
 	if (Inspect::debug)
 		std::cout << RED "assembled path: " DEF << path << std::endl;
-	struct stat index_stat;
-	if (stat(path.c_str(), &index_stat) != 0 || S_ISDIR(index_stat.st_mode))
-		path.clear();
+	// struct stat index_stat;
+	// if (stat(path.c_str(), &index_stat) != 0 || S_ISDIR(index_stat.st_mode))
+	// 	path.clear();
 	req->path_uri = path;
 	return (path);
 }

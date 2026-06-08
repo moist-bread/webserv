@@ -151,8 +151,8 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 			else
 				location.root = server.root_default;
 		}
-		if (location.index.empty())
-			location.index.push_back("index.html");
+		// if (location.index.empty())
+		// 	location.index.push_back("index.html");
 		if (location.autoindex == -1)
 			location.autoindex = false;
 		if (location.allowedMethods.empty())

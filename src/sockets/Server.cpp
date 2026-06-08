@@ -136,6 +136,25 @@ void Server::removeClient(int fd, size_t &index, const t_remove_reason &reason)
 	index--;
 }
 
+void Server::closeCgiConnection(const int &fd, size_t *pollfds_idx)
+{
+	close(fd);
+	_cgiMap.erase(fd);
+	_pollfds.erase(_pollfds.begin() + *pollfds_idx);
+	(*pollfds_idx)--;
+}
+
+void Server::find_and_change_pollfd_event(const int &fd, short event)
+{
+	for (size_t i = 0; i < _pollfds.size(); i++)
+	{
+		if (_pollfds[i].fd == fd)
+		{
+			_pollfds[i].events = event;
+			break;
+		}
+	}
+}
 
 /*
 Descobre qual ServerConfig responde ao pedido com base no ListenFd en Host: Header
@@ -271,115 +290,57 @@ int Server::responder(int clientFd, const std::string &data)
 void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 {
 	int clientFd = _cgiMap[fd];
-
-
-	// !! FOUND PROBLEM: ele aqui cria um cliente novo VAZIO quando o cliente
-	// !! que estava associado ao CGI deixa de existir através do operador [] do mapa
-
-	// -- possivel solução
-	if (_clients.find(clientFd) == _clients.end())
+	try
 	{
-		if (Inspect::debug)
+		Client &cl = get_corresponding_client(clientFd);
+		cl.cgi.setCgiActivityStart(std::time(NULL));
+
+		if (_pollfds[*pollfds_idx].revents & POLLERR)
 		{
-			std::cout << RED "Cliente associated with this cgi has been disconnected..." << std::endl;
+			Inspect::inspect_cgi_activity("failed to execute due to a POLLERR error", clientFd);
+			closeCgiConnection(fd, pollfds_idx);
+			cl.response.status_code = INTERNAL_SERVER_ERROR;
+			find_and_change_pollfd_event(clientFd, POLLOUT);
+			return;
 		}
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--;
-		for (size_t j = 0; j < _pollfds.size(); j++)
+
+		char buffer[READ_BUFFER_SIZE];
+		int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
+
+		if (bytesRead > 0) // -- recieved content -> send it and wait for more
 		{
-			if (_pollfds[j].fd == clientFd)
+			cl.response.cgi_reply = std::string(buffer, bytesRead);
+		}
+		else if (bytesRead == 0) // -- recieved EOF -> send to signal that the cgi ended
+		{
+			cl.cgi.setCgiActivityStart(VALUE_NOT_SET);
+			cl.response.cgi_reply.clear();
+			closeCgiConnection(fd, pollfds_idx);
+
+			if (!cl.response.is_chunked)
 			{
-				_pollfds[j].events = POLLOUT;
-				break;
+				Inspect::inspect_cgi_activity("failed to execute due to an error", clientFd);
+				cl.response.status_code = INTERNAL_SERVER_ERROR;
 			}
+			else
+				Inspect::inspect_cgi_activity("finished execution", clientFd);
 		}
-		return;
-	}
-	_clients[clientFd].cgi.setCgiActivityStart(std::time(NULL));
-
-	// Aconteceu algo de errado com o pipe se entrou aqui ou o processo fez KABUM
-	if (_pollfds[*pollfds_idx].revents & POLLERR)
-	{
-		Inspect::inspect_cgi_activity("failed to execute due to a POLLERR error", clientFd);
-
-		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--;
-		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-
-		// !! switch to sending response (POLLOUT)
-		for (size_t j = 0; j < _pollfds.size(); j++)
+		else // -- read failed -> send error response
 		{
-			if (_pollfds[j].fd == clientFd)
-			{
-				_pollfds[j].events = POLLOUT;
-				break;
-			}
+			cl.cgi.setCgiActivityStart(VALUE_NOT_SET);
+			Inspect::inspect_cgi_activity("failed to execute due to a read error", clientFd);
+			closeCgiConnection(fd, pollfds_idx);
+			cl.response.status_code = INTERNAL_SERVER_ERROR;
 		}
-		return;
+		
 	}
-
-	char buffer[READ_BUFFER_SIZE];
-	int bytesRead = read(fd, buffer, READ_BUFFER_SIZE);
-
-	if (bytesRead > 0)
+	catch (const std::runtime_error& e)
 	{
-		// -- recieved content -> send it and wait for more
-		_clients[clientFd].response.cgi_reply = std::string(buffer, bytesRead);
+		closeCgiConnection(fd, pollfds_idx);
+		Inspect::inspect_client_activity(e.what(), clientFd, 0);
 	}
-	else if (bytesRead == 0)
-	{
-		// -- recieved EOF -> send to signal that the cgi ended
-		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
-		_clients[clientFd].response.cgi_reply.clear();
-
-		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--; // Ajustar o índice porque apagámos um elemento do vector
-
-		/*
-			Erro de antes: como o python estava a crashar o pipeOUT estava a receber EOF com 0 bytes
-			O cliente acordava todo feliz a pensar que tinha uma response so que ela tinha 0 bytes!
-
-			Fix: agora se o full_response estiver vazio apos o CGI terminar significa que o script
-			falhou silenciosamente e ainda recebe um INTERNAL_SERVER_ERROR
-		*/
-		if (!_clients[clientFd].response.is_chunked)
-		{
-			Inspect::inspect_cgi_activity("failed to execute due to an error", clientFd);
-			_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-		}
-		Inspect::inspect_cgi_activity("finished execution", clientFd);
-	}
-	else
-	{
-		// -- read failed -> send error response
-		_clients[clientFd].cgi.setCgiActivityStart(VALUE_NOT_SET);
-		Inspect::inspect_cgi_activity("failed to execute due to a read error", clientFd);
-
-		// !! close cgi connection
-		close(fd);
-		_cgiMap.erase(fd);
-		_pollfds.erase(_pollfds.begin() + *pollfds_idx);
-		(*pollfds_idx)--;
-		_clients[clientFd].response.status_code = INTERNAL_SERVER_ERROR;
-	}
-
-	// !! switch to sending response (POLLOUT)
-	for (size_t j = 0; j < _pollfds.size(); j++)
-	{
-		if (_pollfds[j].fd == clientFd)
-		{
-			_pollfds[j].events = POLLOUT;
-			break;
-		}
-	}
+	
+	find_and_change_pollfd_event(clientFd, POLLOUT);
 }
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
@@ -392,66 +353,59 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		return (removeClient(fd, *pollfds_idx, RECV_FAIL));
 
 	std::string rec = std::string(tmp, ret);
-	
-	/* std::cout << std::endl;
-	std::cout << "Raw Request:" << std::endl;
-	std::cout << rec << std::endl; */
 	if (Inspect::debug)
+	{
 		std::cout << "Bytes recebidos: " << ret << std::endl;
+		/* std::cout << std::endl;
+		std::cout << "Raw Request:" << std::endl;
+		std::cout << rec << std::endl; */
+	}
 
-	_clients[fd].response.status_code = OK;
 	try
 	{
-		_clients[fd].request.process(rec);
-		
-		// std::string hostHeader = _clients[fd].request.headers["host"];
-		// size_t colon = hostHeader.find(':');
-		// if (colon != std::string::npos)
-		// 	hostHeader = hostHeader.substr(0, colon);
-
-		// _clients[fd].serverConfig = resolveServerConfig(_clients[fd].listenFd, hostHeader);
-		// if (_clients[fd].serverConfig)
-		// 	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' resolveu para porta=" << _clients[fd].serverConfig->port << std::endl;
-		// else
-		// 	std::cout << "[DEBUG] resolveServerConfig — host='" << hostHeader << "' NAO resolveu!" << std::endl;
-	}
-	catch (const Request::ParseError &e)
-	{
-		Inspect::inspect_request_activity(e.what(), _clients[fd].request);
-		_clients[fd].request.set_state(END);
-		_clients[fd].response.status_code = e.request_status;
-		_pollfds[*pollfds_idx].events = POLLOUT;
-		return;
-	}
-
-	_clients[fd].updateLastActivity();
-
-	if (_clients[fd].request.get_state() != END)
-	{
-		// std::cout << BLU "Missing request parts, waiting for more...\n" DEF;
-		return;
-	}
-
-
-	Inspect::inspect_request_activity("", _clients[fd].request);
-	// start the cgi execution right away
-	if (!_clients[fd].request.loc->getCgiExecutable(_clients[fd].request.file_extension).empty())
-	{
+		Client &cl = get_corresponding_client(fd);
+		cl.response.status_code = OK;
 		try
 		{
-			Inspect::inspect_cgi_activity("started execution", fd);
-			_clients[fd].cgi.process(_clients[fd].request);
-			int contentOfCgiFd = _clients[fd].cgi.getPipeOutReadFd();
-			PopulatePollInfo(contentOfCgiFd);
-			_cgiMap.insert(std::make_pair(contentOfCgiFd, _clients[fd].GetClientFd()));
-			_pollfds[*pollfds_idx].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+			cl.request.process(rec);
+		}
+		catch (const Request::ParseError &e)
+		{
+			Inspect::inspect_request_activity(e.what(), cl.request);
+			cl.request.set_state(END);
+			cl.response.status_code = e.request_status;
+			_pollfds[*pollfds_idx].events = POLLOUT;
 			return;
 		}
-		catch (const CgiHandler::CgiExecutionFail &e)
+
+		cl.updateLastActivity();
+		if (cl.request.get_state() != END)
+			return;
+
+		Inspect::inspect_request_activity("", cl.request);
+		
+		if (!cl.request.loc->getCgiExecutable(cl.request.file_extension).empty()) // -- start the cgi execution right away
 		{
-			Inspect::inspect_cgi_activity(e.what(), fd);
-			_clients[fd].response.status_code = INTERNAL_SERVER_ERROR;
+			try
+			{
+				Inspect::inspect_cgi_activity("started execution", fd);
+				cl.cgi.process(cl.request);
+				int contentOfCgiFd = cl.cgi.getPipeOutReadFd();
+				PopulatePollInfo(contentOfCgiFd);
+				_cgiMap.insert(std::make_pair(contentOfCgiFd, cl.GetClientFd()));
+				_pollfds[*pollfds_idx].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
+				return;
+			}
+			catch (const CgiHandler::CgiExecutionFail &e)
+			{
+				Inspect::inspect_cgi_activity(e.what(), fd);
+				cl.response.status_code = INTERNAL_SERVER_ERROR;
+			}
 		}
+	}
+	catch(const std::runtime_error& e)
+	{
+		Inspect::inspect_client_activity(e.what(), fd, 0);
 	}
 
 	_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
@@ -459,48 +413,75 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)
 {
-	_clients[fd].response.process();
-	int bytesWritten = responder(fd, _clients[fd].response.full_response);
-	if (bytesWritten > 0)
+	try
 	{
-		// std::cout << BLU "response sent..." DEF << std::endl;
-		_clients[fd].updateLastActivity();
-		_clients[fd].response.full_response.erase(0, bytesWritten);
-		if (_clients[fd].response.full_response.empty())
+		Client &cl = get_corresponding_client(fd);
+		cl.response.process();
+		
+		int bytesWritten = responder(fd, cl.response.full_response);
+		if (bytesWritten > 0)
 		{
-			// only continue onto the next request after being able to
-			// send everything from the previously processed request
-			Inspect::inspect_response_activity("", _clients[fd].response);
-			_clients[fd].response.set_state(PREP);
-			_pollfds[*pollfds_idx].events = POLLIN;
+			// std::cout << BLU "response sent..." DEF << std::endl;
+			cl.updateLastActivity();
+			cl.response.full_response.erase(0, bytesWritten);
+			if (cl.response.full_response.empty())
+			{
+				// only continue onto the next request after being able to
+				// send everything from the previously processed request
+				Inspect::inspect_response_activity("", cl.response);
+				cl.response.set_state(PREP);
+				_pollfds[*pollfds_idx].events = POLLIN;
+			}
+		}
+		else if (bytesWritten < 0)
+		{
+			removeClient(fd, *pollfds_idx, WRITE_FAIL);
 		}
 	}
-	else if (bytesWritten < 0)
+	catch(const std::runtime_error& e)
 	{
-		removeClient(fd, *pollfds_idx, WRITE_FAIL);
+		Inspect::inspect_client_activity(e.what(), fd, 0);
 	}
 }
 
 void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 {
-	if (_clients[fd].response.headers.find("Connection") != _clients[fd].response.headers.end())
-		if (_clients[fd].response.headers["Connection"] == "close")
-			return (removeClient(fd, *pollfds_idx, CLOSE_CONNECTION));
+	try
+	{
+		Client &cl = get_corresponding_client(fd);
 
-	// Chegámos ao fim do processamento deste FD nesta volta.
-	// Vamos verificar se ele está "morto" há demasiado tempo.
-	time_t now = std::time(NULL);
-	time_t seconds_idle = std::difftime(now, _clients[fd].GetLastActivity());
+		if (cl.response.headers.find("Connection") != cl.response.headers.end())
+			if (cl.response.headers["Connection"] == "close")
+				return (removeClient(fd, *pollfds_idx, CLOSE_CONNECTION));
 
-	// Vamos definir TIMEOUT_TIME segundos como o limite máximo de inatividade
-	if (seconds_idle > TIMEOUT_TIME)
-		return (removeClient(fd, *pollfds_idx, TIMEOUT));
+		time_t now = std::time(NULL);
+		time_t seconds_idle = std::difftime(now, cl.GetLastActivity());
 
-	if (_clients[fd].cgi.getCgiActivityStart() == VALUE_NOT_SET)
-		return;
-	seconds_idle = std::difftime(now, _clients[fd].cgi.getCgiActivityStart());
-	if (seconds_idle > TIMEOUT_TIME)
-		return (removeClient(fd, *pollfds_idx, TIMEOUT_CGI));
+		if (seconds_idle > TIMEOUT_TIME)
+			return (removeClient(fd, *pollfds_idx, TIMEOUT));
+
+		if (cl.cgi.getCgiActivityStart() == VALUE_NOT_SET)
+			return;
+		seconds_idle = std::difftime(now, cl.cgi.getCgiActivityStart());
+		if (seconds_idle > TIMEOUT_TIME)
+			return (removeClient(fd, *pollfds_idx, TIMEOUT_CGI));
+	}
+	catch(const std::runtime_error& e)
+	{
+		Inspect::inspect_client_activity(e.what(), fd, 0);
+	}
+}
+
+/// @brief This function throws!!
+/// @return The client that is paired with FD in the _clients map
+Client &Server::get_corresponding_client(const int &fd)
+{
+	std::map<int,Client>::iterator it = _clients.find(fd);
+
+	if (it == _clients.end())
+		throw(std::runtime_error("not been found in Clients map"));
+	else
+		return(it->second);
 }
 
 const std::map<int, const ServerConfig*> &Server::get_fdToServerConfig() const { return (_fdToServerConfig); };
