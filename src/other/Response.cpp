@@ -121,7 +121,7 @@ void Response::preparations_for_response(void)
 	else if (!this->conf)
 		throw(std::runtime_error("Response was initialized without associated ServerConfig"));
 
-	(*req).set_state(BEGIN);
+	req->set_state(BEGIN);
 
 	if (!is_chunked && !cgi_reply.empty() && !response_utils::is_error(status_code))
 		return (set_state(CGI));
@@ -129,19 +129,19 @@ void Response::preparations_for_response(void)
 		return (set_state(CHUNK));
 
 	clear(true);
-	if ((*req).protocol != UNSUPPORTED_PROTOCOL)
-		protocol = (*req).protocol;
+	if (req->protocol != UNSUPPORTED_PROTOCOL)
+		protocol = req->protocol;
 
-	if (!(*req).loc)
+	if (!req->loc)
 	{
 		if (!response_utils::is_error(status_code))
 			status_code = NOT_FOUND;
 	}
-	else if ((*req).loc->isRedirect())
+	else if (req->loc->isRedirect())
 	{
 		// !! this isn't working properly yet
-		headers["Location"] = (*req).loc->getReturnUrl();
-		status_code = (*req).loc->getReturnCode();
+		headers["Location"] = req->loc->getReturnUrl();
+		status_code = req->loc->getReturnCode();
 		return (set_state(HEADERS_RESP));
 	}
 	
@@ -150,15 +150,15 @@ void Response::preparations_for_response(void)
 
 void Response::execute_methods(void)
 {
-	if (response_utils::is_error(status_code) && (*req).method == HEAD)
+	if (response_utils::is_error(status_code) && req->method == HEAD)
 		return(set_state(HEADERS_RESP));
 
 
 	if (response_utils::is_error(status_code))
-		(*req).method = GET;
+		req->method = GET;
 	try
 	{
-		switch ((*req).method)
+		switch (req->method)
 		{
 			case GET:
 				method_get();
@@ -181,7 +181,7 @@ void Response::execute_methods(void)
 	{
 		Inspect::inspect_response_activity(e.what(), *this);
 		status_code = e.response_status;
-		(*req).wanted_ranges.clear();
+		req->wanted_ranges.clear();
 		error_response();
 	}
 	set_state(HEADERS_RESP);
@@ -253,8 +253,8 @@ void Response::chunk_response(void)
 
 void Response::set_response_headers(void)
 {
-	if ((*req).wanted_ranges.size() == 1)
-		headers["Content-Range"] = response_utils::create_header_content_range((*req).wanted_ranges[0], status_code, file_length);
+	if (req->wanted_ranges.size() == 1)
+		headers["Content-Range"] = response_utils::create_header_content_range(req->wanted_ranges[0], status_code, file_length);
 	else if (status_code == RANGE_NOT_SATISFIABLE)
 		headers["Content-Range"] = response_utils::create_header_content_range(std::pair<int, int>(VALUE_NOT_SET, VALUE_NOT_SET), status_code, file_length);
 
@@ -270,20 +270,20 @@ void Response::set_response_headers(void)
 	if (!body.empty())
 	{
 		struct stat sb;
-		if (stat((*req).path_uri.c_str(), &sb) != -1)
+		if (stat(req->path_uri.c_str(), &sb) != -1)
 			headers["Last-Modified"] = response_utils::date_format(sb.st_mtime);
 
-		if ((*req).wanted_ranges.size() < 2 && !is_chunked)
-			headers["Content-Type"] = response_utils::define_content_type((*req).file_extension);
-		else if ((*req).wanted_ranges.size() > 1)
+		if (req->wanted_ranges.size() < 2 && !is_chunked)
+			headers["Content-Type"] = response_utils::define_content_type(req->file_extension);
+		else if (req->wanted_ranges.size() > 1)
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
 	}
 
 	// close, else it will continue trying to send content
 	if (status_code == CONTENT_TOO_LARGE)
 		headers["Connection"] = "close";
-	else if ((*req).headers.find("connection") != (*req).headers.end())
-		headers["Connection"] = (*req).headers["connection"];
+	else if (req->headers.find("connection") != req->headers.end())
+		headers["Connection"] = req->headers["connection"];
 	else
 		headers["Connection"] = "keep-alive";
 
@@ -310,7 +310,7 @@ void Response::method_get(void)
 	if (response_utils::is_error(status_code))
 		return (error_response());
 
-	if ((*req).loc && (*req).loc->isAutoIndex((*req).path_uri))
+	if (req->loc && req->loc->isAutoIndex(req->path_uri))
 	{
 		body = autoindexing_page();
 		return;
@@ -320,7 +320,7 @@ void Response::method_get(void)
 	{
 		// ---------------- see if 404 is really the only option
 		throw(Response::CreateError("File did not open", NOT_FOUND));
-		// if ((*req).file_extension == "html")
+		// if (req->file_extension == "html")
 		//else
 		//	throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
 	}
@@ -330,10 +330,10 @@ void Response::method_get(void)
 		int len = file.tellg();
 		file.seekg(0, file.beg);
 
-		if (!(*req).wanted_ranges.empty())
+		if (!req->wanted_ranges.empty())
 		{
 			file_length = len;
-			body = create_range_response_body(file, (*req).wanted_ranges);
+			body = create_range_response_body(file, req->wanted_ranges);
 		}
 		else
 			body = to_str(file.rdbuf());
@@ -343,7 +343,7 @@ void Response::method_get(void)
 
 void Response::error_response(void)
 {
-	(*req).file_extension = "html";
+	req->file_extension = "html";
 	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
 	{
@@ -359,11 +359,11 @@ void Response::error_response(void)
 
 std::string Response::autoindexing_page(void) const
 {
-	DIR *d = opendir(((*req).loc->getRoot() + (*req).path_uri.substr((*req).loc->getPath().length())).c_str());
+	DIR *d = opendir((req->loc->getRoot() + req->path_uri.substr(req->loc->getPath().length())).c_str());
 	if (!d)
 		throw(Response::CreateError("Could not find desired folder", NOT_FOUND));
 
-	std::string indexing_page = response_utils::directory_listing(d, conf->getServerUrl(), (*req).path_uri);
+	std::string indexing_page = response_utils::directory_listing(d, conf->getServerUrl(), req->path_uri);
 	closedir(d);
 	return (indexing_page);
 }
@@ -373,7 +373,7 @@ std::string Response::assemble_content_path(void)
 	std::string path;
 	if (response_utils::is_error(status_code))
 	{
-		(*req).file_extension = "html";
+		req->file_extension = "html";
 		path = conf->getErrorPage(status_code);
 		if (path.empty())
 			return (path);
@@ -381,27 +381,27 @@ std::string Response::assemble_content_path(void)
 	}
 	else
 	{
-		path = (*req).loc->getRoot();
-		std::string remaining_uri = (*req).path_uri.substr((*req).loc->getPath().length());
+		path = req->loc->getRoot();
+		std::string remaining_uri = req->path_uri.substr(req->loc->getPath().length());
 		if (!remaining_uri.empty() && remaining_uri.at(0) == '/')
 			remaining_uri.erase(0, 1);
 		path.append(remaining_uri);
 		
-		if ((*req).file_extension == "html")
+		if (req->file_extension == "html")
 		{
 			std::string index;
 
 			// -- see which of the indexes is valid
-			for (size_t i = 0; i < (*req).loc->getIndexes().size() && index.empty(); i++)
+			for (size_t i = 0; i < req->loc->getIndexes().size() && index.empty(); i++)
 			{
-				if (access((path + "/" + (*req).loc->getIndexes()[i]).c_str(), R_OK) != 0)
+				if (access((path + "/" + req->loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
 				struct stat index_stat;
-				if (stat((path + "/" + (*req).loc->getIndexes()[i]).c_str(), &index_stat) != 0)
+				if (stat((path + "/" + req->loc->getIndexes()[i]).c_str(), &index_stat) != 0)
 					continue;
 				if (S_ISDIR(index_stat.st_mode))
 					continue;
-				index = (*req).loc->getIndexes()[i];
+				index = req->loc->getIndexes()[i];
 			}
 			if (!index.empty())
 			{
@@ -417,7 +417,7 @@ std::string Response::assemble_content_path(void)
 	struct stat index_stat;
 	if (stat(path.c_str(), &index_stat) != 0 || S_ISDIR(index_stat.st_mode))
 		path.clear();
-	(*req).path_uri = path;
+	req->path_uri = path;
 	return (path);
 }
 
@@ -449,7 +449,7 @@ std::string Response::multiple_range(std::ifstream &file, const vector2 &ranges)
 	for (size_t i = 0; i < ranges.size(); i++)
 	{
 		content += "--" + boundary + CRLF;
-		content += "Content-Type: " + to_str(response_utils::define_content_type((*req).file_extension));
+		content += "Content-Type: " + to_str(response_utils::define_content_type(req->file_extension));
 		content += CRLF;
 		content += "Content-Range: " + response_utils::create_header_content_range(ranges[i], OK, file_length);
 		content += CRLF;
@@ -486,31 +486,31 @@ std::string Response::single_range(std::ifstream &file, const std::pair<int, int
 
 void Response::method_post(void)
 {
-	std::string path = (*req).loc->getUploadStore() + "database";
+	std::string path = req->loc->getUploadStore() + "database";
 	
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
 		throw(Response::CreateError("Was unable to open database file", INTERNAL_SERVER_ERROR));
 
-	if (!(*req).json.empty())
+	if (!req->json.empty())
 		handle_application_form();
-	else if (!(*req).multi_form.empty())
+	else if (!req->multi_form.empty())
 		handle_multipart_form();
 	else
 	{
-		body = (*req).body;
-		(*req).file_extension = "html";
+		body = req->body;
+		req->file_extension = "html";
 	}
 	output << body;
 	output.close();
-	headers["Location"] = (*req).path_uri;
+	headers["Location"] = req->path_uri;
 }
 
 void Response::handle_application_form(void)
 {
-	body = (*req).json + CRLF;
-	(*req).file_extension = "json";
+	body = req->json + CRLF;
+	req->file_extension = "json";
 
 	// will make the client request to a redirection location
 	status_code = FOUND;
@@ -520,7 +520,7 @@ void Response::handle_multipart_form(void)
 {
 	map_strings json_values;
 
-	for (std::vector<MultiForm>::iterator it = (*req).multi_form.begin(); it != (*req).multi_form.end(); it++)
+	for (std::vector<MultiForm>::iterator it = req->multi_form.begin(); it != req->multi_form.end(); it++)
 	{
 		map_strings::iterator elem_name = (*it).content_disposition.find("name");
 		std::string name = "name";
@@ -531,7 +531,7 @@ void Response::handle_multipart_form(void)
 		if (f_name != (*it).content_disposition.end())
 		{
 			// -- see if the uploads folder exists
-			std::string path = (*req).loc->getUploadStore();
+			std::string path = req->loc->getUploadStore();
 			
 			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // -- use of mkdir is not allowed
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
@@ -574,14 +574,14 @@ void Response::handle_multipart_form(void)
 		}
 		body += "}" CRLF;
 	}
-	(*req).file_extension = "html";
+	req->file_extension = "html";
 	status_code = FOUND;
 }
 
 void Response::method_delete(void)
 {
 	// assemble the content path to delete
-	std::string file_name = (*req).loc->getRoot() + (*req).path_uri.substr((*req).loc->getPath().length());
+	std::string file_name = req->loc->getRoot() + req->path_uri.substr(req->loc->getPath().length());
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1)
@@ -612,7 +612,7 @@ void Response::method_head(void)
 	{
 		Inspect::inspect_response_activity(e.what(), *this);
 		status_code = e.response_status;
-		(*req).wanted_ranges.clear();
+		req->wanted_ranges.clear();
 		body.clear();
 	}
 	
