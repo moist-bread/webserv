@@ -151,6 +151,9 @@ int CgiHandler::executeCgi()
 	if (InitPipes() == -1)
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
+	if (writeBodyToCgiInput() == -1)
+		throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
+
 	this->_pid = fork();
 	if (this->_pid == -1)
 		throw(CgiHandler::CgiExecutionFail("fork failure"));
@@ -158,14 +161,14 @@ int CgiHandler::executeCgi()
 	{
 		close(this->_pipeIn[0]);
 		close(this->_pipeOut[1]);
-		if (writeBodyToCgiInput() == -1)
-		{
-			kill(this->_pid,SIGKILL);
-			int status;
-			waitpid(this->_pid,&status,0);
-			this->_pid = 0;
-			throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
-		}
+		// if (writeBodyToCgiInput() == -1)
+		// {
+		// 	kill(this->_pid,SIGKILL);
+		// 	int status;
+		// 	waitpid(this->_pid,&status,0);
+		// 	this->_pid = 0;
+		// 	throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
+		// }
 		
 	}
 	else if (this->_pid == 0)

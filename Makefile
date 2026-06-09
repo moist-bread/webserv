@@ -86,6 +86,9 @@ debug: fclean
 	make all DEBUG=0
 	./$(NAME) config_files/nginx.conf
 
+test: all
+	./$(NAME) config_files/tester.conf
+
 # =====>┊( STANDARD RULES )┊
 clean:
 	$(M_REMOBJS)
