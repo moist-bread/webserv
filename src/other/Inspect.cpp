@@ -15,7 +15,7 @@ void Inspect::inspect_server_activity(const std::string &msg, const Server &sv)
 {
 	write_curr_time();
 
-	std::cout << MAG "Server has " << msg << ";";
+	std::cout << MAG "Server has " << msg << ";" DEF;
 	for (std::map<int, const ServerConfig*>::const_iterator it = sv.get_fdToServerConfig().begin(); it != sv.get_fdToServerConfig().end(); it++)
 	{
 		std::cout << " http://";

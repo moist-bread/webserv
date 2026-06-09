@@ -213,23 +213,23 @@ void Server::launch()
 				continue;
 			}
 
-			// --- CASO 1: NOVA CONEXÃO ---
+			// --- NOVA CONEXÃO ---
 			if (isServerSocket(fd) && (_pollfds[i].revents & POLLIN))
 				accepter(fd);
 
-			// --- CASO X: CGI ---
+			// --- CGI ---
 			else if (_cgiMap.find(fd) != _cgiMap.end() && (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR)))
 				recieveCgiOutput(fd, &i);
 
-			// --- CASO 2: LEITURA (CLIENTE MANDA REQUEST) ---
+			// --- LEITURA (CLIENTE MANDA REQUEST) ---
 			else if (_pollfds[i].revents & (POLLIN | POLLHUP | POLLERR))
 				recieveClientRequest(fd, &i);
 
-			// --- CASO 3: ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
+			// --- ESCRITA (SERVIDOR ENVIANDO RESPOSTA) ---
 			if (_pollfds[i].revents & POLLOUT)
 				sendClientResponse(fd, &i);
 
-			// --- CASO 4: DEFESA CONTRA TIMEOUTS ---
+			// --- DEFESA CONTRA TIMEOUTS ---
 			if (!isServerSocket(fd) && _clients.find(fd) != _clients.end())
 				inactivityTimeout(fd, &i);
 		}

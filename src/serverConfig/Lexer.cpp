@@ -9,46 +9,6 @@
 # include <sys/stat.h>
 
 /**
- * @brief Private default constructor (unused)
- * 
- * This constructor is private to prevent instantiation of the Lexer class.
- * Since all methods are static, creating instances is unnecessary and prevented.
- */
-Lexer::Lexer(void) {}
-
-/**
- * @brief Copy constructor (no-op).
- *
- * Lexer is a static utility type; copying is not meaningful. The definition
- * exists to satisfy the rule-of-three but intentionally performs no work.
- *
- * @param src Source instance (ignored).
- */
-Lexer::Lexer(Lexer const &src) { (void)src; }
-
-/**
- * @brief Destructor (trivial).
- *
- * Lexer has no runtime-owned resources; destructor is defaulted.
- */
-Lexer::~Lexer(void) {}
-
-/**
- * @brief Copy assignment operator (no-op).
- *
- * The operator is defined to prevent accidental copying semantics. It ignores
- * the source and returns `*this`.
- *
- * @param src Source instance (ignored).
- * @return Reference to this instance.
- */
-Lexer &Lexer::operator=(Lexer const &src)
-{
-	(void)src;
-	return (*this);
-}
-
-/**
  * @brief Tokenizes a configuration file into tokens
  * 
  * Opens and reads the specified file line by line, parsing each line into tokens.

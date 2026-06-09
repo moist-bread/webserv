@@ -2,9 +2,7 @@
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <sstream>
-#include <algorithm>
-#include <map>
+#include <algorithm> // find
 
 /**
  * @brief Default constructor.
@@ -45,7 +43,6 @@ Config &Config::operator=(Config const &src)
 void Config::load(const std::string &filePath)
 {
 	std::vector<t_token> tokenFile = Lexer::tokenizeFile(filePath);
-	// * std::cout << tokenFile << std::endl; -> PRINT TOKENS;
 
 	_servers = ConfigParser(tokenFile).parse();
 }
