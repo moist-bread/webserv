@@ -56,7 +56,6 @@ Server &Server::operator=(Server const &source)
 	return (*this);
 }
 
-
 void Server::SetupPorts()
 {
     const std::vector<ServerConfig>& servers = _config.getallServers();
@@ -144,13 +143,13 @@ void Server::closeCgiConnection(const int &fd, size_t *pollfds_idx)
 	(*pollfds_idx)--;
 }
 
-void Server::find_and_change_pollfd_event(const int &fd, short event)
+void Server::switchToPollout(const int &fd)
 {
 	for (size_t i = 0; i < _pollfds.size(); i++)
 	{
 		if (_pollfds[i].fd == fd)
 		{
-			_pollfds[i].events = event;
+			_pollfds[i].events = POLLOUT;
 			break;
 		}
 	}
@@ -300,7 +299,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 			Inspect::inspect_cgi_activity("failed to execute due to a POLLERR error", clientFd);
 			closeCgiConnection(fd, pollfds_idx);
 			cl.response.status_code = INTERNAL_SERVER_ERROR;
-			find_and_change_pollfd_event(clientFd, POLLOUT);
+			switchToPollout(clientFd);
 			return;
 		}
 
@@ -340,7 +339,7 @@ void Server::recieveCgiOutput(int fd, size_t *pollfds_idx)
 		Inspect::inspect_client_activity(e.what(), clientFd, 0);
 	}
 	
-	find_and_change_pollfd_event(clientFd, POLLOUT);
+	switchToPollout(clientFd);
 }
 
 void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
@@ -408,7 +407,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 		Inspect::inspect_client_activity(e.what(), fd, 0);
 	}
 
-	_pollfds[*pollfds_idx].events = POLLOUT; // switch to sending
+	switchToPollout(fd); // switch to sending
 }
 
 void Server::sendClientResponse(int fd, size_t *pollfds_idx)

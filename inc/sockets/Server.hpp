@@ -40,7 +40,6 @@ private:
 
 	void PopulatePollInfo(int fd);
 	void removeClient(int fd, size_t &index, const t_remove_reason &reason);
-	void closeCgiConnection(const int &fd, size_t *pollfds_idx);
 
 	void launch();
 	bool isServerSocket(int fd);
@@ -48,6 +47,8 @@ private:
 
 	// const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
 
+	void closeCgiConnection(const int &fd, size_t *pollfds_idx);
+	void switchToPollout(const int &fd);
 	void SetupPorts();
 	void accepter(int listenFd);
 	int responder(int clientFd, const std::string &data);
@@ -58,7 +59,6 @@ private:
 	void inactivityTimeout(int fd, size_t *pollfds_idx);
 
 	Client &get_corresponding_client(const int &fd);
-	void find_and_change_pollfd_event(const int &fd, short event);
 
 public:
 	Server(Config config);				  // default constructor
