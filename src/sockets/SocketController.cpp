@@ -1,9 +1,9 @@
 #include "../../inc/sockets/SocketController.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <stdlib.h>	// exit
+#include <stdlib.h> // exit
 
 /*
 
@@ -84,7 +84,7 @@ std::ostream &operator<<(std::ostream &out, SocketController const &source)
 	return (out);
 }
 
-int SocketController::getSocketfd(void) const 
+int SocketController::getSocketfd(void) const
 {
 	return this->_sock;
 }

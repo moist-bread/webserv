@@ -1,5 +1,5 @@
 #include "../../inc/sockets/BindingSocket.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 

@@ -3,7 +3,7 @@
 #include "ASimpleServer.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/Config.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
 #include <map>
 #include <vector>
 #include <iostream>
@@ -22,8 +22,7 @@ enum ConnectionStatus
 class Server : public ASimpleServer
 {
 private:
-
- 	Config _config;
+	Config _config;
 
 	std::map<int, Client> _clients;
 	std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
@@ -34,7 +33,7 @@ private:
 
 	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-	std::map<int, const ServerConfig*> _fdToServerConfig; // listenFd → config do servidor
+	std::map<int, const ServerConfig *> _fdToServerConfig; // listenFd → config do servidor
 
 	void SetNonblocking(int fd);
 
@@ -61,12 +60,12 @@ private:
 	Client &get_corresponding_client(const int &fd);
 
 public:
-	Server(Config config);				  // default constructor
+	Server(Config config);		  // default constructor
 	Server(Server const &source); // copy constructor
 	~Server(void);				  // destructor
 
 	Server &operator=(Server const &source); // copy assignment operator overload
-	const std::map<int, const ServerConfig*> &get_fdToServerConfig() const;
+	const std::map<int, const ServerConfig *> &get_fdToServerConfig() const;
 };
 
 std::ostream &operator<<(std::ostream &out, const Server &src);

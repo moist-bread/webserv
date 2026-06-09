@@ -1,21 +1,21 @@
 #include "../../inc/sockets/CgiHandler.hpp"
-#include "../../inc/requests/Request.hpp"
+#include "../../inc/http/Request.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/LocationConfig.hpp"
 #include "../../inc/string_utils.tpp"
 
-#include <unistd.h>		// close, fork, pipe
-#include <ctime>		// time
-#include <fstream>		// fstream
-#include <algorithm>	// transform, EXIT_FAILURE
-#include <csignal>		// signal
-#include <fcntl.h>		// fcntl
+#include <unistd.h>	 // close, fork, pipe
+#include <ctime>	 // time
+#include <fstream>	 // fstream
+#include <algorithm> // transform, EXIT_FAILURE
+#include <csignal>	 // signal
+#include <fcntl.h>	 // fcntl
 #include <sys/types.h>
 #include <sys/wait.h>
 
 CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
 
-CgiHandler::CgiHandler(CgiHandler const &src) {	*this = src; }
+CgiHandler::CgiHandler(CgiHandler const &src) { *this = src; }
 
 CgiHandler::~CgiHandler(void) { clear(); }
 
@@ -53,12 +53,12 @@ void CgiHandler::clear()
 	_pipeOut[0] = 0;
 	_pipeOut[1] = 0;
 	_pid = 0;
-	
+
 	_body.clear();
 	_compiler.clear();
 	_scriptPath.clear();
 	_env.clear();
-	
+
 	setCgiActivityStart(VALUE_NOT_SET);
 }
 
@@ -107,7 +107,7 @@ void CgiHandler::update_info(Request &req)
 	_env.push_back("QUERY_STRING=" + req.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);
 	_env.push_back("SCRIPT_FILENAME=" + extract_script_filename(req.path_uri, req.file_extension));
-	
+
 	if (req.headers.find("x-forwarded-for") != req.headers.end())
 		_env.push_back("REMOTE_ADDR=" + req.headers["x-forwarded-for"]);
 	_env.push_back("REQUEST_URI=" + req.path_uri + req.query);
@@ -133,7 +133,7 @@ std::string CgiHandler::extract_script_filename(const std::string full_path, con
 	return (full_path.substr(0, pos + ext.length() + 1));
 }
 
-/* 
+/*
 std::string CgiHandler::extract_path_info(const std::string full_path, const std::string ext)
 {
 	// path info is whatever comes after the program name in the url
@@ -152,7 +152,7 @@ int CgiHandler::executeCgi()
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
 	if (writeBodyToCgiInput() == -1)
-		throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
+		throw(CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
 
 	this->_pid = fork();
 	if (this->_pid == -1)
@@ -169,7 +169,6 @@ int CgiHandler::executeCgi()
 		// 	this->_pid = 0;
 		// 	throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
 		// }
-		
 	}
 	else if (this->_pid == 0)
 	{
@@ -213,60 +212,56 @@ int CgiHandler::InitPipes()
 	return 0;
 }
 
-
-
 int CgiHandler::writeBodyToCgiInput() const
 {
-    if (!_body.empty())
-    {
-        fcntl(this->_pipeIn[1], F_SETFL, O_NONBLOCK);
+	if (!_body.empty())
+	{
+		fcntl(this->_pipeIn[1], F_SETFL, O_NONBLOCK);
 
-        const size_t CHUNK = 4096;
-        size_t total = 0;
+		const size_t CHUNK = 4096;
+		size_t total = 0;
 		bool writeError = false;
 
-        while (total < _body.size())
-        {
-            size_t remaining = _body.size() - total;
-            size_t toWrite = std::min(CHUNK, remaining);
+		while (total < _body.size())
+		{
+			size_t remaining = _body.size() - total;
+			size_t toWrite = std::min(CHUNK, remaining);
 
-            ssize_t n = write(this->_pipeIn[1], _body.c_str() + total, toWrite);
+			ssize_t n = write(this->_pipeIn[1], _body.c_str() + total, toWrite);
 
-            if (n > 0)
-            {
-                total += n;
-            }
-            else if (n == 0)
-            {
-                // Nothing written, pipe full — yield and retry
-                usleep(1000);
-            }
-            else // n < 0
-            {
-                // Child closed its read end (EPIPE) or pipe unavailable (EAGAIN)
-                // Either way: stop writing, not a fatal error
-                std::cerr << "CGI stopped reading stdin after " << total << " bytes\n";
+			if (n > 0)
+			{
+				total += n;
+			}
+			else if (n == 0)
+			{
+				// Nothing written, pipe full — yield and retry
+				usleep(1000);
+			}
+			else // n < 0
+			{
+				// Child closed its read end (EPIPE) or pipe unavailable (EAGAIN)
+				// Either way: stop writing, not a fatal error
+				std::cerr << "CGI stopped reading stdin after " << total << " bytes\n";
 				writeError = true;
-                break;
-            }
-        }
+				break;
+			}
+		}
 		close(this->_pipeIn[1]);
-		if(writeError)
+		if (writeError)
 			return -1;
-    }
-	else{
+	}
+	else
+	{
 		close(this->_pipeIn[1]);
-		
 	}
 	/*
-    if (close(this->_pipeIn[1]) == -1)
-        throw CgiHandler::CgiExecutionFail("close failure");
+	if (close(this->_pipeIn[1]) == -1)
+		throw CgiHandler::CgiExecutionFail("close failure");
 	*/
 
-    return 0;
+	return 0;
 }
-
-
 
 int CgiHandler::getPipeOutReadFd() const { return this->_pipeOut[0]; }
 

@@ -1,13 +1,13 @@
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
 
-#include "../../inc/requests/HTTP.hpp"
+#include "../../inc/http/HTTP.hpp"
 #include "../../inc/sockets/Server.hpp"
-#include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Response.hpp"
+#include "../../inc/http/Request.hpp"
+#include "../../inc/http/Response.hpp"
 
 #include "../../inc/ansi_color_codes.h"
 
-#include <ctime>	// time, localtime, strftime
+#include <ctime> // time, localtime, strftime
 
 const bool Inspect::debug = static_cast<bool>(DEBUG);
 
@@ -16,7 +16,7 @@ void Inspect::inspect_server_activity(const std::string &msg, const Server &sv)
 	write_curr_time();
 
 	std::cout << MAG "Server has " << msg << ";" DEF;
-	for (std::map<int, const ServerConfig*>::const_iterator it = sv.get_fdToServerConfig().begin(); it != sv.get_fdToServerConfig().end(); it++)
+	for (std::map<int, const ServerConfig *>::const_iterator it = sv.get_fdToServerConfig().begin(); it != sv.get_fdToServerConfig().end(); it++)
 	{
 		std::cout << " http://";
 		std::cout << ((*it).second->serverNames.empty() ? "none" : (*it).second->serverNames[0]);
@@ -34,7 +34,6 @@ void Inspect::inspect_client_activity(const std::string &msg, const int &fd, con
 	// ex.: Client 5 has been accepted; Port=9090
 	std::cout << CYN "Client " << fd << " has " << msg << "; ";
 	std::cout << "Port=" << port << DEF << std::endl;
-	
 }
 
 void Inspect::inspect_request_activity(const std::string &msg, const Request &req)
@@ -79,34 +78,50 @@ void Inspect::inspect_cgi_activity(const std::string &msg, const int &fd)
 {
 	write_curr_time();
 
-	// ex.: Cgi 5 has started execution;    
+	// ex.: Cgi 5 has started execution;
 	// ex.: Cgi 5 has finished execution;
 	// ex.: Cgi 5 has failed to execute due to: an error;
 	std::cout << GRN "Cgi " << fd << " has " << msg << ";" DEF << std::endl;
 }
 
-
 void Inspect::inspect_removed_cl(const t_remove_reason &reason, const int &fd)
 {
 	write_curr_time();
 
-	// ex.: Client 5 has been disconnected from the server; Reason: CGI execution time out    
+	// ex.: Client 5 has been disconnected from the server; Reason: CGI execution time out
 	std::cout << RED "Client " << fd << " has been disconnected from the server; ";
 	std::cout << "Reason: ";
 	switch (reason)
 	{
-		case TIMEOUT:			std::cout << "Client time out";	break;
-		case TIMEOUT_CGI:		std::cout << "CGI execution time out";	break;
-		case RECV_FAIL:			std::cout << "Failed to recieve a request from the Client";	break;
-		case WRITE_FAIL:		std::cout << "Failed to write a response to the Client";	break;
-		case CLOSE_CONNECTION:	std::cout << "Connection has been terminated";	break;
-		case SERVER_CLOSE:		std::cout << "The Server has closed";	break;
-		default:				std::cout << "Unknown...";	break;
+	case TIMEOUT:
+		std::cout << "Client time out";
+		break;
+	case TIMEOUT_CGI:
+		std::cout << "CGI execution time out";
+		break;
+	case RECV_FAIL:
+		std::cout << "Failed to recieve a request from the Client";
+		break;
+	case WRITE_FAIL:
+		std::cout << "Failed to write a response to the Client";
+		break;
+	case CLOSE_CONNECTION:
+		std::cout << "Connection has been terminated";
+		break;
+	case SERVER_CLOSE:
+		std::cout << "The Server has closed";
+		break;
+	default:
+		std::cout << "Unknown...";
+		break;
 	}
 	std::cout << DEF << std::endl;
 }
 
-namespace response_utils { std::string date_format(time_t timestamp); }
+namespace response_utils
+{
+	std::string date_format(time_t timestamp);
+}
 
 void Inspect::write_curr_time(void)
 {

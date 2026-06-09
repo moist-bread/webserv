@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../requests/Request.hpp"
-#include "../requests/Response.hpp"
+#include "../http/Request.hpp"
+#include "../http/Response.hpp"
 #include "../serverConfig/ServerConfig.hpp"
 #include "CgiHandler.hpp"
 
@@ -10,11 +10,11 @@ class Client
 private:
 	int _ClientFd;
 	time_t _lastActivity;
-	
+
 public:
 	const ServerConfig *serverConfig;
 	int listenFd; // qual listener aceitou esta conexao
-	
+
 	Request request;
 	Response response;
 	CgiHandler cgi;

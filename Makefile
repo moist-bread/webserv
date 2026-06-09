@@ -12,7 +12,7 @@ SRC_DIR		=	src
 OBJ_DIR		=	obj
 SOCK_DIR	=	sockets
 CONF_DIR	=	serverConfig
-OTHER_DIR	= 	other
+OTHER_DIR	= 	http
 
 # =====>┊( SRC/OBJS )┊
 MAIN			=	main.cpp

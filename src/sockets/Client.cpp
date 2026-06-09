@@ -1,8 +1,8 @@
 #include "../../inc/sockets/Client.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <ctime>	// time
+#include <ctime> // time
 
 Client::Client(void) : serverConfig(NULL), request(serverConfig), response(request, serverConfig)
 {
@@ -11,7 +11,7 @@ Client::Client(void) : serverConfig(NULL), request(serverConfig), response(reque
 	{
 		std::cout << RED "the Client ";
 		std::cout << "has been empty created" DEF << std::endl;
-		sleep (2);
+		sleep(2);
 	}
 	updateLastActivity();
 }
@@ -56,10 +56,10 @@ Client &Client::operator=(Client const &src)
 	{
 		this->_ClientFd = src._ClientFd;
 		this->_lastActivity = src._lastActivity;
-		
+
 		this->serverConfig = src.serverConfig;
 		this->listenFd = src.listenFd;
-		
+
 		this->request = src.request;
 		this->response = src.response;
 		this->cgi = src.cgi;
@@ -67,7 +67,7 @@ Client &Client::operator=(Client const &src)
 	return (*this);
 }
 
-int Client::GetClientFd() const 
+int Client::GetClientFd() const
 {
 	return _ClientFd;
 }

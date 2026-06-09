@@ -1,5 +1,5 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
-#include "../../inc/requests/HTTP.hpp"
+#include "../../inc/http/HTTP.hpp"
 #include <algorithm> // find
 
 /**

@@ -1,5 +1,5 @@
-#include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Request.hpp"
+#include "../../inc/http/Inspect.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/string_utils.tpp"
 
@@ -79,24 +79,24 @@ void Request::process(std::string request)
 		// std::cout << CYN "looping request state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-			case BEGIN:
-				clear();
-				set_state(LINE);
-				break;
-			case LINE:
-				parse_request_line(request);
-				break;
-			case HEADERS_REQ:
-				parse_request_headers(request);
-				break;
-			case CHUNK_BODY:
-				parse_chunk(request);
-				break;
-			case BODY:
-				parse_body(request);
-				break;
-			default:
-				request.clear();
+		case BEGIN:
+			clear();
+			set_state(LINE);
+			break;
+		case LINE:
+			parse_request_line(request);
+			break;
+		case HEADERS_REQ:
+			parse_request_headers(request);
+			break;
+		case CHUNK_BODY:
+			parse_chunk(request);
+			break;
+		case BODY:
+			parse_body(request);
+			break;
+		default:
+			request.clear();
 		}
 	}
 	// std::cout << *this << std::endl;
@@ -278,7 +278,10 @@ void Request::parse_chunk(std::string &request)
 					throw(std::runtime_error(""));
 				request.erase(0, pin + 2);
 			}
-			catch(...) { throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST)); }
+			catch (...)
+			{
+				throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST));
+			}
 		}
 		else
 		{
@@ -319,7 +322,10 @@ void Request::update_content_length(std::string &request)
 			if (content_length < 0)
 				throw(std::runtime_error(""));
 		}
-		catch(...) { throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST)); }
+		catch (...)
+		{
+			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+		}
 	}
 	else if (headers.find("transfer-encoding") != headers.end())
 	{
@@ -368,11 +374,14 @@ void Request::parse_range_header(void)
 
 		int range_start = VALUE_NOT_SET;
 		int range_end = VALUE_NOT_SET;
-		
+
 		if (sep != 0)
 		{
-			try { range_start = stringToNumber<int>(value.substr(0, sep), std::dec); }
-			catch(...)
+			try
+			{
+				range_start = stringToNumber<int>(value.substr(0, sep), std::dec);
+			}
+			catch (...)
 			{
 				wanted_ranges.clear();
 				break;
@@ -384,8 +393,11 @@ void Request::parse_range_header(void)
 			sep = value.size();
 		if (sep != 0)
 		{
-			try { range_end = stringToNumber<int>(value.substr(0, sep), std::dec); }
-			catch(...)
+			try
+			{
+				range_end = stringToNumber<int>(value.substr(0, sep), std::dec);
+			}
+			catch (...)
 			{
 				wanted_ranges.clear();
 				break;

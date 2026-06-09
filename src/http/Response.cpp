@@ -1,17 +1,17 @@
-#include "../../inc/requests/Response.hpp"
-#include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Response.hpp"
+#include "../../inc/http/Request.hpp"
+#include "../../inc/http/Inspect.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/LocationConfig.hpp"
 
 #include "../../inc/string_utils.tpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <fstream>		// remove, fstream, ifstream, ofstream
-#include <dirent.h>		// opendir, readdir, closedir, DIR
-#include <sys/stat.h>	// mkdir, stat
-#include <unistd.h>		// access
-#include <ctime>		// time
+#include <fstream>	  // remove, fstream, ifstream, ofstream
+#include <dirent.h>	  // opendir, readdir, closedir, DIR
+#include <sys/stat.h> // mkdir, stat
+#include <unistd.h>	  // access
+#include <ctime>	  // time
 
 #define BUFFER_SIZE 4096
 
@@ -86,7 +86,7 @@ Response &Response::operator=(const Response &src)
 		if (Inspect::debug)
 		{
 			std::cout << GRN "the Response ";
-			std::cout << UYEL "has been inside copying conf: " DEF <<  src.conf  << std::endl;
+			std::cout << UYEL "has been inside copying conf: " DEF << src.conf << std::endl;
 		}
 		this->conf = src.conf;
 
@@ -102,27 +102,27 @@ void Response::process(void)
 		// std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-			case PREP:
-				preparations_for_response();
-				break;
-			case METHODS:
-				execute_methods();
-				break;
-			case CGI:
-				cgi_response();
-				break;
-			case CHUNK:
-				chunk_response();
-				break;
-			case HEADERS_RESP:
-				set_response_headers();
-				break;
-			case FULL_RESP:
-				assemble_full_response();
-				break;
-			default:
-				set_state(SEND);
-				return;
+		case PREP:
+			preparations_for_response();
+			break;
+		case METHODS:
+			execute_methods();
+			break;
+		case CGI:
+			cgi_response();
+			break;
+		case CHUNK:
+			chunk_response();
+			break;
+		case HEADERS_RESP:
+			set_response_headers();
+			break;
+		case FULL_RESP:
+			assemble_full_response();
+			break;
+		default:
+			set_state(SEND);
+			return;
 		}
 		if (get_state() == SEND)
 			break;
@@ -180,15 +180,14 @@ void Response::preparations_for_response(void)
 		status_code = req->loc->getReturnCode();
 		return (set_state(HEADERS_RESP));
 	}
-	
+
 	set_state(METHODS);
 }
 
 void Response::execute_methods(void)
 {
 	if (response_utils::is_error(status_code) && req->method == HEAD)
-		return(set_state(HEADERS_RESP));
-
+		return (set_state(HEADERS_RESP));
 
 	if (response_utils::is_error(status_code))
 		req->method = GET;
@@ -196,21 +195,21 @@ void Response::execute_methods(void)
 	{
 		switch (req->method)
 		{
-			case GET:
-				method_get();
-				break;
-			case POST:
-				method_post();
-				break;
-			case DELETE:
-				method_delete();
-				break;
-			case HEAD:
-				method_head();
-				break;
-			default:
-				throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
-				break;
+		case GET:
+			method_get();
+			break;
+		case POST:
+			method_post();
+			break;
+		case DELETE:
+			method_delete();
+			break;
+		case HEAD:
+			method_head();
+			break;
+		default:
+			throw(Response::CreateError("Unsupported Method", METHOD_NOT_ALLOWED));
+			break;
 		}
 	}
 	catch (const Response::CreateError &e)
@@ -259,7 +258,10 @@ void Response::cgi_response(void)
 				throw(std::runtime_error("Invalid cgi Status header"));
 			status_code = static_cast<t_status_code>(st);
 		}
-		catch(...) { ; }
+		catch (...)
+		{
+			;
+		}
 	}
 	set_state(CHUNK);
 }
@@ -357,7 +359,7 @@ void Response::method_get(void)
 		// ---------------- see if 404 is really the only option
 		throw(Response::CreateError("File did not open", NOT_FOUND));
 		// if (req->file_extension == "html")
-		//else
+		// else
 		//	throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
 	}
 	else
@@ -422,7 +424,7 @@ std::string Response::assemble_content_path(void)
 		if (!remaining_uri.empty() && remaining_uri.at(0) == '/')
 			remaining_uri.erase(0, 1);
 		path.append(remaining_uri);
-		
+
 		if (req->file_extension == "html")
 		{
 			std::string index;
@@ -431,7 +433,7 @@ std::string Response::assemble_content_path(void)
 			for (size_t i = 0; i < req->loc->getIndexes().size(); i++)
 			{
 				// std::cout << "which index is valid: " <<  (path + "/" + (*req).loc->getIndexes()[i]) << std::endl;
-				index = req->loc->getIndexes()[i]; // -- will keep the last listed index 
+				index = req->loc->getIndexes()[i]; // -- will keep the last listed index
 				if (access((path + "/" + req->loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
 				struct stat index_stat;
@@ -439,7 +441,7 @@ std::string Response::assemble_content_path(void)
 					continue;
 				if (S_ISDIR(index_stat.st_mode))
 					continue;
-				break ;
+				break;
 				// index = req->loc->getIndexes()[i];
 			}
 			if (!index.empty())
@@ -449,7 +451,6 @@ std::string Response::assemble_content_path(void)
 				path.append(index);
 			}
 		}
-		
 	}
 	if (Inspect::debug)
 		std::cout << RED "assembled path: " DEF << path << std::endl;
@@ -526,7 +527,7 @@ std::string Response::single_range(std::ifstream &file, const std::pair<int, int
 void Response::method_post(void)
 {
 	std::string path = req->loc->getUploadStore() + "database";
-	
+
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
 
 	if (!output.is_open())
@@ -565,16 +566,16 @@ void Response::handle_multipart_form(void)
 		std::string name = "name";
 		if (elem_name != (*it).content_disposition.end())
 			name = (*elem_name).second;
-		
+
 		map_strings::iterator f_name = (*it).content_disposition.find("filename");
 		if (f_name != (*it).content_disposition.end())
 		{
 			// -- see if the uploads folder exists
 			std::string path = req->loc->getUploadStore();
-			
+
 			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // -- use of mkdir is not allowed
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
-			
+
 			// -- create a file with a randomly generated name
 			std::string rand_name = response_utils::random_name_generator();
 			size_t len;
@@ -590,7 +591,7 @@ void Response::handle_multipart_form(void)
 			// -- write to the file, and save the info to later put in the database
 			output << (*it).data << CRLF;
 			output.close();
-			
+
 			// -- save the info to later put in the database
 			json_values[name] = rand_name;
 		}
@@ -654,7 +655,7 @@ void Response::method_head(void)
 		req->wanted_ranges.clear();
 		body.clear();
 	}
-	
+
 	headers["Content-Length"] = to_str(body.size());
 	body.clear();
 }

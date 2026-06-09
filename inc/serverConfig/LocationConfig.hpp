@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-#include "../requests/HTTP.hpp"
+#include "../http/HTTP.hpp"
 #include "../ansi_color_codes.h"
 
 // =====>┊ LocationConfig ┊
