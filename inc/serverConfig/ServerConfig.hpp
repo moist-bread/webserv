@@ -4,10 +4,9 @@
 #include <iostream>
 #include <map>
 #include <vector>
-#include "../http/HTTP.hpp"
+#include "../http/HTTP.hpp" // t_status_code, t_method
 
-#include "../ansi_color_codes.h"
-#include "LocationConfig.hpp"
+#include "LocationConfig.hpp" // used: LocationConfig
 
 // =====>┊( CLASS )┊
 

@@ -1,12 +1,10 @@
 # include "../../inc/serverConfig/Lexer.hpp"
 
-# include "../../inc/ansi_color_codes.h"
-
-# include <fstream>
-# include <string>
-# include <stdexcept>
-# include <unistd.h>
-# include <sys/stat.h>
+# include <fstream> // std::ifstream
+# include <string> // std::string
+# include <stdexcept> // std::runtime_error
+# include <unistd.h> // access
+# include <sys/stat.h> // stat
 
 /**
  * @brief Tokenizes a configuration file into tokens

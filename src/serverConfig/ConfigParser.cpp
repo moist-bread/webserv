@@ -1,11 +1,14 @@
 #include "../../inc/serverConfig/ConfigParser.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
-#include "../../inc/string_utils.tpp"
-#include <stdexcept>
-#include <algorithm> // find
-#include <sys/stat.h>
-#include <unistd.h>
-#include <cctype>
+#include "../../inc/string_utils.tpp" // stringToNumber<T>()
+
+#include <stdexcept> // std::runtime_error, std::exception
+#include <algorithm> // std::count, std::find
+#include <sys/stat.h> // stat, S_ISDIR
+#include <unistd.h> // access
+#include <cctype> // std::isdigit
+#include <cwctype> // std::iswalpha
+#include <sstream> // std::stringstream, std::getline
 
 /**
  * @brief Construct a ConfigParser and initialize directive dispatch tables.

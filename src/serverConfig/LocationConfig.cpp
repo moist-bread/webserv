@@ -1,6 +1,7 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
-#include "../../inc/http/HTTP.hpp"
-#include <algorithm> // find
+#include "../../inc/http/HTTP.hpp" // t_method, t_status_code
+
+#include <algorithm> // std::find
 
 /**
  * @brief Default constructor.

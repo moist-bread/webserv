@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 
-#include "token.h"
+#include "token.h" // t_token
 
 // =====>┊( CONFIG )┊
 
@@ -23,7 +23,6 @@ class TokenStream
 {
 	public:
 		TokenStream(const std::vector<t_token>&);
-		TokenStream(const TokenStream&);
 		~TokenStream(void);
 
 		std::string _tokenTypeToString(e_token_type type) const;
@@ -40,9 +39,6 @@ class TokenStream
 		void throwValidationError(const std::string &message, const std::string &directive) const;
 
 	private:
-		TokenStream(void);
-		TokenStream &operator=(TokenStream const &);
-
 		size_t	_cursor;
 		const std::vector<t_token> &_tokens;
 };

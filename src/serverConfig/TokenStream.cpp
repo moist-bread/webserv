@@ -1,6 +1,6 @@
 #include "../../inc/serverConfig/TokenStream.hpp"
-#include <sstream>
-#include <algorithm> // find
+#include <sstream> // std::stringstream
+#include <algorithm> // std::find
 
 /**
  * @brief Construct TokenStream from a token vector.
@@ -10,12 +10,6 @@
  * manages an internal cursor used by the parser to navigate tokens.
  */
 TokenStream::TokenStream(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens) {}
-
-/**
- * @brief Copy constructor.
- * @param obj TokenStream to copy (cursor and token reference are copied).
- */
-TokenStream::TokenStream(const TokenStream &obj) : _cursor(obj._cursor), _tokens(obj._tokens) {}
 
 /**
  * @brief Destructor (trivial).

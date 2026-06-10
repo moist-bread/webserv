@@ -9,8 +9,7 @@ int main(int ac, char **av)
 	std::signal(SIGINT, sigint_handler);
 	try
 	{
-		Config config;
-		config.load(av[1]);
+		Config config(av[1]);
 		Server t(config);
 	}
 	catch (const std::exception &e)
