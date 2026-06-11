@@ -10,7 +10,6 @@ int main(int ac, char **av)
 	try
 	{
 		Config config(av[1]);
-		std::cout << config << std::endl;
 		Server t(config);
 	}
 	catch (const std::exception &e)
