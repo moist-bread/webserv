@@ -1,12 +1,9 @@
 #pragma once
 
 // == libs
-#include <iostream>
 #include <string>
 #include <map>
 #include <vector>
-#include <stdio.h>
-#include <stdint.h> // size_max
 
 // == defines
 #define CRLF "\r\n"
@@ -65,7 +62,7 @@ enum t_status_code
 	NON_AUTHORITATIVE_INFO,
 	NO_CONTENT,
 	RESET_CONTENT,
-	PARTIAL_CONTENT, // in response to a Range header
+	PARTIAL_CONTENT,
 	MULTIPLE_CHOICES = 300,
 	MOVED_PERMANENTLY,
 	FOUND,
@@ -90,7 +87,7 @@ enum t_status_code
 	URI_TOO_LONG,
 	UNSUPPORTED_MEDIA_TYPE,
 	RANGE_NOT_SATISFIABLE,
-	EXPECTATION_FAILED, // Expect request-header
+	EXPECTATION_FAILED,
 	INTERNAL_SERVER_ERROR = 500,
 	NOT_IMPLEMENTED,
 	BAD_GATEWAY,
@@ -99,7 +96,8 @@ enum t_status_code
 	HTTP_VERSION_NOT_SUPPORTED
 };
 
-// == classes
+// =====>┊( HTTP )┊
+
 class HTTP
 {
 public:
@@ -112,12 +110,6 @@ public:
 	static t_status_code isValidReasonPhrase(const int status_code);
 
 private:
-	HTTP(void);				  // default constructor
-	HTTP(HTTP const &source); // copy constructor
-	~HTTP(void);			  // destructor
-
-	HTTP &operator=(HTTP const &source); // copy assignment operator overload
-
 	static const std::string _method_names[];
 	static const std::string _protocol_names[];
 };

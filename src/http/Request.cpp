@@ -1,5 +1,5 @@
-#include "../../inc/requests/Request.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Request.hpp"
+#include "../../inc/http/Inspect.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/string_utils.tpp"
 
@@ -7,18 +7,9 @@
 
 #define URI_LIMIT 2000
 
-Request::Request(void) : conf(NULL)
-{
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Request ";
-		std::cout << UCYN "has been empty created" DEF << std::endl;
-	}
-	clear();
-}
-
 Request::Request(const ServerConfig *sc) : conf(sc)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Request ";
@@ -29,6 +20,7 @@ Request::Request(const ServerConfig *sc) : conf(sc)
 
 Request::Request(Request const &src)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Request ";
@@ -41,6 +33,7 @@ Request::~Request(void) {}
 
 Request &Request::operator=(Request const &src)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Request ";
@@ -76,30 +69,28 @@ void Request::process(std::string request)
 {
 	while (!request.empty())
 	{
-		// std::cout << CYN "looping request state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
-			case BEGIN:
-				clear();
-				set_state(LINE);
-				break;
-			case LINE:
-				parse_request_line(request);
-				break;
-			case HEADERS_REQ:
-				parse_request_headers(request);
-				break;
-			case CHUNK_BODY:
-				parse_chunk(request);
-				break;
-			case BODY:
-				parse_body(request);
-				break;
-			default:
-				request.clear();
+		case BEGIN:
+			clear();
+			set_state(LINE);
+			break;
+		case LINE:
+			parse_request_line(request);
+			break;
+		case HEADERS_REQ:
+			parse_request_headers(request);
+			break;
+		case BODY:
+			parse_body(request);
+			break;
+		case CHUNK_BODY:
+			parse_chunk(request);
+			break;
+		default:
+			request.clear();
 		}
 	}
-	// std::cout << *this << std::endl;
 	if (state == END)
 		validade_request();
 }
@@ -131,24 +122,21 @@ void Request::clear(void)
 	content_read = 0;
 }
 
+/// @brief Separates and validades the elements of the Request Line
+///
+/// Request-Line = Method SP Request-URI SP HTTP-Version CRLF
 void Request::parse_request_line(std::string &request)
 {
-
-	// Request-Line = Method SP Request-URI SP HTTP-Version CRLF
-
 	if (!temp_str.empty())
 	{
 		request.insert(0, temp_str);
 		temp_str.clear();
 	}
 
-	// see if the end of the request line is present or not
-	// if not: keep waiting for for requets (until timeout if needed)
+	// -- see if the end of the request line is present or not
+	// if not: keep waiting for the rest
 	if (request.find(CRLF) == std::string::npos)
-	{
-		temp_str = request;
-		return (request.clear());
-	}
+		return ((temp_str = request), request.clear());
 
 	size_t len;
 
@@ -191,6 +179,9 @@ void Request::parse_request_line(std::string &request)
 	set_state(HEADERS_REQ);
 }
 
+/// @brief Separates and collects all Request Headers
+///
+/// Header Example = Key: LWS Value 
 void Request::parse_request_headers(std::string &request)
 {
 	if (!temp_str.empty())
@@ -199,30 +190,28 @@ void Request::parse_request_headers(std::string &request)
 		temp_str.clear();
 	}
 
-	// see if the end of the header already exists or not
-	// if not: keep waiting for for requets (until timeout if needed)
+	// -- see if the end of the headers is present or not
+	// if not: keep waiting for the rest
 	if (request.find(CRLF CRLF) == std::string::npos)
-	{
-		temp_str = request;
-		return (request.clear());
-	}
+		return ((temp_str = request), request.clear());
 
 	headers = HTTP::extract_key_value(&request, ":", CRLF);
 	request.erase(0, 2);
+	
 	set_state(BODY);
 	update_content_length(request);
 	parse_range_header();
 }
 
+/// @brief Saves the body of the Request and parses it into a usable state (string/map)
 void Request::parse_body(std::string &request)
 {
-
 	if (body.size() > conf->getClientMaxBodySize())
 		throw(Request::ParseError("Client body size surpassed the Server Config imposed limit", CONTENT_TOO_LARGE));
 
 	// !! Content-Length > Actual Length
 	// If the Content-Length is larger than the actual length,
-	// after reading to the end of the message, the server/client
+	// after reading to the end of the message, the server
 	// will wait for the next byte,
 	// if there's no response, it will timeout.
 
@@ -243,11 +232,13 @@ void Request::parse_body(std::string &request)
 	content_read += content_length - content_read;
 	request.clear();
 
-	// -- parse the body
 	parse_forms();
 	set_state(END);
 }
 
+/// @brief Resolves the multiple chunks of a Chunked Body
+///
+/// chunk = (size in hexadecimal) CRLF (body) CRLF
 void Request::parse_chunk(std::string &request)
 {
 	if (!temp_str.empty())
@@ -263,22 +254,21 @@ void Request::parse_chunk(std::string &request)
 		// -- step 1: wait until you have a CRLF
 		pin = request.find(CRLF);
 		if (pin == std::string::npos)
-		{
-			temp_str = request;
-			request.clear();
-		}
+			return ((temp_str = request), request.clear());
 		else if (content_length == VALUE_NOT_SET)
 		{
 			// -- step 2: save the hex number as your content length for the chunck
 			try
 			{
-				// std::cout << YEL "getting size of chunck data..." DEF << std::endl;
 				content_length = stringToNumber<long>(request.substr(0, pin), std::hex);
 				if (content_length < 0)
 					throw(std::runtime_error(""));
 				request.erase(0, pin + 2);
 			}
-			catch(...) { throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST)); }
+			catch (...)
+			{
+				throw(Request::ParseError("Invalid Chunck size of the chunk-data", BAD_REQUEST));
+			}
 		}
 		else
 		{
@@ -286,23 +276,17 @@ void Request::parse_chunk(std::string &request)
 			body += request.substr(0, pin);
 			request.erase(0, pin + 2);
 			if (content_length == 0)
-			{
-				// std::cout << YEL "finishing chunk has been processed !!!" DEF << std::endl;
 				return (set_state(END), request.clear());
-			}
 			else
-			{
-				// std::cout << YEL "one chunk done, onto the next..." DEF << std::endl;
 				content_length = VALUE_NOT_SET;
-			}
 		}
 	}
 }
 
+/// @brief Checks if we have a valid Content-Length header or the Tranfer-Encoding: chunked header
 void Request::update_content_length(std::string &request)
 {
-	// !! if content length hasn't been registered before, update it
-	// throw in case of:
+	// invalid when:
 	// -- the content-length is not a number
 	// -- the request has body but no content-length header
 	// -- AND the Transfer-Econding header is not Chuncked
@@ -319,7 +303,10 @@ void Request::update_content_length(std::string &request)
 			if (content_length < 0)
 				throw(std::runtime_error(""));
 		}
-		catch(...) { throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST)); }
+		catch (...) 
+		{
+			throw(Request::ParseError("Incorrect Content Length", BAD_REQUEST));
+		}
 	}
 	else if (headers.find("transfer-encoding") != headers.end())
 	{
@@ -338,6 +325,9 @@ void Request::update_content_length(std::string &request)
 		return (set_state(END));
 }
 
+/// @brief Checks if we have a valid Range header
+///
+/// Simple Range Example: bytes=500-600
 void Request::parse_range_header(void)
 {
 	if (headers.find("range") == headers.end())
@@ -347,7 +337,7 @@ void Request::parse_range_header(void)
 		throw(Request::ParseError("Invalid Range header value", BAD_REQUEST));
 	value.erase(0, 6);
 
-	// Range syntax options
+	// Range syntax options:
 	// ->	<unit>=<range-start>-<range-end>
 	// 		ex: 500-600
 	// ->	<unit>=<range-start>-
@@ -368,11 +358,13 @@ void Request::parse_range_header(void)
 
 		int range_start = VALUE_NOT_SET;
 		int range_end = VALUE_NOT_SET;
-		
 		if (sep != 0)
 		{
-			try { range_start = stringToNumber<int>(value.substr(0, sep), std::dec); }
-			catch(...)
+			try
+			{
+				range_start = stringToNumber<int>(value.substr(0, sep), std::dec);
+			}
+			catch (...)
 			{
 				wanted_ranges.clear();
 				break;
@@ -384,8 +376,11 @@ void Request::parse_range_header(void)
 			sep = value.size();
 		if (sep != 0)
 		{
-			try { range_end = stringToNumber<int>(value.substr(0, sep), std::dec); }
-			catch(...)
+			try
+			{
+				range_end = stringToNumber<int>(value.substr(0, sep), std::dec);
+			}
+			catch (...)
 			{
 				wanted_ranges.clear();
 				break;
@@ -395,10 +390,16 @@ void Request::parse_range_header(void)
 		value.erase(0, sep + 1);
 		wanted_ranges.push_back(std::pair<int, int>(range_start, range_end));
 	}
+	
 	if (wanted_ranges.empty())
 		throw(Request::ParseError("Invalid Range header value", RANGE_NOT_SATISFIABLE));
 }
 
+/// @brief Converts a complex Request Body into a string formatted as JSON or a vector of MultiForm
+///
+///  JSON: when the Content-Type header is "application/x-www-form-urlencoded"
+///
+///  MultiForm: when the Content-Type header is "multipart/form-data; (...)"
 void Request::parse_forms(void)
 {
 	map_strings::iterator type = headers.find("content-type");
@@ -412,7 +413,7 @@ void Request::parse_forms(void)
 
 void Request::format_application_form(void)
 {
-	// turn body into json format...
+	// -- turn body into JSON format
 	std::string remaining_body = body;
 	map_strings json_values = HTTP::extract_key_value(&remaining_body, "=", "&");
 	json += "{";
@@ -433,7 +434,7 @@ void Request::format_multipart_form(const std::string &type)
 	// 		-- headers
 	// 		-- data
 
-	// extract boundary string from the content type header
+	// -- extract boundary string from the content type header
 	size_t pin = type.find("boundary=");
 	if (pin == std::string::npos)
 		throw(Request::ParseError("Misformatted request set bound", BAD_REQUEST));
@@ -508,7 +509,7 @@ void Request::format_multipart_form(const std::string &type)
 void Request::validade_request(void)
 {
 	if (method == DELETE && !body.empty())
-		throw(Request::ParseError("Requests with body are not supported by this server", BAD_REQUEST));
+		throw(Request::ParseError("DELETE Requests with body are not supported by this server", BAD_REQUEST));
 
 	loc = conf->matchLocation(path_uri, method);
 	if (!loc)

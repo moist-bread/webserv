@@ -1,18 +1,18 @@
-#include "../../inc/requests/HTTP.hpp"
+#include "../../inc/http/HTTP.hpp"
 
 #include "../../inc/string_utils.tpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <algorithm>	// sort, max, min
-#include <ctime>		// localtime, strftime
-#include <sys/stat.h>	// stat
-#include <dirent.h>		// readdir, DIR
+#include <algorithm>  // sort, max, min
+#include <ctime>	  // localtime, strftime
+#include <sys/stat.h> // stat
+#include <dirent.h>	  // readdir, DIR
 
 namespace response_utils
 {
 
-	bool is_error(t_status_code code) {	return (code >= 400 ? true : false); }
-	
+	bool is_error(t_status_code code) { return (code >= 400 ? true : false); }
+
 	std::string backup_error_page(t_status_code status)
 	{
 		std::stringstream ss;
@@ -79,14 +79,14 @@ namespace response_utils
 			elem = readdir(d);
 		}
 		ss << "		</ul>" << std::endl;
-		
+
 		ss << "	</div>" << std::endl;
 		ss << "</body>" << std::endl;
 		ss << "</html>" << std::endl;
 		return (ss.str());
 	}
 
-	#define RANGE_LIMIT 65536 // 64kb
+#define RANGE_LIMIT 65536 // 64kb
 
 	bool range_valid(int file_len, vector2 &ranges)
 	{
@@ -104,7 +104,7 @@ namespace response_utils
 		// 			Content-Type: multipart/byteranges; boundary=STRING
 
 		// -- step 1: translate all syntaxes to work the same way
-		
+
 		for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
 		{
 			if ((*it).first != VALUE_NOT_SET && (*it).second == VALUE_NOT_SET)
@@ -127,15 +127,15 @@ namespace response_utils
 		for (size_t i = 0; i < size_limit; i++)
 			if (std::max(copy_range[i].first, copy_range[i + 1].first) <= std::min(copy_range[i].second, copy_range[i + 1].second))
 				return (false);
-		
+
 		// for (vector2::const_iterator it = ranges.begin(); it != ranges.end(); it++)
 		// std::cout << CYN "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 
 		// -- step 3: force range limit size cap
 		//			  (needs to be after cmp as to not cover up any request errors)
 		for (vector2::iterator it = ranges.begin(); it != ranges.end(); it++)
-			if ((*it).second - (*it).first  > RANGE_LIMIT)
-				(*it).second = (*it).first +  RANGE_LIMIT;
+			if ((*it).second - (*it).first > RANGE_LIMIT)
+				(*it).second = (*it).first + RANGE_LIMIT;
 
 		return (true);
 	}
@@ -229,15 +229,15 @@ namespace response_utils
 			const int type = std::rand() % 3;
 			switch (type)
 			{
-				case 0: // number
-					name += '0' + std::rand() % 10;
-					break;
-				case 1: // lower-case
-					name += 'a' + std::rand() % 26;
-					break;
-				default: // upper-case
-					name += 'A' + std::rand() % 26;
-					break;
+			case 0: // number
+				name += '0' + std::rand() % 10;
+				break;
+			case 1: // lower-case
+				name += 'a' + std::rand() % 26;
+				break;
+			default: // upper-case
+				name += 'A' + std::rand() % 26;
+				break;
 			}
 		}
 		return (name);

@@ -12,11 +12,10 @@ SRC_DIR		=	src
 OBJ_DIR		=	obj
 SOCK_DIR	=	sockets
 CONF_DIR	=	serverConfig
-OTHER_DIR	= 	other
+OTHER_DIR	= 	http
 
 # =====>┊( SRC/OBJS )┊
-MAIN_SOCK			=	main_sock.cpp
-MAIN_PARSE			=	main_parse.cpp
+MAIN			=	main.cpp
 
 SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp ConnectingSocket.cpp \
 					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
@@ -25,8 +24,7 @@ CONF_FILES_C	= 	Lexer.cpp ConfigParser.cpp Config.cpp ServerConfig.cpp LocationC
 
 OTHER_FILES_C	=	signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp Inspect.cpp
 
-OBJS_MAIN_SOCK	=	$(addprefix $(OBJ_DIR)/, $(MAIN_SOCK:.cpp=.o))
-OBJS_MAIN_PARSE	=	$(addprefix $(OBJ_DIR)/, $(MAIN_PARSE:.cpp=.o))
+OBJS_MAIN	=	$(addprefix $(OBJ_DIR)/, $(MAIN:.cpp=.o))
 
 OBJS_SOCK		=	$(addprefix $(OBJ_DIR)/, $(SOCK_FILES_C:.cpp=.o))
 OBJS_CONF		=	$(addprefix $(OBJ_DIR)/, $(CONF_FILES_C:.cpp=.o))
@@ -36,15 +34,9 @@ OBJS_OTHER		=	$(addprefix $(OBJ_DIR)/, $(OTHER_FILES_C:.cpp=.o))
 # =====>┊( COMP RULES )┊
 all: $(NAME)
 
-$(NAME): $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
+$(NAME): $(OBJS_MAIN) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
 	$(M_COMOBJS)
-	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_SOCK) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
-	$(M_COM)
-
-
-parse: $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER)
-	$(M_COMOBJS)
-	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN_PARSE) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
+	@$(CXX) $(CXXFLAGS) $(OBJS_MAIN) $(OBJS_SOCK) $(OBJS_CONF) $(OBJS_OTHER) -o $(NAME)
 	$(M_COM)
 
 reparse: fclean parse 

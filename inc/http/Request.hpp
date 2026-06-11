@@ -4,12 +4,6 @@
 #include "HTTP.hpp"
 
 #include <stdexcept>
-#include <unistd.h>
-
-// TO-DO
-// [ ] make tester work......
-// [ ] cgi page explanation
-// [ ] write README......
 
 struct ServerConfig;
 struct LocationConfig;
@@ -30,13 +24,6 @@ public:
 	void set_state(const t_request_state &new_state);
 	const t_request_state &get_state(void) const;
 
-	class ParseError : public std::runtime_error
-	{
-	public:
-		ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {};
-		t_status_code request_status;
-	};
-
 	t_method method;
 	std::string path_uri;
 	std::string query;
@@ -52,9 +39,15 @@ public:
 	const ServerConfig *conf;
 	const LocationConfig *loc;
 
-private:
-	Request(void);
+	class ParseError : public std::runtime_error
+	{
+	public:
+		ParseError(const std::string &msg, t_status_code status) : runtime_error("Request parse error: " + msg), request_status(status) {};
+		t_status_code request_status;
+	};
 
+
+private:
 	void clear(void);
 
 	void parse_request_line(std::string &request);

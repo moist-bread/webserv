@@ -1,7 +1,7 @@
 #pragma once
 
 // ==┊ needed libs by class
-#include "HTTP.hpp"
+#include <string>
 
 # ifndef DEBUG
 #  define DEBUG 1
@@ -10,8 +10,8 @@
 class Server;
 class Request;
 class Response;
-// class CgiHandler;
 
+/// @brief using this enum to make code more readable in the Server
 enum t_remove_reason
 {
 	TIMEOUT,
@@ -36,11 +36,5 @@ public:
 	static const bool debug;
 	
 private:
-	Inspect(void) {};
-	Inspect(Inspect const &src) { *this = src; };
-	~Inspect(void) {};
-	Inspect &operator=(Inspect const &src) { (void)src; return(*this); }; // can be removed if canonical form is unecessary
-
-
 	static void write_curr_time(void);
 };

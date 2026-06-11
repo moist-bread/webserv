@@ -22,11 +22,6 @@ class Lexer
 		static std::vector<t_token> tokenizeFile(const std::string &filePath);
 
 	private:
-		Lexer(void);
-		Lexer(Lexer const &src);
-		~Lexer(void);
-		Lexer &operator=(Lexer const &src);
-		
 		static void _tokenizeLine(const std::string &line,  size_t lineNumber, std::vector<t_token> &outTokens);
 		static void _skipSpaces(const std::string &line, size_t &cursor);
 		static t_token _getSymbol(const std::string &line, size_t &cursor, size_t lineNumber);

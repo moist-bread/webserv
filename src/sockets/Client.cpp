@@ -1,22 +1,12 @@
 #include "../../inc/sockets/Client.hpp"
-#include "../../inc/requests/Inspect.hpp"
+#include "../../inc/http/Inspect.hpp"
+
 #include "../../inc/ansi_color_codes.h"
 
-#include <ctime>	// time
+#include <iostream>
+#include <ctime> // time
 
-Client::Client(void) : serverConfig(NULL), request(serverConfig), response(request, serverConfig)
-{
-	// -------- THIS NEEDS TO BE REMOVED
-	if (Inspect::debug)
-	{
-		std::cout << RED "the Client ";
-		std::cout << "has been empty created" DEF << std::endl;
-		sleep (2);
-	}
-	updateLastActivity();
-}
-
-Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), serverConfig(sc), listenFd(lfd), request(sc), response(request, sc)
+Client::Client(int fd, int lfd, const ServerConfig *sc) : _ClientFd(fd), request(sc), response(request, sc), cgi(), serverConfig(sc), listenFd(lfd)
 {
 	updateLastActivity();
 	if (Inspect::debug)
@@ -36,14 +26,7 @@ Client::Client(Client const &src) : request(src.serverConfig), response(request,
 	}
 }
 
-Client::~Client(void)
-{
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Client ";
-		std::cout << URED "has been deleted" DEF << std::endl;
-	}
-}
+Client::~Client(void) {}
 
 Client &Client::operator=(Client const &src)
 {
@@ -54,12 +37,12 @@ Client &Client::operator=(Client const &src)
 	}
 	if (this != &src)
 	{
-		this->_ClientFd = src._ClientFd;
-		this->_lastActivity = src._lastActivity;
-		
+		this->_ClientFd = src.getClientFd();
+		this->_lastActivity = src.getLastActivity();
+
 		this->serverConfig = src.serverConfig;
 		this->listenFd = src.listenFd;
-		
+
 		this->request = src.request;
 		this->response = src.response;
 		this->cgi = src.cgi;
@@ -67,15 +50,9 @@ Client &Client::operator=(Client const &src)
 	return (*this);
 }
 
-int Client::GetClientFd() const 
-{
-	return _ClientFd;
-}
+const time_t &Client::getLastActivity() const { return (_lastActivity); }
 
-time_t Client::GetLastActivity() const
-{
-	return _lastActivity;
-}
+int Client::getClientFd() const { return (_ClientFd); }
 
 void Client::updateLastActivity()
 {

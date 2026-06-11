@@ -1,28 +1,22 @@
 #include "../../inc/sockets/SocketController.hpp"
-#include "../../inc/requests/Inspect.hpp"
-
+#include "../../inc/http/Inspect.hpp"
 #include "../../inc/ansi_color_codes.h"
-
-#include <stdlib.h>	// exit
 
 /*
 
-domain
-Escolhe qual maneira de comunicacao se vai usar.
-Escolhi AF_INET porque e que usa os IPv4 que vai ser preciso para a socket futuramente acho eu LMAO
 
-type
-Pede que tipo de esquema e que queres que a tua socket comunique,
-eu escolhi a SOCK_STREAM porque e a mais completa e segura
-
-protocol
-Faz com que a tua socket possa ter comportamentos diferentes do normal (ativa flags que estao no manual)
-por enquanto vamos manter desativado para testar
 
 */
 
 SocketController::SocketController(void) {}
 
+/*
+	@param domain   Address family (e.g. AF_INET for IPv4).
+ * @param type     Socket type (e.g. SOCK_STREAM for TCP).
+ * @param protocol Protocol (typically 0 to auto-select).
+ * @param port     Port number in host byte order; converted internally with htons.
+ * @param ip       IP address in host byte order (e.g. INADDR_ANY); converted with htonl.
+*/
 SocketController::SocketController(int domain, int type, int protocol, int port, u_long ip)
 	: _sock(socket(domain, type, protocol))
 {
@@ -41,13 +35,13 @@ SocketController::SocketController(int domain, int type, int protocol, int port,
 	int optval = 1;
 	setsockopt(_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
-	// Init na estrutura de network para configurar a conexao feita atraves do bind
+	// Populate the address structure used by bind
 	this->_address.sin_family = domain;
 
-	// temos de usar htons para organizar os bites de port para se encaxarem bem na network
+	// htons converts the port from host to network byte order
 	this->_address.sin_port = htons(port);
 
-	// IPV4 da maquina
+	// htonl converts the IPv4 address from host to network byte order.
 	this->_address.sin_addr.s_addr = htonl(ip);
 }
 
@@ -56,8 +50,7 @@ void SocketController::test_connection(int test_connection)
 	if (0 > test_connection)
 	{
 		std::cout << "Trying to connect..." << std::endl;
-		// -- CAN'T USE EXIT!!
-		exit(EXIT_FAILURE);
+		throw std::runtime_error("Connection failed");
 	}
 }
 
@@ -84,7 +77,7 @@ std::ostream &operator<<(std::ostream &out, SocketController const &source)
 	return (out);
 }
 
-int SocketController::getSocketfd(void) const 
+int SocketController::getSocketfd(void) const
 {
 	return this->_sock;
 }
