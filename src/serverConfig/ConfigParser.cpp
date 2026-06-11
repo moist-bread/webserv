@@ -393,6 +393,8 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
  */
 void ConfigParser::_serverName(ServerConfig &server)
 {
+	if (!server.serverName.empty())
+		_ts.throwValidationError("Duplicated", "server_name");
 	_ts._extractSingleKeyword(server.serverName);
 	_validate_ServerName(server.serverName);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -636,6 +638,7 @@ void ConfigParser::_serverLocation(ServerConfig &server, std::set<std::string> &
  * failure a validation error is thrown.
  *
  * @param path Path string to validate.
+ * @param cgiPass Boolean to confirm that is a dedicated CGI endpoint.
  * @param locationsPathRecord Set used to detect duplicate paths.
  */
 void ConfigParser::_validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord)
@@ -716,6 +719,8 @@ void ConfigParser::_locationRoot(LocationConfig &location)
  */
 void ConfigParser::_locationIndex(LocationConfig &location)
 {
+	if (!location.index.empty())
+		_ts.throwValidationError("Duplicated", "index");
 	_ts._extractKeywordVector(location.index);
 	_validate_Index(location.index);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -872,6 +877,8 @@ void ConfigParser::_locationCgi(LocationConfig &location)
 	std::string exec;
 	if (_ts._previousToken().content == "cgi_pass")
 	{
+		if (!location.cgi.empty())
+			_ts.throwValidationError("Duplicated", "cgi_pass");
 		ext = location.getPath().substr(1);
 		location.CgiPass = true;
 	}
