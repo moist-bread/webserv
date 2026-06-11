@@ -391,7 +391,7 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 				cl.cgi.process(cl.request);
 				int contentOfCgiFd = cl.cgi.getPipeOutReadFd();
 				PopulatePollInfo(contentOfCgiFd);
-				_cgiMap.insert(std::make_pair(contentOfCgiFd, cl.GetClientFd()));
+				_cgiMap.insert(std::make_pair(contentOfCgiFd, cl.getClientFd()));
 				_pollfds[*pollfds_idx].events = 0; // O cliente fica "adormecido" no poll até o CGI acabar
 				return;
 			}
@@ -454,7 +454,7 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 				return (removeClient(fd, *pollfds_idx, CLOSE_CONNECTION));
 
 		time_t now = std::time(NULL);
-		time_t seconds_idle = std::difftime(now, cl.GetLastActivity());
+		time_t seconds_idle = std::difftime(now, cl.getLastActivity());
 
 		if (seconds_idle > TIMEOUT_TIME)
 			return (removeClient(fd, *pollfds_idx, TIMEOUT));
