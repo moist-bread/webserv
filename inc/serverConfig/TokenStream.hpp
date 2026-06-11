@@ -36,7 +36,7 @@ class TokenStream
 		void _extractKeywordVector(std::vector<std::string>&);
 
 		void throwSyntaxError(const std::string &message, size_t customLine = 0) const;
-		void throwValidationError(const std::string &message, const std::string &directive) const;
+		void throwValidationError(const std::string &message, const std::string &directive, size_t customLine = 0) const;
 
 	private:
 		size_t	_cursor;

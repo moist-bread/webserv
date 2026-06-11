@@ -73,11 +73,14 @@ std::vector<ServerConfig> ConfigParser::parse(void)
 	{
 		if (_ts._currentToken().type == TOKEN_KEYWORD && _ts._currentToken().content == "server")
 		{
+			const t_token &serverToken = _ts._currentToken();
 			_ts._advanceToken();
 			_ts._expect(TOKEN_LBRACE);
+
 			ServerConfig newServer;
 			_parseServerBlock(newServer);
-			_finalizeServer(newServer);
+			_finalizeServer(newServer, serverToken);
+
 			newServers.push_back(newServer);
 		}
 		else
@@ -101,8 +104,9 @@ std::vector<ServerConfig> ConfigParser::parse(void)
  *
  * @param server ServerConfig instance to finalize (modified in-place).
  */
-void ConfigParser::_finalizeServer(ServerConfig &server)
+void ConfigParser::_finalizeServer(ServerConfig &server, const t_token &serverToken)
 {
+	size_t serverLine = serverToken.line;
 	//	Listen
 	if (server.listen.string.empty())
 	{
@@ -117,8 +121,8 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
 		server.clientMaxBodySize = ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE;
 	//	Locations
 	if (server.locations.empty())
-		_ts.throwValidationError("No Location", "server");
-	_finalizeLocation(server);
+		_ts.throwValidationError("No Location", "server", serverLine);
+	_finalizeLocation(server, serverLine);
 }
 
 /**
@@ -132,30 +136,28 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
  *
  * @param server ServerConfig whose locations will be finalized (modified in-place).
  */
-void ConfigParser::_finalizeLocation(ServerConfig &server)
+void ConfigParser::_finalizeLocation(ServerConfig &server, size_t serverline)
 {
 	for (size_t i = 0; i < server.locations.size(); ++i)
 	{
 		LocationConfig &location = server.locations[i];
 		if (location.CgiPass)
 		{
-			_finalizeLocationCgiPass(location, server);
+			_finalizeLocationCgiPass(location, server, serverline);
 			continue;
 		}
 		if (location.returnCode != INVALID_CODE)
 		{
-			_finalizeLocationReturn(location);
+			_finalizeLocationReturn(location, serverline);
 			continue;
 		}
 		if (location.root.empty())
 		{
 			if (server.root_default.empty())
-				_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+				_ts.throwValidationError("Location '" + location.path + "' - no Root, couldnt inherit from Server Root (not inserted)", "server", serverline);
 			else
 				location.root = server.root_default;
 		}
-		// if (location.index.empty())
-		// 	location.index.push_back("index.html");
 		if (location.autoindex == -1)
 			location.autoindex = false;
 		if (location.allowedMethods.empty())
@@ -165,7 +167,7 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 			location.allowedMethods.push_back(DELETE);
 		}
 		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
-			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
+			_ts.throwValidationError("Location '" + location.path + "' - no upload_store, won't be able to POST files", "server", serverline);
 		if (location.cgi.empty())
 		{
 			if (!server.cgi_default.empty())
@@ -174,41 +176,41 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 	}
 }
 
-void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server)
+void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverline)
 {
 	if (location.cgi.empty())
-		_ts.throwValidationError("Location with '*.extendion', must have cgi_pass declared", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - must have cgi_pass declared", "server", serverline);
 	if (location.allowedMethods.empty())
-		_ts.throwValidationError("Location with cgi pass, must have Allowed Methods declared", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, must have Allowed Methods declared", "server", serverline);
 	else if (location.isMethodAllowed(POST) && location.uploadStore.empty())
-		_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - no upload_store, won't be able to POST files", "server", serverline);
 	if (location.root.empty())
 	{
 		if (server.root_default.empty())
-			_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+			_ts.throwValidationError("Location '" + location.path + "' - no Root, couldnt inherit from Server Root (not inserted)", "server", serverline);
 		else
 			location.root = server.root_default;
 	}
 	if (!location.index.empty())
-		_ts.throwValidationError("Location with cgi pass, can't have index", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have index", "server", serverline);
 	if (location.autoindex != -1)
-		_ts.throwValidationError("Location with cgi pass, can't have autoindexing", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have autoindexing", "server", serverline);
 	if (location.returnCode != INVALID_CODE)
-		_ts.throwValidationError("Location with cgi pass, can't have return", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have return", "server", serverline);
 }
 
-void ConfigParser::_finalizeLocationReturn(LocationConfig &location)
+void ConfigParser::_finalizeLocationReturn(LocationConfig &location, size_t serverline)
 {
 	if (!location.index.empty())
-		_ts.throwValidationError("Location with return, can't have index", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have index", "server", serverline);
 	if (!location.root.empty())
-		_ts.throwValidationError("Location with return, can't have root", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have root", "server", serverline);
 	if (!location.cgi.empty())
-		_ts.throwValidationError("Location with return, can't have cgi", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have cgi", "server", serverline);
 	if (!location.uploadStore.empty())
-		_ts.throwValidationError("Location with return, can't have upload_store", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have upload_store", "server", serverline);
 	if (location.autoindex == 1)
-		_ts.throwValidationError("Location with return, can't have autoindexing", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have autoindexing", "server", serverline);
 }
 
 //*	----- ServerHandler functions ----- */

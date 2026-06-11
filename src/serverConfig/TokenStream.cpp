@@ -150,9 +150,11 @@ void TokenStream::throwSyntaxError(const std::string &message, size_t customLine
  * @param directive Optional directive name to include in the message.
  * @throws std::runtime_error Always throws with the formatted message.
  */
-void TokenStream::throwValidationError(const std::string &message, const std::string &directive) const
+void TokenStream::throwValidationError(const std::string &message, const std::string &directive, size_t customLine) const
 {
-    size_t line = (_cursor > 0 && !_tokens.empty()) ? _tokens[_cursor - 1].line : 1;
+	size_t line = customLine;
+	if (line == 0)
+		line = (_cursor > 0 && !_tokens.empty()) ? _tokens[_cursor - 1].line : 1;
 
     std::stringstream ss;
     ss << "Config error {l." << line << "} ";

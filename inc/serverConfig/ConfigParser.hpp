@@ -57,10 +57,10 @@ class ConfigParser
 		void _serverCgi(ServerConfig &server);
 		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
 		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
-		void _finalizeServer(ServerConfig &server);
-		void _finalizeLocation(ServerConfig &server);
-		void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server);
-		void _finalizeLocationReturn(LocationConfig &location);
+		void _finalizeServer(ServerConfig &server, const t_token &serverToken);
+		void _finalizeLocation(ServerConfig &server, size_t serverLine);
+		void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverLine);
+		void _finalizeLocationReturn(LocationConfig &location, size_t serverLine);
 	
 		//	LocationHandler functions
 		void _locationRoot(LocationConfig &location);
