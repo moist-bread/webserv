@@ -71,8 +71,8 @@ const t_token &TokenStream::_currentToken(void) const
 
 /**
  * @brief Get previous token without consuming it.
- * @return Reference to current token.
- * @throw std::runtime_error If cursor is out of range.
+ * @return Reference to the previous token.
+ * @throw std::runtime_error If cursor is at the beginning (no previous token).
  */
 const t_token &TokenStream::_previousToken(void) const
 {
@@ -101,8 +101,13 @@ void TokenStream::_extractSingleKeyword(std::string &destination)
 }
 
 /**
- * @brief Extract all consecutive keyword token contents.
- * @param destination Output vector to append keyword contents into.
+ * @brief Extract all consecutive keyword token contents, skipping duplicates.
+ * 
+ * Iterates through consecutive keyword tokens and appends their content to
+ * the destination vector. Duplicate keywords are skipped (only unique keywords
+ * are added).
+ * 
+ * @param destination Output vector to append unique keyword contents into.
  */
 void TokenStream::_extractKeywordVector(std::vector<std::string> &destination)
 {
@@ -148,6 +153,7 @@ void TokenStream::throwSyntaxError(const std::string &message, size_t customLine
  *
  * @param message Human-readable validation message.
  * @param directive Optional directive name to include in the message.
+ * @param customLine Optional explicit line number to use (0 = auto-select from previous token).
  * @throws std::runtime_error Always throws with the formatted message.
  */
 void TokenStream::throwValidationError(const std::string &message, const std::string &directive, size_t customLine) const

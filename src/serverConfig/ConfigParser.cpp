@@ -114,9 +114,9 @@ void ConfigParser::_finalizeServer(ServerConfig &server, const t_token &serverTo
 		server.listen.port = 8080;
 		server.listen.string = "127.0.0.1:8080";
 	}
+	//	Server Name
 	if (server.serverName.empty())
 		server.serverName = "localhost";
-	//?	Server Root -> keep it empty
 	//	Client Max Body Size
 	if (server.clientMaxBodySize == 0)
 		server.clientMaxBodySize = ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE;
@@ -177,6 +177,20 @@ void ConfigParser::_finalizeLocation(ServerConfig &server, size_t serverline)
 	}
 }
 
+/**
+ * @brief Finalize and validate a location with CGI pass (cgi_pass directive).
+ *
+ * Performs location-level validations specific to CGI pass configurations:
+ * - Ensures `cgi_pass` is declared (non-empty `location.cgi`).
+ * - Requires explicit `allow_methods` directive.
+ * - If POST is allowed, requires an `upload_store` for file uploads.
+ * - Inherits `root` from server if not specified locally.
+ * - Rejects incompatible directives: `index`, `autoindex`, `return`.
+ *
+ * @param location LocationConfig with cgi_pass to validate (modified in-place).
+ * @param server ServerConfig used for root inheritance.
+ * @param serverline Line number of the parent server block for error reporting.
+ */
 void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverline)
 {
 	if (location.cgi.empty())
@@ -200,6 +214,16 @@ void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConf
 		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have return", "server", serverline);
 }
 
+/**
+ * @brief Finalize and validate a location with return (redirect) directive.
+ *
+ * Performs location-level validations specific to return/redirect configurations:
+ * - Rejects incompatible directives: `index`, `root`, `cgi`, `upload_store`, `autoindex`.
+ * - Ensures the location is purely a redirect with no conflicting content-serving directives.
+ *
+ * @param location LocationConfig with return directive to validate.
+ * @param serverline Line number of the parent server block for error reporting.
+ */
 void ConfigParser::_finalizeLocationReturn(LocationConfig &location, size_t serverline)
 {
 	if (!location.index.empty())
@@ -552,15 +576,15 @@ void ConfigParser::_validate_ErrorPages(const std::map<t_status_code, std::strin
 
 ///* CGI
 /**
- * @brief Parse the `cgi` directive mapping a file extension to an executable.
+ * @brief Parse the server-level `cgi` directive mapping file extensions to executables.
  *
  * Expects two tokens: the extension (e.g. `.php`) and the executable path.
  * The extension is validated to begin with a dot and contain only
  * alphanumeric characters; the executable is validated as an existing
- * executable file. The mapping is stored in `location.cgi` and the
+ * executable file. The mapping is stored in `server.cgi_default` and the
  * terminating semicolon is consumed.
  *
- * @param location LocationConfig to populate (modified in-place).
+ * @param server ServerConfig to populate (modified in-place).
  */
 void ConfigParser::_serverCgi(ServerConfig &server)
 {
@@ -916,6 +940,15 @@ void ConfigParser::_validate_UploadStore(std::string &path)
 
 //*	----- Helpers ----- */
 
+/**
+ * @brief Validate a CGI file extension format.
+ *
+ * Ensures the extension begins with a dot `.` followed by one or more
+ * alphabetic characters. Throws an exception if the format is invalid.
+ *
+ * @param ext File extension string to validate (e.g. `.php`, `.py`).
+ * @throws std::runtime_error If the extension format is invalid.
+ */
 void ConfigParser::_isValidExtension(const std::string &ext) const
 {
 	if (ext.length() < 2 || ext[0] != '.')

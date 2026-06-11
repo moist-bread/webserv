@@ -8,7 +8,7 @@
 
 #include "LocationConfig.hpp" // used: LocationConfig
 
-// =====>┊( CLASS )┊
+// =====>┊( ServerConfig)┊
 
 struct ListenAddress
 {

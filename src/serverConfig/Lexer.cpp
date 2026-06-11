@@ -7,26 +7,26 @@
 # include <sys/stat.h> // stat
 
 /**
- * @brief Tokenizes a configuration file into tokens
+ * @brief Tokenizes a configuration file into tokens.
  * 
- * Opens and reads the specified file line by line, parsing each line into tokens.
+ * Validates the file path (must have `.conf` extension and be a readable file),
+ * then opens and reads the file line by line, parsing each line into tokens.
  * The function handles:
  * - Keywords (alphanumeric sequences)
  * - Symbols: { } ;
  * - Comments (# to end of line)
  * - Whitespace (skipped)
  * 
- * @param filePath Path to the configuration file
- * @return Vector containing all tokens from the file, with EOF token at the end
+ * @param filePath Path to the configuration file (must end in `.conf`)
+ * @return Vector containing all tokens from the file, with EOF token at the end.
  * 
- * @throws std::runtime_error If file cannot be opened
+ * @throws std::runtime_error If file has invalid extension, doesn't exist,
+ *                             is not a regular file, or cannot be opened.
  * 
- * @note Automatically adds EOF token at the end
- * @note Comments are not included in output tokens
+ * @note Automatically adds EOF token at the end.
+ * @note Comments are not included in output tokens.
+ * @note File must be empty to throw std::runtime_error.
  */
-
- //Linha 72 Lexer.cpp no ficheiro tokenizeFile esta dar segfault ao mandar uma pasta ./webserv config_files
-
 std::vector<t_token> Lexer::tokenizeFile(const std::string &filePath)
 {
 	std::vector<t_token> outTokens;
@@ -120,7 +120,6 @@ t_token Lexer::_getSymbol(const std::string &line, size_t &cursor, size_t lineNu
 	t_token token;
 	token.content = line[cursor];
 	token.line = lineNumber;
-	token.collumn = cursor + 1;
 
 	if (line[cursor] == '{')
 		token.type = TOKEN_LBRACE;
@@ -154,7 +153,6 @@ t_token Lexer::_getKeyword(const std::string &line, size_t &cursor, size_t lineN
 	t_token token;
 	token.type = TOKEN_KEYWORD;
 	token.line = lineNumber;
-	token.collumn = cursor + 1;
 
 	size_t needle = cursor;
 	while (needle < line.length() && line[needle] != '{' && line[needle] != '}'
@@ -179,21 +177,21 @@ void Lexer::_pushEOF(size_t lineNumber, std::vector<t_token> &outTokens)
 	t_token token;
 	token.type = TOKEN_EOF;
 	token.line = lineNumber;
-	token.collumn = 0;
 	outTokens.push_back(token);
 }
 
 //* ---- Helpers ----
 
 /**
- * @brief Wrapper around `access(2)` to check filesystem permissions.
+ * @brief Check filesystem permissions using `access(2)`.
  *
- * Returns true when `access(path, flags)` indicates the current process
- * has the requested permissions; false otherwise.
+ * Verifies the current process has the requested permissions on the path.
+ * Throws an exception if the path is not accessible.
  *
  * @param path Filesystem path to check.
- * @param flags Permission flags as accepted by `access(2)` (e.g. R_OK).
- * @return true if accessible with given flags, false otherwise.
+ * @param flags Permission flags as accepted by `access(2)` (e.g. R_OK, W_OK, X_OK).
+ * 
+ * @throws std::runtime_error If the path is not accessible with the given flags.
  */
 static void isValidAccess(const std::string &path, const int flags)
 {
@@ -205,12 +203,13 @@ static void isValidAccess(const std::string &path, const int flags)
  * @brief Validate that a path refers to a regular file with the requested
  * access permissions.
  *
- * Uses `_isValidAccess` and `stat(2)` to ensure the path exists, is not a
- * directory, and the current process has the requested permissions.
+ * Uses `isValidAccess()` and `stat(2)` to ensure the path exists, is a regular
+ * file (not a directory), and the current process has the requested permissions.
  *
  * @param path Filesystem path to validate.
  * @param flags Permission flags to check with `access(2)`.
- * @return true if the path is a file and accessible, false otherwise.
+ * 
+ * @throws std::runtime_error If path is not accessible, not a file, or is a directory.
  */
 static void isValidFile(const std::string &path, const int flags)
 {
@@ -222,6 +221,20 @@ static void isValidFile(const std::string &path, const int flags)
 		throw std::runtime_error("'" + path + "' is not a File");
 }
 
+/**
+ * @brief Validate configuration file path and existence.
+ *
+ * Checks that:
+ * - The file path has a `.conf` extension (must be exactly 5 characters).
+ * - The file exists and is accessible with the requested permissions.
+ * - The path refers to a regular file, not a directory.
+ *
+ * @param path Filesystem path to the configuration file.
+ * @param flag Permission flags to check with `access(2)` (typically R_OK for reading).
+ * 
+ * @throws std::runtime_error If extension is invalid, file doesn't exist, is not
+ *                             accessible, or is a directory instead of a file.
+ */
 void Lexer::parsePathFile(const std::string &path, const int flag)
 {
 	size_t extension = path.rfind(".conf");

@@ -5,7 +5,10 @@
 #include <algorithm> // std::find
 
 /**
- * @brief Default Constructor.
+ * @brief Constructor.
+ * 
+ * Loads the configuration from the specified file upon initialization.
+ * 
  * @param filePath Path to configuration file to load.
  */
 Config::Config(const std::string &filePath) { this->load(filePath); }
