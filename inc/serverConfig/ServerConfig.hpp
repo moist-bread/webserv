@@ -39,7 +39,7 @@ struct ServerConfig
 	int getListenPort(void) const;
 	const std::string &getListenString(void) const;
 	const ListenAddress &getListenAddress(void) const;
-	const std::vector<std::string> &getServerNames(void) const;
+	const std::string &getServerName(void) const;
 	bool isServerName(const std::string &serverName) const;
 	std::string getServerUrl(void) const;
 	const std::string &getRoot(void) const;
@@ -50,7 +50,7 @@ struct ServerConfig
 	const LocationConfig *matchLocation(const std::string &uri, const t_method &method) const;
 
 	ListenAddress listen;
-	std::vector<std::string> serverNames; // e.g., ["example.com", "www.example.com"]
+	std::string serverName; // e.g., ["example.com", "www.example.com"]
 	std::string root_default;
 	size_t clientMaxBodySize; // Limit for uploads (e.g., 1048576 for 1MB)
 

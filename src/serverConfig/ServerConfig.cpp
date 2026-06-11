@@ -37,7 +37,7 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 		this->listen.host = source.listen.host;
 		this->listen.port = source.listen.port;
 		this->listen.string = source.listen.string;
-		this->serverNames = source.serverNames;
+		this->serverName = source.serverName;
 		this->root_default = source.root_default;
 		this->clientMaxBodySize = source.clientMaxBodySize;
 		this->errorPages = source.errorPages;
@@ -60,9 +60,9 @@ std::string ServerConfig::getServerUrl(void) const
 	std::string baseUrl = "http://";
 	std::string domainOrIp;
 
-	if (!this->serverNames.empty())
-	    domainOrIp = this->serverNames[0];
-	else if (this->listen.host == "0.0.0.0")
+	if (!this->serverName.empty())
+	    domainOrIp = this->serverName;
+	else if (this->listen.host == "127.0.0.1")
 	    domainOrIp = "localhost";
 	else
 	    domainOrIp = this->listen.host;
@@ -101,7 +101,7 @@ const ListenAddress &ServerConfig::getListenAddress(void) const { return (this->
  * @brief Get the configured `server_name` entries.
  * @return Reference to vector of server names.
  */
-const std::vector<std::string> &ServerConfig::getServerNames(void) const { return (this->serverNames); }
+const std::string &ServerConfig::getServerName(void) const { return (this->serverName); }
 
 /**
  * @brief Check whether `serverName` is present in this server's `server_name` list.
@@ -110,11 +110,8 @@ const std::vector<std::string> &ServerConfig::getServerNames(void) const { retur
  */
 bool ServerConfig::isServerName(const std::string &serverName) const
 {
-	for (size_t i = 0; i < this->serverNames.size(); ++i)
-	{
-		if (this->serverNames[i] == serverName)
-			return (true);
-	}
+	if (this->serverName == serverName)
+		return (true);
 	return (false);
 }
 
@@ -204,13 +201,7 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "    Host: " << source.getListenHost() << "\n";
 	out << "    Port: " << source.getListenPort() << "\n";
 	out << "    Listen adress: " << source.getListenString() << "\n";
-
-	out << "    Server Names: ";
-	for (size_t i = 0; i < source.serverNames.size(); ++i) {
-		out << source.serverNames[i] << " ";
-	}
-	out << "\n";
-
+	out << "    Server Name: " << source.serverName << "\n";
 	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
 
 	out << "    Error Pages:\n";

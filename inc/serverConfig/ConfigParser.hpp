@@ -56,11 +56,11 @@ class ConfigParser
 		void _serverErrorPage(ServerConfig &server);
 		void _serverCgi(ServerConfig &server);
 		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
-		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
 		void _finalizeServer(ServerConfig &server, const t_token &serverToken);
 		void _finalizeLocation(ServerConfig &server, size_t serverLine);
 		void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverLine);
 		void _finalizeLocationReturn(LocationConfig &location, size_t serverLine);
+		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
 	
 		//	LocationHandler functions
 		void _locationRoot(LocationConfig &location);
@@ -73,11 +73,10 @@ class ConfigParser
 	
 		//	ServerHandler Validation functions
 		void _validate_Listen(const std::string &host, const int port);
-		void _validate_ServerNames(const std::vector<std::string> &serverNames);
+		void _validate_ServerName(const std::string &serverName);
 		void _validate_Root(std::string &root);
 		void _validate_MaxBodySize(const size_t clientMaxBodySize);
 		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
-		void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
 	
 		//	LocationHandler Validation functions
 		void _validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord);

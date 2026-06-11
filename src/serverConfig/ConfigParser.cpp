@@ -114,7 +114,8 @@ void ConfigParser::_finalizeServer(ServerConfig &server, const t_token &serverTo
 		server.listen.port = 8080;
 		server.listen.string = "127.0.0.1:8080";
 	}
-	//?	Server Names -> keep it empty
+	if (server.serverName.empty())
+		server.serverName = "localhost";
 	//?	Server Root -> keep it empty
 	//	Client Max Body Size
 	if (server.clientMaxBodySize == 0)
@@ -254,7 +255,7 @@ void ConfigParser::_parseServerBlock(ServerConfig &newServer)
  *
  * Performs pairwise comparison of parsed servers to detect servers that
  * share the same `listen.string`. If a collision is found `_ts.throwValidationError`
- * is invoked and `_validate_ServerNamesCollision` is called to provide more
+ * is invoked and `_validate_ServerNameCollision` is called to provide more
  * granular name-collision diagnostics.
  *
  * @param servers Vector of parsed servers to validate.
@@ -268,36 +269,10 @@ void ConfigParser::_validate_ServerCollision(const std::vector<ServerConfig> &se
 		{
 			const ServerConfig &server_B = servers[j];
 			if (server_A.listen.string == server_B.listen.string)
-			{
 				_ts.throwValidationError("Collision between servers - shared listen: '" + server_A.listen.string + "'", "server");
-				_validate_ServerNamesCollision(server_A, server_B);
-			}
 		}
 	}
 }
-
-/**
- * @brief Check for duplicate `server_name` entries between two servers.
- *
- * Compares the `serverNames` vectors of `server_A` and `server_B`. If a
- * matching name is found a validation error is reported anchored to the
- * `server_name` directive.
- *
- * @param server_A First server to compare.
- * @param server_B Second server to compare.
- */
-void ConfigParser::_validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B)
-{
-	for (size_t i = 0; i < server_A.serverNames.size(); ++i)
-	{
-		for (size_t j = 0; j < server_B.serverNames.size(); ++j)
-		{
-			if (server_A.serverNames[i] == server_B.serverNames[j])
-				_ts.throwValidationError("Collision between servers - shared server name: '" + server_A.serverNames[i] + "'", "server_name");
-		}
-	}
-}
-
 
 //*	Listen
 /**
@@ -383,19 +358,19 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
 
 //* Server Names
 /**
- * @brief Parse the `server_name` directive into `server.serverNames`.
+ * @brief Parse the `server_name` directive into `server.serverName`.
  *
  * Reads one or more names (space-separated) and stores them in the server
  * configuration. Names are validated for allowed characters and form via
- * `_validate_ServerNames`. Consumes the directive tokens and the
+ * `_validate_ServerName`. Consumes the directive tokens and the
  * terminating semicolon.
  *
  * @param server ServerConfig to populate (modified in-place).
  */
 void ConfigParser::_serverName(ServerConfig &server)
 {
-	_ts._extractKeywordVector(server.serverNames);
-	_validate_ServerNames(server.serverNames);
+	_ts._extractSingleKeyword(server.serverName);
+	_validate_ServerName(server.serverName);
 	_ts._expect(TOKEN_SEMICOLON);
 }
 
@@ -409,29 +384,25 @@ void ConfigParser::_serverName(ServerConfig &server)
  *
  * On invalid names a validation or syntax error is thrown.
  *
- * @param serverNames Vector of server name strings to validate.
+ * @param serverName Vector of server name strings to validate.
  */
-void ConfigParser::_validate_ServerNames(const std::vector<std::string> &serverNames)
+void ConfigParser::_validate_ServerName(const std::string &serverName)
 {
-	if (serverNames.empty())
+	if (serverName.empty())
 		_ts.throwSyntaxError("server_name directive is empty", _ts._currentToken().line);
-	for (size_t i = 0; i < serverNames.size(); ++i)
+	if (serverName == "_")
+		return ;
+	if (serverName[0] == '.' || serverName[0] == '-' || 
+			serverName[serverName.length() - 1] == '.' ||
+			serverName[serverName.length() - 1] == '-')
+		_ts.throwValidationError("invalid server name", "server_name");
+	for (size_t j = 0; j < serverName.length(); ++j)
 	{
-		const std::string &currentName = serverNames[i];
-		if (currentName == "_")
-			continue ;
-		if (currentName[0] == '.' || currentName[0] == '-' || 
-				currentName[currentName.length() - 1] == '.' ||
-				currentName[currentName.length() - 1] == '-')
+		char c = serverName[j];
+		if (!std::isalnum(c) && c != '.' && c != '-')
 			_ts.throwValidationError("invalid server name", "server_name");
-		for (size_t j = 0; j < currentName.length(); ++j)
-		{
-			char c = currentName[j];
-			if (!std::isalnum(c) && c != '.' && c != '-')
-				_ts.throwValidationError("invalid server name", "server_name");
-			if (c == '.' && currentName[j - 1] == '.')
-				_ts.throwValidationError("invalid server name", "server_name");
-		}
+		if (c == '.' && serverName[j - 1] == '.')
+			_ts.throwValidationError("invalid server name", "server_name");
 	}
 }
 //*	----------- *

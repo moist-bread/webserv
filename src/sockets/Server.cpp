@@ -494,7 +494,7 @@ std::ostream &operator<<(std::ostream &out, const Server &src)
 	{
 		out << MAG "    [" << (*it).first << "]" DEF;
 		out << " | Port=" << (*it).second->getListenPort(); // ---------- server name PENDING
-		out << " | Server Name=" << ((*it).second->serverNames.empty() ? "none" : (*it).second->serverNames[0]) << " |" << std::endl;
+		out << " | Server Name=" << ((*it).second->serverName.empty() ? "none" : (*it).second->serverName) << " |" << std::endl;
 
 	}
 	return (out);
