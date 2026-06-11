@@ -6,11 +6,6 @@
 #include <stdexcept>
 #include <unistd.h>
 
-// TO-DO
-// [ ] make tester work......
-// [ ] cgi page explanation
-// [ ] write README......
-
 struct ServerConfig;
 struct LocationConfig;
 

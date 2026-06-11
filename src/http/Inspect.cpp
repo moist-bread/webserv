@@ -1,7 +1,7 @@
 #include "../../inc/http/Inspect.hpp"
 
-#include "../../inc/http/HTTP.hpp"
 #include "../../inc/sockets/Server.hpp"
+#include "../../inc/http/HTTP.hpp"
 #include "../../inc/http/Request.hpp"
 #include "../../inc/http/Response.hpp"
 
@@ -125,5 +125,5 @@ namespace response_utils
 
 void Inspect::write_curr_time(void)
 {
-	std::cout << "[" << response_utils::date_format(time(NULL)) << "]	";
+	std::cout << "[" << response_utils::date_format(std::time(NULL)) << "]	";
 }

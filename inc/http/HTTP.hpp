@@ -1,12 +1,9 @@
 #pragma once
 
 // == libs
-#include <iostream>
 #include <string>
 #include <map>
 #include <vector>
-#include <stdio.h>
-#include <stdint.h> // size_max
 
 // == defines
 #define CRLF "\r\n"

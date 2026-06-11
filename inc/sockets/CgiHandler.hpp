@@ -23,19 +23,16 @@ private:
 
 	void clear();
 	void update_info(Request &req);
-	int executeCgi();
+	void executeCgi();
 	int InitPipes();
 	int writeBodyToCgiInput() const;
 	static std::string extract_script_filename(const std::string full_path, const std::string ext);
-	// static std::string extract_path_info(const std::string full_path, const std::string ext);
 
 public:
 	CgiHandler(void);
 	CgiHandler(CgiHandler const &src);
 	~CgiHandler(void);
 	CgiHandler &operator=(CgiHandler const &src);
-
-	CgiHandler(Request &req);
 
 	void process(Request &req);
 	int getPipeOutReadFd() const;

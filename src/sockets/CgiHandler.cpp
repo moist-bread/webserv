@@ -10,35 +10,34 @@
 #include <algorithm> // transform, EXIT_FAILURE
 #include <csignal>	 // signal
 #include <fcntl.h>	 // fcntl
-#include <sys/types.h>
-#include <sys/wait.h>
+// #include <sys/types.h>
+// #include <sys/wait.h>
 
-CgiHandler::CgiHandler(void) : time_started(VALUE_NOT_SET) {}
+/// @brief Converts any char into screaming snake case
+/// @return for '-' or ' ' it returns '_', others return their uppercase version
+static int screaming_snake_case(int i)
+{
+	if (i == '-' || i == ' ')
+		return '_';
+	return toupper(i);
+}
+
+CgiHandler::CgiHandler(void) { clear(); }
 
 CgiHandler::CgiHandler(CgiHandler const &src) { *this = src; }
 
-CgiHandler::~CgiHandler(void) { clear(); }
+CgiHandler::~CgiHandler(void) {}
 
 CgiHandler &CgiHandler::operator=(CgiHandler const &src)
 {
 	if (this != &src)
 	{
-		(void)src;
+		setCgiActivityStart(src.getCgiActivityStart());
 	}
 	return (*this);
 }
 
-int screaming_snake_case(int i)
-{
-	if (i == '-')
-		return '_';
-	return toupper(i);
-}
-
-CgiHandler::CgiHandler(Request &req)
-{
-	process(req);
-}
+/// @brief Sends to execution whatever is asked by the Request
 void CgiHandler::process(Request &req)
 {
 	clear();
@@ -46,6 +45,7 @@ void CgiHandler::process(Request &req)
 	executeCgi();
 }
 
+/// @brief Resets all variable values
 void CgiHandler::clear()
 {
 	_pipeIn[0] = 0;
@@ -62,11 +62,10 @@ void CgiHandler::clear()
 	setCgiActivityStart(VALUE_NOT_SET);
 }
 
+/// @brief Sets the Path for the script and creates the Cgi Environment Variables 
 void CgiHandler::update_info(Request &req)
 {
 	_body = req.body;
-	// std::string filename = extract_script_filename(req.path_uri, req.file_extension);
-	// _scriptPath = req.conf->getRoot() + filename;
 	if (!req.loc->isCgiPass())
 		_scriptPath = req.loc->getRoot() + req.path_uri.substr(req.loc->getPath().length());
 	else
@@ -85,17 +84,12 @@ void CgiHandler::update_info(Request &req)
 		}
 	}
 
-	// std::cout << BLU "SCRIPT PATH: " DEF << _scriptPath << std::endl;
-	// std::cout << BLU "SCRIPT FILENAME: " DEF << filename << std::endl;
-	// std::cout << BLU "PATH INFO: " DEF << extract_path_info(req.path_uri, req.file_extension) << std::endl;
 	std::fstream fs(_scriptPath.c_str(), std::fstream::in);
 	if (!fs.is_open())
 		throw(CgiHandler::CgiExecutionFail("open failure"));
 
 	_compiler = req.loc->getCgiExecutable(req.file_extension);
-	// std::cout << BLU "COMPILER: " DEF << _compiler << std::endl;
 
-	// std::string empty;
 	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
 	_env.push_back("SERVER_NAME=" + req.conf->getServerNames()[0]); // -------------------------
 	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(req.protocol));
@@ -103,6 +97,7 @@ void CgiHandler::update_info(Request &req)
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
 
 	_env.push_back("REQUEST_METHOD=" + HTTP::stringMethod(req.method));
+	// -- path info is whatever comes after the program name in the url
 	_env.push_back("PATH_INFO=" + req.path_uri);
 	_env.push_back("QUERY_STRING=" + req.query);
 	_env.push_back("SCRIPT_NAME=" + _scriptPath);
@@ -117,7 +112,7 @@ void CgiHandler::update_info(Request &req)
 
 	for (map_strings::const_iterator it = req.headers.begin(); it != req.headers.end(); it++)
 	{
-		// add "HTTP_" before all keys, the "-" become "_" and all uppercase
+		// -- add "HTTP_" before all keys, the "-" become "_" and all uppercase
 		std::string key = (*it).first;
 		std::transform(key.begin(), key.end(), key.begin(), ::screaming_snake_case);
 		_env.push_back("HTTP_" + key + "=" + (*it).second);
@@ -126,27 +121,14 @@ void CgiHandler::update_info(Request &req)
 
 std::string CgiHandler::extract_script_filename(const std::string full_path, const std::string ext)
 {
-	// script filename is everything until the end of the script extention
+	// -- script filename is everything until the end of the script extention
 	size_t pos = full_path.rfind("." + ext);
 	if (pos == std::string::npos)
 		return (full_path);
 	return (full_path.substr(0, pos + ext.length() + 1));
 }
 
-/*
-std::string CgiHandler::extract_path_info(const std::string full_path, const std::string ext)
-{
-	// path info is whatever comes after the program name in the url
-	size_t pos = full_path.rfind("." + ext);
-	if (pos == std::string::npos)
-		return ("");
-	if (pos + ext.length() + 1 == full_path.size())
-		return ("");
-	return (full_path.substr(pos + ext.length() + 1));
-}
-*/
-
-int CgiHandler::executeCgi()
+void CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
@@ -172,7 +154,7 @@ int CgiHandler::executeCgi()
 	}
 	else if (this->_pid == 0)
 	{
-		// Vou usar o dup2 para mudar onde o meu texto vai ser displayed
+		// -- Using dup2 to send the Request Body as the CGI input and sending the CGI output to the pipe
 		dup2(this->_pipeIn[0], STDIN_FILENO);
 		dup2(this->_pipeOut[1], STDOUT_FILENO);
 
@@ -186,20 +168,16 @@ int CgiHandler::executeCgi()
 
 		std::vector<char *> exec_env;
 		for (size_t i = 0; i < _env.size(); i++)
-		{
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
-			// std::cerr << _env[i] << std::endl;
-		}
 		exec_env.push_back(NULL);
 
 		execve(argv[0], argv, &exec_env[0]);
 		std::cerr << "FAILED TO EXECUTE" << std::endl;
 		setCgiActivityStart(VALUE_NOT_SET);
 		// _exit(EXIT_FAILURE);
-		throw(CgiHandler::CgiExecutionFail("execve failure"));
+		throw(CgiHandler::CgiExecutionFail("execve failure")); // ------------------- need to tests if this is working
 	}
 	setCgiActivityStart(std::time(NULL));
-	return 1;
 }
 
 int CgiHandler::InitPipes()
@@ -255,10 +233,6 @@ int CgiHandler::writeBodyToCgiInput() const
 	{
 		close(this->_pipeIn[1]);
 	}
-	/*
-	if (close(this->_pipeIn[1]) == -1)
-		throw CgiHandler::CgiExecutionFail("close failure");
-	*/
 
 	return 0;
 }
