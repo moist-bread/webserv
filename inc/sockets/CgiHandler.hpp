@@ -31,8 +31,8 @@ private:
 public:
 	CgiHandler(void);
 	CgiHandler(CgiHandler const &src);
-	~CgiHandler(void);
 	CgiHandler &operator=(CgiHandler const &src);
+	~CgiHandler(void);
 
 	void process(Request &req);
 	int getPipeOutReadFd() const;

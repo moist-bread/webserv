@@ -15,8 +15,8 @@ private:
 public:
 	Client(int fd, int lfd, const ServerConfig *sc);
 	Client(Client const &src);
-	~Client(void);
 	Client &operator=(Client const &src);
+	~Client(void);
 	
 	Request request;
 	Response response;

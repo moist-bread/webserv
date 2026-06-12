@@ -1,15 +1,12 @@
 #pragma once
 
 #include "ASimpleServer.hpp"
-#include "../../inc/serverConfig/ServerConfig.hpp"
 #include "../../inc/serverConfig/Config.hpp"
 #include "../../inc/http/Inspect.hpp"
-#include <map>
-#include <vector>
-#include <iostream>
-#include <poll.h>
+#include <poll.h> // pollfd
 
 class Client;
+struct ServerConfig;
 
 enum ConnectionStatus
 {
@@ -31,39 +28,39 @@ private:
 	std::vector<ListeningSocket *> _extraListeners; //Pointers to secondary listening sockets created during setup.
 	std::vector<int> _listeningFds; //Vector of all listening socket FDs (used to detect new connections).
 
-
 	std::map<int, int> _cgiMap; //  Maps a CGI's output pipe FD to the FD of the Client who requested it. <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
 	std::map<int, const ServerConfig *> _fdToServerConfig; // Maps a listening socket FD to its logical Virtual Server configuration. listenFd → config do servidor
 
-	void SetNonblocking(int fd);
-
+	void SetupPorts();
+	
 	void PopulatePollInfo(int fd);
+	void SetNonblocking(int fd);
+	
 	void removeClient(int fd, size_t &index, const t_remove_reason &reason);
-
-	void launch();
-	bool isServerSocket(int fd);
-	ConnectionStatus getStatus(int ret);
-
 	void closeCgiConnection(const int &fd, size_t *pollfds_idx);
 	void switchToPollout(const int &fd);
-	void SetupPorts();
+	
+	void launch();
+	
 	void accepter(int listenFd);
-	int responder(int clientFd, const std::string &data);
-
 	void recieveCgiOutput(int fd, size_t *pollfds_idx);
 	void recieveClientRequest(int fd, size_t *pollfds_idx);
 	void sendClientResponse(int fd, size_t *pollfds_idx);
 	void inactivityTimeout(int fd, size_t *pollfds_idx);
-
+	
+	
+public:
+	Server(Config config);
+	Server(Server const &source);
+	Server &operator=(Server const &source);
+	~Server(void);
+	
+	bool isServerSocket(int fd);
+	ConnectionStatus getStatus(int ret);
+	int responder(int clientFd, const std::string &data);
 	Client &get_corresponding_client(const int &fd);
 
-public:
-	Server(Config config);		  // default constructor
-	Server(Server const &source); // copy constructor
-	~Server(void);				  // destructor
-
-	Server &operator=(Server const &source); // copy assignment operator overload
 	const std::map<int, const ServerConfig *> &get_fdToServerConfig() const;
 };
 

@@ -13,6 +13,7 @@
 #define READ_BUFFER_SIZE 65536 // 64kb per second
 
 extern bool running;
+
 // ─── Constructors / Destructor ───────────────────────────────────────────────
 /**
  * @brief Constructs the server from a Config object.
@@ -24,43 +25,27 @@ extern bool running;
  * @param config Parsed configuration containing one or more ServerConfig entries.
  */
 Server::Server(Config config) : ASimpleServer(AF_INET, SOCK_STREAM, 0, config.getallServers()[0].getListenPort(), INADDR_ANY, 10), _config(config)
-{
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Server ";
-		std::cout << UCYN "has been created" DEF << std::endl;
-	}
-	
+{	
 	SetupPorts();
 	launch();
 }
 
+Server::Server(Server const &source) : ASimpleServer(source), _config(source._config) { *this = source; }
+
 Server &Server::operator=(Server const &source)
 {
-	if (Inspect::debug)
-		std::cout << YEL "copy assignment operator overload..." DEF << std::endl;
 	if (this != &source)
-		(void)source;
+	{
+		_fdToServerConfig.clear();
+		const std::vector<ServerConfig>& servers = _config.getallServers();
+		for (size_t i = 0; i < _listeningFds.size() && i < servers.size(); i++)
+			_fdToServerConfig[_listeningFds[i]] = &servers[i];
+	}
 	return (*this);
-}
-
-Server::Server(Server const &source) : ASimpleServer(source), _config(source._config)
-{
-    *this = source;
-    _fdToServerConfig.clear();
-    const std::vector<ServerConfig>& servers = _config.getallServers();
-    for (size_t i = 0; i < _listeningFds.size() && i < servers.size(); i++)
-        _fdToServerConfig[_listeningFds[i]] = &servers[i];
 }
 
 Server::~Server(void)
 {
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Server ";
-		std::cout << URED "has been deleted" DEF << std::endl;
-	}
-
 	for (size_t i = 0; i < _extraListeners.size(); i++)
 		delete _extraListeners[i];
 }
@@ -122,22 +107,6 @@ void Server::SetupPorts()
 }
 
 /**
- * @brief Sets a file descriptor to non-blocking mode via fcntl.
- *
- * Required for all fds registered with poll to prevent any single
- * read/write from stalling the event loop.
- *
- * @param fd The file descriptor to configure.
- */
-void Server::SetNonblocking(int fd)
-{
-	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
-	{
-		std::cout << "Something went wrong while passing to NONBLOCKING" << std::endl;
-	}
-}
-
-/**
  * @brief Registers a file descriptor with the poll set.
  *
  * Sets the fd to non-blocking, then appends a pollfd entry listening for
@@ -156,6 +125,22 @@ void Server::PopulatePollInfo(int fd)
 	pfd.revents = 0;
 
 	_pollfds.push_back(pfd);
+}
+
+/**
+ * @brief Sets a file descriptor to non-blocking mode via fcntl.
+ *
+ * Required for all fds registered with poll to prevent any single
+ * read/write from stalling the event loop.
+ *
+ * @param fd The file descriptor to configure.
+ */
+void Server::SetNonblocking(int fd)
+{
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
+	{
+		std::cout << "Something went wrong while passing to NONBLOCKING" << std::endl;
+	}
 }
 
 // ─── Client Management ───────────────────────────────────────────────────────
@@ -296,43 +281,6 @@ void Server::launch()
 	Inspect::inspect_server_activity("shut down", *this);
 }
 
-/**
- * @brief Returns true if the given fd is one of the server's listening sockets.
- *
- * Used to distinguish listening fds from client fds in the poll loop.
- *
- * @param fd The file descriptor to check.
- * @return true if fd is in _listeningFds, false otherwise.
- */
-bool Server::isServerSocket(int fd)
-{
-	for (size_t j = 0; j < _listeningFds.size(); j++)
-	{
-		if (_listeningFds[j] == fd)
-			return true;
-	}
-	return false;
-}
-/**
- * @brief Maps a raw I/O return value to a ConnectionStatus enum.
- *
- * Centralises the interpretation of read(2)/recv(2)/write(2) return values:
- *  - n < 0 → IO_ERROR   (syscall failed)
- *  - n == 0 → IO_CLOSED  (peer closed the connection)
- *  - n > 0 → IO_DATA_READY
- *
- * @param ret Return value from a read/recv/write call.
- * @return The corresponding ConnectionStatus.
- */
-ConnectionStatus Server::getStatus(int ret)
-{
-	if (ret < 0)
-		return IO_ERROR;
-	if (ret == 0)
-		return IO_CLOSED;
-	return IO_DATA_READY;
-}
-
 // ─── I/O Handlers ────────────────────────────────────────────────────────────
 /**
  * @brief Accepts a new incoming connection on a listening socket.
@@ -365,20 +313,6 @@ void Server::accepter(int listenFd)
 		std::cout << RED "this is the config\n" DEF;
 		std::cout << *_fdToServerConfig[listenFd] << std::endl;
 	}
-}
-/**
- * @brief Writes a response string to a client socket.
- *
- * Thin wrapper around write. The caller is responsible for interpreting
- * the return value (bytes written, 0, or -1).
- *
- * @param clientFd The client file descriptor to write to.
- * @param data     The response data to send.
- * @return Number of bytes written, or -1 on error.
- */
-int Server::responder(int clientFd, const std::string &data)
-{
-	return write(clientFd, data.c_str(), data.size());
 }
 
 /**
@@ -636,6 +570,59 @@ void Server::inactivityTimeout(int fd, size_t *pollfds_idx)
 
 // ─── Helpers / Accessors ─────────────────────────────────────────────────────
 
+/**
+ * @brief Returns true if the given fd is one of the server's listening sockets.
+ *
+ * Used to distinguish listening fds from client fds in the poll loop.
+ *
+ * @param fd The file descriptor to check.
+ * @return true if fd is in _listeningFds, false otherwise.
+ */
+bool Server::isServerSocket(int fd)
+{
+	for (size_t j = 0; j < _listeningFds.size(); j++)
+	{
+		if (_listeningFds[j] == fd)
+			return true;
+	}
+	return false;
+}
+
+/**
+ * @brief Maps a raw I/O return value to a ConnectionStatus enum.
+ *
+ * Centralises the interpretation of read(2)/recv(2)/write(2) return values:
+ *  - n < 0 → IO_ERROR   (syscall failed)
+ *  - n == 0 → IO_CLOSED  (peer closed the connection)
+ *  - n > 0 → IO_DATA_READY
+ *
+ * @param ret Return value from a read/recv/write call.
+ * @return The corresponding ConnectionStatus.
+ */
+ConnectionStatus Server::getStatus(int ret)
+{
+	if (ret < 0)
+		return IO_ERROR;
+	if (ret == 0)
+		return IO_CLOSED;
+	return IO_DATA_READY;
+}
+
+/**
+ * @brief Writes a response string to a client socket.
+ *
+ * Thin wrapper around write. The caller is responsible for interpreting
+ * the return value (bytes written, 0, or -1).
+ *
+ * @param clientFd The client file descriptor to write to.
+ * @param data     The response data to send.
+ * @return Number of bytes written, or -1 on error.
+ */
+int Server::responder(int clientFd, const std::string &data)
+{
+	return write(clientFd, data.c_str(), data.size());
+}
+
 /// @brief This function throws!!
 /// @return The client that is paired with FD in the _clients map
 Client &Server::get_corresponding_client(const int &fd)
@@ -647,6 +634,7 @@ Client &Server::get_corresponding_client(const int &fd)
 	else
 		return(it->second);
 }
+
 /**
  * @brief Returns the fd → ServerConfig pointer map (read-only).
  * @return Const reference to _fdToServerConfig.

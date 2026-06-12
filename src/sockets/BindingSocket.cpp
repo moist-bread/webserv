@@ -1,34 +1,25 @@
 #include "../../inc/sockets/BindingSocket.hpp"
-#include "../../inc/http/Inspect.hpp"
-#include "../../inc/ansi_color_codes.h"
 
 BindingSocket::BindingSocket(int domain, int type, int protocol, int port, u_long ip) : SocketController(domain, type, protocol, port, ip)
 {
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the BindingSocket ";
-		std::cout << UCYN "has been created" DEF << std::endl;
-	}
-
 	this->_binding = connect_to_network(getSocketfd(), getStructAdress());
 	test_connection(_binding);
 }
 
-BindingSocket::BindingSocket(BindingSocket const &source) : SocketController(source)
-{
-	*this = source;
-}
+BindingSocket::BindingSocket(BindingSocket const &source) : SocketController(source) { *this = source; }
 
 BindingSocket &BindingSocket::operator=(BindingSocket const &source)
 {
 	if (this != &source)
-		(void)source;
+		this->_binding = get_binding();
 	return (*this);
 }
+
+BindingSocket::~BindingSocket(void) {}
 
 int BindingSocket::connect_to_network(int sock, struct sockaddr_in address)
 {
 	return bind(sock, (struct sockaddr *)&address, sizeof(address));
 }
 
-BindingSocket::~BindingSocket(void) {}
+int BindingSocket::get_binding(void) const { return (_binding); }

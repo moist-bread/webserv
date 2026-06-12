@@ -1,7 +1,6 @@
 #include "../../inc/http/HTTP.hpp"
 
 #include "../../inc/string_utils.tpp"
-#include "../../inc/ansi_color_codes.h"
 
 #include <algorithm>  // sort, max, min
 #include <ctime>	  // localtime, strftime

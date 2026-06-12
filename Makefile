@@ -17,7 +17,7 @@ OTHER_DIR	= 	http
 # =====>┊( SRC/OBJS )┊
 MAIN			=	main.cpp
 
-SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp ConnectingSocket.cpp \
+SOCK_FILES_C	=	SocketController.cpp CgiHandler.cpp ListeningSocket.cpp \
 					BindingSocket.cpp ASimpleServer.cpp Server.cpp FileDescriptor.cpp Client.cpp
 
 CONF_FILES_C	= 	Lexer.cpp ConfigParser.cpp Config.cpp ServerConfig.cpp LocationConfig.cpp TokenStream.cpp\

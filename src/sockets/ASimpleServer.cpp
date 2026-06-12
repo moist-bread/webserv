@@ -6,20 +6,3 @@ ASimpleServer::ASimpleServer(int domain, int type, int protocol, int port, u_lon
 }
 
 ASimpleServer::~ASimpleServer(void) {}
-
-ASimpleServer::ASimpleServer(ASimpleServer const &source) : ListeningSocket(source)
-{
-	*this = source;
-}
-
-ASimpleServer &ASimpleServer::operator=(ASimpleServer const &source)
-{
-	if (this != &source)
-		(void)source;
-	return (*this);
-}
-
-ListeningSocket *ASimpleServer::getSocket() const
-{
-	return this->_socket;
-}

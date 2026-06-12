@@ -4,12 +4,11 @@ class FileDescriptor
 {
 private:
 	int _fd;
+	
+public:
+	FileDescriptor(int fd);
 	FileDescriptor(FileDescriptor const &src);
 	FileDescriptor &operator=(FileDescriptor const &src);
-
-public:
-	FileDescriptor(void);
-	FileDescriptor(int fd);
 	~FileDescriptor(void);
 
 	int getFd() const;

@@ -10,8 +10,6 @@
 #include <algorithm> // transform
 #include <csignal>	 // signal
 #include <fcntl.h>	 // fcntl
-// #include <sys/types.h>
-// #include <sys/wait.h>
 
 /// @brief Converts any char into screaming snake case
 /// @return for '-' or ' ' it returns '_', others return their uppercase version
@@ -26,16 +24,14 @@ CgiHandler::CgiHandler(void) { clear(); }
 
 CgiHandler::CgiHandler(CgiHandler const &src) { *this = src; }
 
-CgiHandler::~CgiHandler(void) {}
-
 CgiHandler &CgiHandler::operator=(CgiHandler const &src)
 {
 	if (this != &src)
-	{
 		setCgiActivityStart(src.getCgiActivityStart());
-	}
 	return (*this);
 }
+
+CgiHandler::~CgiHandler(void) {}
 
 /// @brief Sends to execution whatever is asked by the Request
 void CgiHandler::process(Request &req)

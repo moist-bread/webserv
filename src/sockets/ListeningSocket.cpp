@@ -23,9 +23,13 @@ ListeningSocket::ListeningSocket(int domain, int type, int protocol, int port, u
 	test_connection(listening);
 }
 
-ListeningSocket::ListeningSocket(ListeningSocket const &source) : BindingSocket(source)
+ListeningSocket::ListeningSocket(ListeningSocket const &source) : BindingSocket(source) { *this = source; }
+
+ListeningSocket &ListeningSocket::operator=(ListeningSocket const &source)
 {
-	*this = source;
+	if (this != &source)
+		(void)source;
+	return (*this);
 }
 
 ListeningSocket::~ListeningSocket(void) {}
@@ -33,11 +37,4 @@ ListeningSocket::~ListeningSocket(void) {}
 void ListeningSocket::start_listening()
 {
 	this->listening = listen(this->_sock, this->_backlog);
-}
-
-ListeningSocket &ListeningSocket::operator=(ListeningSocket const &source)
-{
-	if (this != &source)
-		(void)source;
-	return (*this);
 }
