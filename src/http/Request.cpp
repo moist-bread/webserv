@@ -11,6 +11,7 @@ Request::Request(const ServerConfig *sc) : conf(sc) { clear(); }
 
 Request::Request(Request const &src) { *this = src; }
 
+
 Request::~Request(void) {}
 
 Request &Request::operator=(Request const &src)

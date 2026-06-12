@@ -22,18 +22,19 @@ enum ConnectionStatus
 class Server : public ASimpleServer
 {
 private:
-	Config _config;
+	Config _config; //Global configuration object parsed from the .conf file
 
-	std::map<int, Client> _clients;
-	std::vector<struct pollfd> _pollfds; // vou dar store no fd das sockets que vao ser criadas quando alguem se conectar
+	std::map<int, Client> _clients; //Maps active client socket FDs to their respective Client objects.
+	std::vector<struct pollfd> _pollfds; // Vector of FDs monitored by the central poll() loop.
 
-	std::vector<int> _serverPorts; // Fds de todas as portas abertas
-	std::vector<ListeningSocket *> _extraListeners;
-	std::vector<int> _listeningFds;
+	std::vector<int> _serverPorts; // List of all unique ports the server is currently listening on
+	std::vector<ListeningSocket *> _extraListeners; //Pointers to secondary listening sockets created during setup.
+	std::vector<int> _listeningFds; //Vector of all listening socket FDs (used to detect new connections).
 
-	std::map<int, int> _cgiMap; // <Fd_do_Tubo_CGI, Fd_do_Cliente>
 
-	std::map<int, const ServerConfig *> _fdToServerConfig; // listenFd → config do servidor
+	std::map<int, int> _cgiMap; //  Maps a CGI's output pipe FD to the FD of the Client who requested it. <Fd_do_Tubo_CGI, Fd_do_Cliente>
+
+	std::map<int, const ServerConfig *> _fdToServerConfig; // Maps a listening socket FD to its logical Virtual Server configuration. listenFd → config do servidor
 
 	void SetNonblocking(int fd);
 
@@ -43,8 +44,6 @@ private:
 	void launch();
 	bool isServerSocket(int fd);
 	ConnectionStatus getStatus(int ret);
-
-	// const ServerConfig* resolveServerConfig(int listenFd, const std::string &hostHeader) const;
 
 	void closeCgiConnection(const int &fd, size_t *pollfds_idx);
 	void switchToPollout(const int &fd);

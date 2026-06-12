@@ -1,6 +1,5 @@
 #include "../../inc/sockets/BindingSocket.hpp"
 #include "../../inc/http/Inspect.hpp"
-
 #include "../../inc/ansi_color_codes.h"
 
 BindingSocket::BindingSocket(int domain, int type, int protocol, int port, u_long ip) : SocketController(domain, type, protocol, port, ip)

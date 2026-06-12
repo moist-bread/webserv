@@ -1,5 +1,4 @@
 #pragma once
-
 #include "ListeningSocket.hpp"
 
 class ASimpleServer : public ListeningSocket

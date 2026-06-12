@@ -7,7 +7,7 @@
 #include <unistd.h>	 // close, fork, pipe
 #include <ctime>	 // time
 #include <fstream>	 // fstream
-#include <algorithm> // transform, EXIT_FAILURE
+#include <algorithm> // transform
 #include <csignal>	 // signal
 #include <fcntl.h>	 // fcntl
 // #include <sys/types.h>
@@ -128,36 +128,64 @@ std::string CgiHandler::extract_script_filename(const std::string full_path, con
 	return (full_path.substr(0, pos + ext.length() + 1));
 }
 
+/**
+ * @brief Forks and executes the CGI script as a child process.
+ *
+ * Execution sequence:
+ *  1. InitPipes()            — creates _pipeIn and _pipeOut fd pairs.
+ *  2. writeBodyToCgiInput()  — streams the request body into _pipeIn[1],
+ *                              then closes it so the child gets EOF on stdin.
+ *  3. fork()                 — splits into parent and child.
+ *
+ * Parent path (pid >= 1):
+ *  - Closes the fds it no longer needs: _pipeIn[0] (child's stdin read end)
+ *    and _pipeOut[1] (child's stdout write end).
+ *  - Retains _pipeOut[0] to later read the CGI output.
+ *
+ * Child path (pid == 0):
+ *  - Redirects stdin  → _pipeIn[0]  via dup2, so the child reads the body
+ *    that was already written into the pipe.
+ *  - Redirects stdout → _pipeOut[1] via dup2, so CGI output flows back to
+ *    the parent through _pipeOut[0].
+ *  - Closes the remaining pipe ends it no longer needs after dup2.
+ *  - Builds argv = { compiler, scriptPath, NULL } and a null-terminated
+ *    env vector, then calls execve(2).
+ *  - If execve fails, logs the error and throws CgiExecutionFail.
+ *    Note: the throw after execve only fires if execve itself returns,
+ *    which only happens on error — further testing may be needed.
+ *
+ * On success, records the fork time via setCgiActivityStart for timeout
+ * tracking.
+ *
+ * @throws CgiHandler::CgiExecutionFail on pipe, write, fork, or execve failure.
+ */
 void CgiHandler::executeCgi()
 {
 	if (InitPipes() == -1)
 		throw(CgiHandler::CgiExecutionFail("pipe failure"));
 
+	// Body must be written before fork: after fork the parent no longer owns
+	// _pipeIn[1] exclusively, and writing from two processes would corrupt the stream.
 	if (writeBodyToCgiInput() == -1)
 		throw(CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
 
 	this->_pid = fork();
 	if (this->_pid == -1)
 		throw(CgiHandler::CgiExecutionFail("fork failure"));
-	else if (this->_pid >= 1)
+	else if (this->_pid >= 1) // Parent
 	{
+		// Close the child-side ends; parent only needs to read CGI output.
 		close(this->_pipeIn[0]);
 		close(this->_pipeOut[1]);
-		// if (writeBodyToCgiInput() == -1)
-		// {
-		// 	kill(this->_pid,SIGKILL);
-		// 	int status;
-		// 	waitpid(this->_pid,&status,0);
-		// 	this->_pid = 0;
-		// 	throw (CgiHandler::CgiExecutionFail("write to CGI stdin failed"));
-		// }
 	}
-	else if (this->_pid == 0)
+	else if (this->_pid == 0) // Child
 	{
-		// -- Using dup2 to send the Request Body as the CGI input and sending the CGI output to the pipe
+		// Wire the pipe ends to standard file descriptors so the CGI script
+		// transparently reads from stdin and writes to stdout.
 		dup2(this->_pipeIn[0], STDIN_FILENO);
 		dup2(this->_pipeOut[1], STDOUT_FILENO);
 
+		// Original pipe fds are no longer needed after dup2.
 		close(this->_pipeIn[1]);
 		close(this->_pipeOut[0]);
 
@@ -166,17 +194,20 @@ void CgiHandler::executeCgi()
 		argv[1] = const_cast<char *>(this->_scriptPath.c_str());
 		argv[2] = NULL;
 
+		// Build a null-terminated env array required by execve.
 		std::vector<char *> exec_env;
 		for (size_t i = 0; i < _env.size(); i++)
 			exec_env.push_back(const_cast<char *>(_env[i].c_str()));
 		exec_env.push_back(NULL);
 
 		execve(argv[0], argv, &exec_env[0]);
+
+		// Reached only if execve fails (invalid path, bad permissions, etc.).
 		std::cerr << "FAILED TO EXECUTE" << std::endl;
 		setCgiActivityStart(VALUE_NOT_SET);
-		// _exit(EXIT_FAILURE);
-		throw(CgiHandler::CgiExecutionFail("execve failure")); // ------------------- need to tests if this is working
+		throw(CgiHandler::CgiExecutionFail("execve failure")); // TODO: verify throw behaviour in child context
 	}
+	// Record start time for CGI timeout tracking.
 	setCgiActivityStart(std::time(NULL));
 }
 
@@ -189,7 +220,28 @@ int CgiHandler::InitPipes()
 		return -1;
 	return 0;
 }
-
+/** 
+ * @brief Writes the HTTP request body to the CGI child's stdin pipe.
+ *
+ * Sets the write end of the pipe to non-blocking mode, then sends the body
+ * in 4 KB chunks. This avoids deadlocking when the body exceeds the kernel
+ * pipe buffer (~64 KB): a blocking write of a large body would stall waiting
+ * for the child to drain the buffer, while the child may itself be waiting
+ * for the parent to read its output — a classic pipe deadlock.
+ *
+ * Write outcomes per chunk:
+ *  - n > 0 : bytes accepted, advance cursor.
+ *  - n == 0 : pipe buffer temporarily full, yield 1 ms and retry.
+ *  - n < 0  : child closed its read end (EPIPE) or pipe unavailable (EAGAIN);
+ *             stop writing and treat as a clean early exit, not a fatal error.
+ *             (Note: errno is not inspected directly — 42 norm compliance.)
+ *
+ * Always closes the write end of _pipeIn before returning so the child
+ * receives EOF on its stdin.
+ *
+ * @return  0 on success or empty body.
+ *         -1 if a write error was encountered (child stopped reading early).
+ */
 int CgiHandler::writeBodyToCgiInput() const
 {
 	if (!_body.empty())
@@ -213,7 +265,7 @@ int CgiHandler::writeBodyToCgiInput() const
 			}
 			else if (n == 0)
 			{
-				// Nothing written, pipe full — yield and retry
+				// Pipe buffer temporarily full — yield and retry.
 				usleep(1000);
 			}
 			else // n < 0
@@ -231,6 +283,7 @@ int CgiHandler::writeBodyToCgiInput() const
 	}
 	else
 	{
+		// No body to send; close the write end so the child gets EOF immediately.
 		close(this->_pipeIn[1]);
 	}
 
