@@ -519,9 +519,20 @@ void Response::handle_multipart_form(void)
 		{
 			// -- see if the uploads folder exists
 			std::string path = req->loc->getUploadStore();
-
-			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // !! use of mkdir is not allowed
+			try
+			{
+				if (access(path.c_str(), R_OK) != 0)
+					throw std::runtime_error("");
+				struct stat path_stat;
+				if (stat(path.c_str(), &path_stat) != 0)
+					throw std::runtime_error("");
+				if (!S_ISDIR(path_stat.st_mode))
+					throw std::runtime_error("");
+			}
+			catch(...)
+			{
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
+			}
 
 			// -- create a file with a randomly generated name
 			std::string rand_name = response_utils::random_name_generator();
