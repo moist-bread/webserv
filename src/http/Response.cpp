@@ -7,9 +7,9 @@
 #include "../../inc/string_utils.tpp"
 #include "../../inc/ansi_color_codes.h"
 
-#include <fstream>	  // remove, fstream, ifstream, ofstream
-#include <dirent.h>	  // opendir, readdir, closedir, DIR
-#include <sys/stat.h> // mkdir, stat
+#include <fstream>	  // remove, ifstream, ofstream
+#include <dirent.h>	  // opendir, closedir, DIR
+#include <sys/stat.h> // stat (mkdir)
 #include <unistd.h>	  // access
 #include <ctime>	  // time
 
@@ -29,58 +29,30 @@ namespace response_utils
 
 }
 
-Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc)
-{
-	// --------------- staying until we're sure that the copy constructor is working
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Response ";
-		std::cout << UCYN "has been created" DEF << " my req: " << &req_ref << " my conf: " << sc << std::endl;
-	}
-	clear(true);
-}
+Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc) { clear(false); }
 
-Response::Response(const Response &src) : req(src.req)
-{
-	// --------------- staying until we're sure that the copy constructor is working
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Response ";
-		std::cout << UYEL "has been copy created" DEF << std::endl;
-	}
-	*this = src;
-}
+Response::Response(const Response &src) : req(src.req) { *this = src; }
 
 Response::~Response(void) {}
 
 Response &Response::operator=(const Response &src)
 {
-	// --------------- staying until we're sure that the copy constructor is working
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Response ";
-		std::cout << UYEL "has been copy ASSIGNED created" DEF << std::endl;
-	}
 	if (this != &src)
 	{
-		this->file_length = src.file_length;
-		this->boundary = src.boundary;
-
 		this->protocol = src.protocol;
 		this->status_code = src.status_code;
 		this->headers = src.headers;
 		this->body = src.body;
-
+		
 		this->cgi_reply = src.cgi_reply;
 		this->is_chunked = src.is_chunked;
+		
+		this->file_length = src.file_length;
+		this->boundary = src.boundary;
 
 		this->full_response = src.full_response;
 
-		if (Inspect::debug)
-		{
-			std::cout << GRN "the Response ";
-			std::cout << UYEL "has been inside copying conf: " DEF << src.conf << std::endl;
-		}
+		// this->req has already been copied in copy constructor
 		this->conf = src.conf;
 
 		set_state(src.get_state());
@@ -92,7 +64,6 @@ void Response::process(void)
 {
 	while (full_response.empty())
 	{
-		// std::cout << CYN "looping response state: " DEF << get_state() << std::endl;
 		switch (get_state())
 		{
 		case PREP:
@@ -120,15 +91,15 @@ void Response::process(void)
 		if (get_state() == SEND)
 			break;
 	}
-
-	// std::cout << *this << std::endl;
 }
 
 void Response::set_state(const t_response_state &new_state) { state = new_state; }
 
 const t_response_state &Response::get_state(void) const { return (state); }
 
-void Response::clear(bool all)
+/// @brief Resets variables
+/// @param keep_cgi_reply
+void Response::clear(bool keep_cgi_reply)
 {
 	file_length = VALUE_NOT_SET;
 	boundary.clear();
@@ -136,13 +107,14 @@ void Response::clear(bool all)
 	protocol = H1_1;
 	headers.clear();
 	body.clear();
-	if (all)
+	if (!keep_cgi_reply)
 		cgi_reply.clear();
 	is_chunked = false;
 	full_response.clear();
 	set_state(PREP);
 }
 
+/// @brief Starts up the Response creation state machine
 void Response::preparations_for_response(void)
 {
 	if (!this->req)
@@ -157,7 +129,7 @@ void Response::preparations_for_response(void)
 	else if (is_chunked && !response_utils::is_error(status_code))
 		return (set_state(CHUNK));
 
-	clear(true);
+	clear(false);
 	if (req->protocol != UNSUPPORTED_PROTOCOL)
 		protocol = req->protocol;
 
@@ -168,7 +140,6 @@ void Response::preparations_for_response(void)
 	}
 	else if (req->loc->isRedirect())
 	{
-		// !! this isn't working properly yet
 		headers["Location"] = req->loc->getReturnUrl();
 		status_code = req->loc->getReturnCode();
 		return (set_state(HEADERS_RESP));
@@ -215,10 +186,10 @@ void Response::execute_methods(void)
 	set_state(HEADERS_RESP);
 }
 
+/// @brief Parses the headers sent from the CGI execution and starts the Chunked response 
 void Response::cgi_response(void)
 {
-	// std::cout << YEL "starting cgi response..." DEF << std::endl;
-	clear(false);
+	clear(true);
 
 	// -- step 1: extract headers (and or line) from cgi_reply
 	std::string preamble;
@@ -251,18 +222,14 @@ void Response::cgi_response(void)
 				throw(std::runtime_error("Invalid cgi Status header"));
 			status_code = static_cast<t_status_code>(st);
 		}
-		catch (...)
-		{
-			;
-		}
+		catch (...) { ; }
 	}
 	set_state(CHUNK);
 }
 
+/// @brief Converts the cgi_reply into a Chunk to send
 void Response::chunk_response(void)
 {
-	// std::cout << YEL "processing chunk..." DEF << std::endl;
-
 	std::stringstream ss;
 	ss << std::hex << cgi_reply.size() << std::dec << CRLF;
 	ss << cgi_reply << CRLF;
@@ -282,6 +249,7 @@ void Response::chunk_response(void)
 	}
 }
 
+/// @brief Creates the needed Headers to describe the created Response 
 void Response::set_response_headers(void)
 {
 	if (req->wanted_ranges.size() == 1)
@@ -310,7 +278,7 @@ void Response::set_response_headers(void)
 			headers["Content-Type"] = "multipart/byteranges; boundary=" + boundary;
 	}
 
-	// close, else it will continue trying to send content
+	// -- close so the Client stops trying to send content
 	if (status_code == CONTENT_TOO_LARGE)
 		headers["Connection"] = "close";
 	else if (req->headers.find("connection") != req->headers.end())
@@ -348,13 +316,7 @@ void Response::method_get(void)
 	}
 	std::ifstream file(assemble_content_path().c_str());
 	if (!file.is_open())
-	{
-		// ---------------- see if 404 is really the only option
 		throw(Response::CreateError("File did not open", NOT_FOUND));
-		// if (req->file_extension == "html")
-		// else
-		//	throw(Response::CreateError("File did not open", INTERNAL_SERVER_ERROR));
-	}
 	else
 	{
 		file.seekg(0, file.end);
@@ -368,6 +330,7 @@ void Response::method_get(void)
 		}
 		else
 			body = to_str(file.rdbuf());
+		
 		file.close();
 	}
 }
@@ -376,16 +339,13 @@ void Response::error_response(void)
 {
 	req->file_extension = "html";
 	std::ifstream file(assemble_content_path().c_str());
-	if (!file.is_open())
-	{
-		// std::cout << "Defined error file does not exist, using backup" << std::endl;
-		body = response_utils::backup_error_page(status_code);
-	}
-	else
+	if (file.is_open())
 	{
 		body = to_str(file.rdbuf());
 		file.close();
 	}
+	else
+		body = response_utils::backup_error_page(status_code);
 }
 
 std::string Response::autoindexing_page(void) const
@@ -425,8 +385,7 @@ std::string Response::assemble_content_path(void)
 			// -- see which of the indexes is valid
 			for (size_t i = 0; i < req->loc->getIndexes().size(); i++)
 			{
-				// std::cout << "which index is valid: " <<  (path + "/" + (*req).loc->getIndexes()[i]) << std::endl;
-				index = req->loc->getIndexes()[i]; // -- will keep the last listed index
+				index = req->loc->getIndexes()[i]; // -- if none exist, will keep the last listed index
 				if (access((path + "/" + req->loc->getIndexes()[i]).c_str(), R_OK) != 0)
 					continue;
 				struct stat index_stat;
@@ -435,7 +394,6 @@ std::string Response::assemble_content_path(void)
 				if (S_ISDIR(index_stat.st_mode))
 					continue;
 				break;
-				// index = req->loc->getIndexes()[i];
 			}
 			if (!index.empty())
 			{
@@ -447,9 +405,6 @@ std::string Response::assemble_content_path(void)
 	}
 	if (Inspect::debug)
 		std::cout << RED "assembled path: " DEF << path << std::endl;
-	// struct stat index_stat;
-	// if (stat(path.c_str(), &index_stat) != 0 || S_ISDIR(index_stat.st_mode))
-	// 	path.clear();
 	req->path_uri = path;
 	return (path);
 }
@@ -468,7 +423,7 @@ std::string Response::create_range_response_body(std::ifstream &file, vector2 &r
 
 std::string Response::multiple_range(std::ifstream &file, const vector2 &ranges)
 {
-	// !! MULTI RANGE
+	// -- MULTI RANGE
 
 	// boundary := 0*69<bchars> bcharsnospace
 	// bchars := bcharsnospace / " "
@@ -496,7 +451,7 @@ std::string Response::multiple_range(std::ifstream &file, const vector2 &ranges)
 
 std::string Response::single_range(std::ifstream &file, const std::pair<int, int> &range) const
 {
-	// !! SINGLE RANGE
+	// -- SINGLE RANGE
 
 	char buffer[BUFFER_SIZE];
 	std::string content;
@@ -522,7 +477,6 @@ void Response::method_post(void)
 	std::string path = req->loc->getUploadStore() + "database";
 
 	std::ofstream output(path.c_str(), std::ofstream::out | std::ostream::app);
-
 	if (!output.is_open())
 		throw(Response::CreateError("Was unable to open database file", INTERNAL_SERVER_ERROR));
 
@@ -566,7 +520,7 @@ void Response::handle_multipart_form(void)
 			// -- see if the uploads folder exists
 			std::string path = req->loc->getUploadStore();
 
-			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // -- use of mkdir is not allowed
+			if (!opendir(path.c_str())) // && mkdir(path.c_str(), 0777) == -1) // !! use of mkdir is not allowed
 				throw(Response::CreateError("Was unable to open uploads directory", INTERNAL_SERVER_ERROR));
 
 			// -- create a file with a randomly generated name
@@ -577,27 +531,25 @@ void Response::handle_multipart_form(void)
 				rand_name += (*f_name).second.substr(len, (*f_name).second.length() - len - 1);
 			path += rand_name;
 
-			std::fstream output(path.c_str(), std::ios::out);
+			std::ofstream output(path.c_str(), std::ofstream::out);
 			if (!output.is_open())
 				throw(Response::CreateError("Was unable to upload file", INTERNAL_SERVER_ERROR));
 
-			// -- write to the file, and save the info to later put in the database
+			// -- write to the file, and save the info
 			output << (*it).data << CRLF;
 			output.close();
 
-			// -- save the info to later put in the database
 			json_values[name] = rand_name;
 		}
 		else
 		{
-			// -- save the info to later put in the database
 			json_values[name] = (*it).data;
 		}
 	}
 
 	if (!json_values.empty())
 	{
-		// -- converting the info into json and into the body to later put in the database
+		// -- converting the info into json and storing it in the body to later put in the database
 		body += "{";
 		for (map_strings::const_iterator it = json_values.begin(); it != json_values.end();)
 		{
@@ -613,21 +565,21 @@ void Response::handle_multipart_form(void)
 
 void Response::method_delete(void)
 {
-	// assemble the content path to delete
+	// -- assemble the content path to delete
 	std::string file_name = req->loc->getRoot() + req->path_uri.substr(req->loc->getPath().length());
 
 	struct stat sb;
 	if (stat(file_name.c_str(), &sb) == -1)
 		throw(Response::CreateError("Could not find desired file", NOT_FOUND));
 
-	if (S_ISDIR(sb.st_mode)) // don't allow folder DELETE
+	if (S_ISDIR(sb.st_mode)) // -- don't allow folder DELETE
 		throw(Response::CreateError("Action not permited", FORBIDDEN));
 
 	int res = std::remove(file_name.c_str());
 	if (res == 0)
 	{
-		// can also be 200 OK if i want to send an html describing the outcome
 		status_code = NO_CONTENT; // success
+		// !! can also be 200 OK if i want to send an html describing the outcome
 	}
 	else
 		throw(Response::CreateError("Was unable to delete file", INTERNAL_SERVER_ERROR));
@@ -635,8 +587,9 @@ void Response::method_delete(void)
 
 void Response::method_head(void)
 {
-	// HEAD is like a scouting version of GET
+	// -- HEAD is like a scouting version of GET
 	// it only wants to see the size of the content and ignores the response body
+	
 	try
 	{
 		method_get();
@@ -664,16 +617,12 @@ std::ostream &operator<<(std::ostream &out, const Response &src)
 		out << YEL "    [" << (*it).first << "]" DEF " |" << (*it).second << "|" << std::endl;
 	out << YEL "Body..." DEF;
 	out << " (size) " << src.body.size() << std::endl;
-	// out << src.body << std::endl;
 	/*
 	if (src.headers["Content-Type"] == "image/vnd.microsoft.icon" || src.headers["Content-Type"] == "image/png" || src.headers["Content-Type"] == "video/mp4" )
 		out << "[IMAGE]" << std::endl;
 	else
 		out << src.body << std::endl;
 	*/
-
-	/* if (!src.full_response.empty())
-		out << YEL "Full Response..." DEF << std::endl << src.full_response << std::endl; */
 
 	return (out);
 }
