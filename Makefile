@@ -2,7 +2,7 @@
 NAME	=	webserv
 
 # =====>┊( CMDS AND FLAGS )┊
-DEBUG	 =	1
+DEBUG	 =	0
 CXX		 =	c++
 CXXFLAGS =	-Wall -Wextra -Werror -g -std=c++98 -D DEBUG=$(DEBUG)
 VAL		 =	valgrind --leak-check=full --trace-children=yes --show-leak-kinds=all --track-origins=yes --track-fds=yes -s
@@ -75,7 +75,7 @@ main_test:
 	./$(NAME) config_files/nginx.conf
 
 debug: fclean
-	make all DEBUG=0
+	make all DEBUG=1
 	./$(NAME) config_files/nginx.conf
 
 test: all

@@ -421,9 +421,8 @@ void Server::recieveClientRequest(int fd, size_t *pollfds_idx)
 	if (Inspect::debug)
 	{
 		std::cout << "Bytes recebidos: " << ret << std::endl;
-		/* std::cout << std::endl;
-		std::cout << "Raw Request:" << std::endl;
-		std::cout << rec << std::endl; */
+		// std::cout << std::endl << "Raw Request:" << std::endl;
+		// std::cout << rec << std::endl;
 	}
 
 	try
@@ -658,7 +657,7 @@ std::ostream &operator<<(std::ostream &out, const Server &src)
 	for (std::map<int, const ServerConfig*>::const_iterator it = src.get_fdToServerConfig().begin(); it != src.get_fdToServerConfig().end(); it++)
 	{
 		out << MAG "    [" << (*it).first << "]" DEF;
-		out << " | Port=" << (*it).second->getListenPort(); // ---------- server name PENDING
+		out << " | Port=" << (*it).second->getListenPort();
 		out << " | Server Name=" << ((*it).second->serverName.empty() ? "none" : (*it).second->serverName) << " |" << std::endl;
 
 	}

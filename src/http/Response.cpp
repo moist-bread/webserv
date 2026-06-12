@@ -197,7 +197,7 @@ void Response::cgi_response(void)
 
 	pin = cgi_reply.find(CRLF CRLF);
 	if (pin == std::string::npos)
-		return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS)); // ------------ could be a problem
+		return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
 	preamble = cgi_reply.substr(0, pin);
 	cgi_reply.erase(0, pin + 2);
 
@@ -205,7 +205,7 @@ void Response::cgi_response(void)
 	{
 		pin = preamble.find("\n");
 		if (pin == std::string::npos)
-			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS)); // ------------ could be a problem
+			return ((status_code = INTERNAL_SERVER_ERROR), set_state(METHODS));
 		preamble.erase(0, pin + 1);
 	}
 

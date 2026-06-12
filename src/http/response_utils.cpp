@@ -203,15 +203,15 @@ namespace response_utils
 		// app types
 		else if (extension == "pdf")
 			return ("application/pdf");
-		else if (extension == "form") // --------------------
+		else if (extension == "form")
 			return ("application/x-www-form-urlencoded");
-		else if (extension == "json") // --------------------
+		else if (extension == "json")
 			return ("application/json");
 
 		// multipart types
-		else if (extension == "multiform") // --------------------
+		else if (extension == "multiform")
 			return ("multipart/form-data");
-		else if (extension == "byteranges") // --------------------
+		else if (extension == "byteranges")
 			return ("multipart/byteranges");
 
 		else

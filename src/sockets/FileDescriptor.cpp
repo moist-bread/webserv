@@ -1,7 +1,5 @@
 #include "../../inc/sockets/FileDescriptor.hpp"
-#include "../../inc/http/Inspect.hpp"
 
-#include <iostream> // cout, endl
 #include <unistd.h> // close
 
 FileDescriptor::FileDescriptor(int fd) : _fd(fd) {}
@@ -18,11 +16,7 @@ FileDescriptor &FileDescriptor::operator=(FileDescriptor const &src)
 FileDescriptor::~FileDescriptor(void)
 {
 	if (this->_fd >= 2)
-	{
 		close(_fd);
-		if (Inspect::debug)
-			std::cout << "Socket " << this->_fd << " has been closed automatically" << std::endl;
-	}
 }
 
 int FileDescriptor::getFd() const { return _fd; }
