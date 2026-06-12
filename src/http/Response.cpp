@@ -29,18 +29,9 @@ namespace response_utils
 
 }
 
-Response::Response(void) : req(NULL), conf(NULL)
-{
-	if (Inspect::debug)
-	{
-		std::cout << GRN "the Response ";
-		std::cout << UCYN "has been empty created" DEF << std::endl;
-	}
-	clear(true);
-}
-
 Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), conf(sc)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Response ";
@@ -51,6 +42,7 @@ Response::Response(Request &req_ref, const ServerConfig *sc) : req(&req_ref), co
 
 Response::Response(const Response &src) : req(src.req)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Response ";
@@ -63,6 +55,7 @@ Response::~Response(void) {}
 
 Response &Response::operator=(const Response &src)
 {
+	// --------------- staying until we're sure that the copy constructor is working
 	if (Inspect::debug)
 	{
 		std::cout << GRN "the Response ";

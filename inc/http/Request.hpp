@@ -8,6 +8,18 @@
 struct ServerConfig;
 struct LocationConfig;
 
+// == enums
+
+enum t_request_state
+{
+	BEGIN,
+	LINE,
+	HEADERS_REQ,
+	BODY,
+	CHUNK_BODY,
+	END
+};
+
 // =====>┊( REQUEST )┊
 
 class Request
@@ -16,7 +28,6 @@ public:
 	Request(const ServerConfig *sc);
 	Request(Request const &src);
 	~Request(void);
-
 	Request &operator=(Request const &src);
 
 	void process(std::string request);

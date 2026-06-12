@@ -4,7 +4,7 @@
 #include "../http/Response.hpp"
 #include "CgiHandler.hpp"
 
-class ServerConfig;
+struct ServerConfig;
 
 class Client
 {

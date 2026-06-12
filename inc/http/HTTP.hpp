@@ -23,16 +23,6 @@ struct MultiForm
 
 // == enums
 
-enum t_request_state
-{
-	BEGIN,
-	LINE,
-	HEADERS_REQ,
-	BODY,
-	CHUNK_BODY,
-	END
-};
-
 enum t_method
 {
 	GET,

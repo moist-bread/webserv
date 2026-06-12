@@ -18,7 +18,7 @@ enum t_response_state
 	CHUNK,
 	HEADERS_RESP,
 	FULL_RESP,
-SEND
+	SEND
 };
 
 // =====>┊( RESPONSE )┊
@@ -36,6 +36,22 @@ public:
 	void set_state(const t_response_state &new_state);
 	const t_response_state &get_state(void) const;
 
+	t_protocol protocol;
+	t_status_code status_code;
+	map_strings headers;
+	std::string body;
+	
+	std::string cgi_reply;
+	bool is_chunked;
+	
+	int file_length;
+	std::string boundary;
+	
+	std::string full_response;
+
+	Request *req;
+	const ServerConfig *conf;
+	
 	class CreateError : public std::runtime_error
 	{
 	public:
@@ -43,24 +59,7 @@ public:
 		t_status_code response_status;
 	};
 
-	int file_length;
-	std::string boundary;
-
-	t_protocol protocol;
-	t_status_code status_code;
-	map_strings headers;
-	std::string body;
-
-	std::string cgi_reply;
-	bool is_chunked;
-
-	std::string full_response;
-
-	Request *req;
-	const ServerConfig *conf;
-
 private:
-	Response(void);
 	void clear(bool all);
 
 	// -- response building steps
