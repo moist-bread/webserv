@@ -138,9 +138,7 @@ void Server::PopulatePollInfo(int fd)
 void Server::SetNonblocking(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
-	{
-		std::cout << "Something went wrong while passing to NONBLOCKING" << std::endl;
-	}
+		throw(std::runtime_error("Something went wrong while passing to NONBLOCKING"));
 }
 
 // ─── Client Management ───────────────────────────────────────────────────────
@@ -242,8 +240,11 @@ void Server::launch()
 				// poll returned 0: no fds became ready before timeout
 				Inspect::inspect_server_activity("timed out", *this);
 			else 
+			{
 				// poll returned -1: system error (e.g. EINTR on signal).
 				Inspect::inspect_server_activity( "been stopped in poll by: " + std::string(strerror(errno)), *this);
+				running = false;
+			}
 		}
 
 		for (size_t i = 0; i < _pollfds.size(); i++)
@@ -301,7 +302,7 @@ void Server::accepter(int listenFd)
 		return (Inspect::inspect_client_activity("failed to be accepted", newFd, 0));
 
 	if (!_fdToServerConfig.count(listenFd))
-		throw (std::runtime_error("cliente sem server config"));
+		throw (std::runtime_error("Client without a ServerConfig"));
 		
 	PopulatePollInfo(newFd);
 	Client newClient(newFd, listenFd, _fdToServerConfig[listenFd]);

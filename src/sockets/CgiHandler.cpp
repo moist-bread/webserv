@@ -230,7 +230,6 @@ int CgiHandler::InitPipes()
  *  - n == 0 : pipe buffer temporarily full, yield 1 ms and retry.
  *  - n < 0  : child closed its read end (EPIPE) or pipe unavailable (EAGAIN);
  *             stop writing and treat as a clean early exit, not a fatal error.
- *             (Note: errno is not inspected directly — 42 norm compliance.)
  *
  * Always closes the write end of _pipeIn before returning so the child
  * receives EOF on its stdin.

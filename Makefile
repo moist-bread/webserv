@@ -24,7 +24,7 @@ CONF_FILES_C	= 	Lexer.cpp ConfigParser.cpp Config.cpp ServerConfig.cpp LocationC
 
 OTHER_FILES_C	=	signal.cpp Request.cpp Response.cpp HTTP.cpp response_utils.cpp Inspect.cpp
 
-OBJS_MAIN	=	$(addprefix $(OBJ_DIR)/, $(MAIN:.cpp=.o))
+OBJS_MAIN		=	$(addprefix $(OBJ_DIR)/, $(MAIN:.cpp=.o))
 
 OBJS_SOCK		=	$(addprefix $(OBJ_DIR)/, $(SOCK_FILES_C:.cpp=.o))
 OBJS_CONF		=	$(addprefix $(OBJ_DIR)/, $(CONF_FILES_C:.cpp=.o))
@@ -60,23 +60,23 @@ $(OBJ_DIR):
 
 # =====>┊( EXEC RULES )┊
 exe: all
-	./$(NAME) config_files/nginx.conf
+	./$(NAME) config_files/website.conf
 
 rexe: re
 	@echo "\n"
-	./$(NAME) config_files/nginx.conf
+	./$(NAME) config_files/website.conf
 
 val: all
 	$(M_VAL)
-	$(VAL) ./$(NAME) config_files/nginx.conf
+	$(VAL) ./$(NAME) config_files/website.conf
 
 main_test:
 	@$(CXX) $(CXXFLAGS) src/main_sock.cpp -o $(NAME)
-	./$(NAME) config_files/nginx.conf
+	./$(NAME) config_files/website.conf
 
 debug: fclean
 	make all DEBUG=1
-	./$(NAME) config_files/nginx.conf
+	./$(NAME) config_files/website.conf
 
 test: all
 	./$(NAME) config_files/tester.conf
