@@ -1,7 +1,7 @@
 #pragma once
 
 // ==┊ needed libs by class
-# include "token.h" 
+# include "token.h" // t_token
 # include <iostream>
 # include <vector>
 
@@ -9,12 +9,17 @@
 
 /**
  * @class Lexer
- * @brief Static utility class for tokenizing configuration files
+ * @brief Static utility class for lexical analysis of configuration files.
  * 
- * The Lexer class provides static methods to parse configuration files (nginx-style)
- * into a sequence of tokens. It handles keywords, symbols ({, }, ;), and comments (#).
+ * The Lexer class provides a static method to parse nginx-style configuration files
+ * into a sequence of tokens. It performs both validation (file extension, existence,
+ * readability) and tokenization, handling:
+ * - Keywords (directive names, values, etc.)
+ * - Symbols: { } ;
+ * - Comments (# to end of line)
+ * - Whitespace (skipped)
+ * 
  * This is a utility class with only static methods and cannot be instantiated.
- * 
  */
 class Lexer
 {

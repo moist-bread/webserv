@@ -4,8 +4,6 @@
 #include <iostream>
 #include <vector>
 
-#include "../../inc/serverConfig/Lexer.hpp"
-#include "../../inc/serverConfig/ConfigParser.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
 
 // =====>┊( CONFIG )┊
@@ -22,12 +20,8 @@
 class Config
 {
 	public:
-		Config(void);
-		Config(const Config &src);
+		Config(const std::string &filepath);
 		~Config(void);
-		Config &operator=(Config const &src);
-
-		void load(const std::string &filePath);
 
 		const ServerConfig *getServer(const std::string &listen, const std::string &hostHeader) const;
 		const std::vector<ServerConfig> &getallServers(void) const;
@@ -36,7 +30,10 @@ class Config
 		std::vector<ListenAddress> getUniqueListen(void) const;
 
 	private:
+		void load(const std::string &filePath);
+
 		std::vector<ServerConfig>	_servers;
+
 
 };
 

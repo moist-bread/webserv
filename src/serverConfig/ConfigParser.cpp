@@ -1,11 +1,14 @@
 #include "../../inc/serverConfig/ConfigParser.hpp"
 #include "../../inc/serverConfig/ServerConfig.hpp"
-#include "../../inc/string_utils.tpp"
-#include <stdexcept>
-#include <algorithm> // find
-#include <sys/stat.h>
-#include <unistd.h>
-#include <cctype>
+#include "../../inc/string_utils.tpp" // stringToNumber<T>()
+
+#include <stdexcept> // std::runtime_error, std::exception
+#include <algorithm> // std::count, std::find
+#include <sys/stat.h> // stat, S_ISDIR
+#include <unistd.h> // access
+#include <cctype> // std::isdigit
+#include <cwctype> // std::iswalpha
+#include <sstream> // std::stringstream, std::getline
 
 /**
  * @brief Construct a ConfigParser and initialize directive dispatch tables.
@@ -70,11 +73,14 @@ std::vector<ServerConfig> ConfigParser::parse(void)
 	{
 		if (_ts._currentToken().type == TOKEN_KEYWORD && _ts._currentToken().content == "server")
 		{
+			const t_token &serverToken = _ts._currentToken();
 			_ts._advanceToken();
 			_ts._expect(TOKEN_LBRACE);
+
 			ServerConfig newServer;
 			_parseServerBlock(newServer);
-			_finalizeServer(newServer);
+			_finalizeServer(newServer, serverToken);
+
 			newServers.push_back(newServer);
 		}
 		else
@@ -98,8 +104,9 @@ std::vector<ServerConfig> ConfigParser::parse(void)
  *
  * @param server ServerConfig instance to finalize (modified in-place).
  */
-void ConfigParser::_finalizeServer(ServerConfig &server)
+void ConfigParser::_finalizeServer(ServerConfig &server, const t_token &serverToken)
 {
+	size_t serverLine = serverToken.line;
 	//	Listen
 	if (server.listen.string.empty())
 	{
@@ -107,15 +114,16 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
 		server.listen.port = 8080;
 		server.listen.string = "127.0.0.1:8080";
 	}
-	//?	Server Names -> keep it empty
-	//?	Server Root -> keep it empty
+	//	Server Name
+	if (server.serverName.empty())
+		server.serverName = "localhost";
 	//	Client Max Body Size
 	if (server.clientMaxBodySize == 0)
 		server.clientMaxBodySize = ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE;
 	//	Locations
 	if (server.locations.empty())
-		_ts.throwValidationError("No Location", "server");
-	_finalizeLocation(server);
+		_ts.throwValidationError("No Location", "server", serverLine);
+	_finalizeLocation(server, serverLine);
 }
 
 /**
@@ -129,30 +137,28 @@ void ConfigParser::_finalizeServer(ServerConfig &server)
  *
  * @param server ServerConfig whose locations will be finalized (modified in-place).
  */
-void ConfigParser::_finalizeLocation(ServerConfig &server)
+void ConfigParser::_finalizeLocation(ServerConfig &server, size_t serverline)
 {
 	for (size_t i = 0; i < server.locations.size(); ++i)
 	{
 		LocationConfig &location = server.locations[i];
 		if (location.CgiPass)
 		{
-			_finalizeLocationCgiPass(location, server);
+			_finalizeLocationCgiPass(location, server, serverline);
 			continue;
 		}
 		if (location.returnCode != INVALID_CODE)
 		{
-			_finalizeLocationReturn(location);
+			_finalizeLocationReturn(location, serverline);
 			continue;
 		}
 		if (location.root.empty())
 		{
 			if (server.root_default.empty())
-				_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+				_ts.throwValidationError("Location '" + location.path + "' - no Root, couldnt inherit from Server Root (not inserted)", "server", serverline);
 			else
 				location.root = server.root_default;
 		}
-		// if (location.index.empty())
-		// 	location.index.push_back("index.html");
 		if (location.autoindex == -1)
 			location.autoindex = false;
 		if (location.allowedMethods.empty())
@@ -162,7 +168,7 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 			location.allowedMethods.push_back(DELETE);
 		}
 		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
-			_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
+			_ts.throwValidationError("Location '" + location.path + "' - no upload_store, won't be able to POST files", "server", serverline);
 		if (location.cgi.empty())
 		{
 			if (!server.cgi_default.empty())
@@ -171,41 +177,65 @@ void ConfigParser::_finalizeLocation(ServerConfig &server)
 	}
 }
 
-void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server)
+/**
+ * @brief Finalize and validate a location with CGI pass (cgi_pass directive).
+ *
+ * Performs location-level validations specific to CGI pass configurations:
+ * - Ensures `cgi_pass` is declared (non-empty `location.cgi`).
+ * - Requires explicit `allow_methods` directive.
+ * - If POST is allowed, requires an `upload_store` for file uploads.
+ * - Inherits `root` from server if not specified locally.
+ * - Rejects incompatible directives: `index`, `autoindex`, `return`.
+ *
+ * @param location LocationConfig with cgi_pass to validate (modified in-place).
+ * @param server ServerConfig used for root inheritance.
+ * @param serverline Line number of the parent server block for error reporting.
+ */
+void ConfigParser::_finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverline)
 {
 	if (location.cgi.empty())
-		_ts.throwValidationError("Location with '*.extendion', must have cgi_pass declared", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - must have cgi_pass declared", "server", serverline);
 	if (location.allowedMethods.empty())
-		_ts.throwValidationError("Location with cgi pass, must have Allowed Methods declared", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, must have Allowed Methods declared", "server", serverline);
 	else if (location.isMethodAllowed(POST) && location.uploadStore.empty())
-		_ts.throwValidationError("No Location upload_store, won't be able to POST files", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - no upload_store, won't be able to POST files", "server", serverline);
 	if (location.root.empty())
 	{
 		if (server.root_default.empty())
-			_ts.throwValidationError("No Location Root, couldnt inherit from Server Root (not inserted)", "location");
+			_ts.throwValidationError("Location '" + location.path + "' - no Root, couldnt inherit from Server Root (not inserted)", "server", serverline);
 		else
 			location.root = server.root_default;
 	}
 	if (!location.index.empty())
-		_ts.throwValidationError("Location with cgi pass, can't have index", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have index", "server", serverline);
 	if (location.autoindex != -1)
-		_ts.throwValidationError("Location with cgi pass, can't have autoindexing", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have autoindexing", "server", serverline);
 	if (location.returnCode != INVALID_CODE)
-		_ts.throwValidationError("Location with cgi pass, can't have return", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with cgi pass, can't have return", "server", serverline);
 }
 
-void ConfigParser::_finalizeLocationReturn(LocationConfig &location)
+/**
+ * @brief Finalize and validate a location with return (redirect) directive.
+ *
+ * Performs location-level validations specific to return/redirect configurations:
+ * - Rejects incompatible directives: `index`, `root`, `cgi`, `upload_store`, `autoindex`.
+ * - Ensures the location is purely a redirect with no conflicting content-serving directives.
+ *
+ * @param location LocationConfig with return directive to validate.
+ * @param serverline Line number of the parent server block for error reporting.
+ */
+void ConfigParser::_finalizeLocationReturn(LocationConfig &location, size_t serverline)
 {
 	if (!location.index.empty())
-		_ts.throwValidationError("Location with return, can't have index", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have index", "server", serverline);
 	if (!location.root.empty())
-		_ts.throwValidationError("Location with return, can't have root", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have root", "server", serverline);
 	if (!location.cgi.empty())
-		_ts.throwValidationError("Location with return, can't have cgi", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have cgi", "server", serverline);
 	if (!location.uploadStore.empty())
-		_ts.throwValidationError("Location with return, can't have upload_store", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have upload_store", "server", serverline);
 	if (location.autoindex == 1)
-		_ts.throwValidationError("Location with return, can't have autoindexing", "location");
+		_ts.throwValidationError("Location '" + location.path + "' - with return, can't have autoindexing", "server", serverline);
 }
 
 //*	----- ServerHandler functions ----- */
@@ -249,7 +279,7 @@ void ConfigParser::_parseServerBlock(ServerConfig &newServer)
  *
  * Performs pairwise comparison of parsed servers to detect servers that
  * share the same `listen.string`. If a collision is found `_ts.throwValidationError`
- * is invoked and `_validate_ServerNamesCollision` is called to provide more
+ * is invoked and `_validate_ServerNameCollision` is called to provide more
  * granular name-collision diagnostics.
  *
  * @param servers Vector of parsed servers to validate.
@@ -263,36 +293,10 @@ void ConfigParser::_validate_ServerCollision(const std::vector<ServerConfig> &se
 		{
 			const ServerConfig &server_B = servers[j];
 			if (server_A.listen.string == server_B.listen.string)
-			{
 				_ts.throwValidationError("Collision between servers - shared listen: '" + server_A.listen.string + "'", "server");
-				_validate_ServerNamesCollision(server_A, server_B);
-			}
 		}
 	}
 }
-
-/**
- * @brief Check for duplicate `server_name` entries between two servers.
- *
- * Compares the `serverNames` vectors of `server_A` and `server_B`. If a
- * matching name is found a validation error is reported anchored to the
- * `server_name` directive.
- *
- * @param server_A First server to compare.
- * @param server_B Second server to compare.
- */
-void ConfigParser::_validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B)
-{
-	for (size_t i = 0; i < server_A.serverNames.size(); ++i)
-	{
-		for (size_t j = 0; j < server_B.serverNames.size(); ++j)
-		{
-			if (server_A.serverNames[i] == server_B.serverNames[j])
-				_ts.throwValidationError("Collision between servers - shared server name: '" + server_A.serverNames[i] + "'", "server_name");
-		}
-	}
-}
-
 
 //*	Listen
 /**
@@ -378,19 +382,21 @@ void ConfigParser::_validate_Listen(const std::string &host, const int port)
 
 //* Server Names
 /**
- * @brief Parse the `server_name` directive into `server.serverNames`.
+ * @brief Parse the `server_name` directive into `server.serverName`.
  *
  * Reads one or more names (space-separated) and stores them in the server
  * configuration. Names are validated for allowed characters and form via
- * `_validate_ServerNames`. Consumes the directive tokens and the
+ * `_validate_ServerName`. Consumes the directive tokens and the
  * terminating semicolon.
  *
  * @param server ServerConfig to populate (modified in-place).
  */
 void ConfigParser::_serverName(ServerConfig &server)
 {
-	_ts._extractKeywordVector(server.serverNames);
-	_validate_ServerNames(server.serverNames);
+	if (!server.serverName.empty())
+		_ts.throwValidationError("Duplicated", "server_name");
+	_ts._extractSingleKeyword(server.serverName);
+	_validate_ServerName(server.serverName);
 	_ts._expect(TOKEN_SEMICOLON);
 }
 
@@ -404,29 +410,25 @@ void ConfigParser::_serverName(ServerConfig &server)
  *
  * On invalid names a validation or syntax error is thrown.
  *
- * @param serverNames Vector of server name strings to validate.
+ * @param serverName Vector of server name strings to validate.
  */
-void ConfigParser::_validate_ServerNames(const std::vector<std::string> &serverNames)
+void ConfigParser::_validate_ServerName(const std::string &serverName)
 {
-	if (serverNames.empty())
+	if (serverName.empty())
 		_ts.throwSyntaxError("server_name directive is empty", _ts._currentToken().line);
-	for (size_t i = 0; i < serverNames.size(); ++i)
+	if (serverName == "_")
+		return ;
+	if (serverName[0] == '.' || serverName[0] == '-' || 
+			serverName[serverName.length() - 1] == '.' ||
+			serverName[serverName.length() - 1] == '-')
+		_ts.throwValidationError("invalid server name", "server_name");
+	for (size_t j = 0; j < serverName.length(); ++j)
 	{
-		const std::string &currentName = serverNames[i];
-		if (currentName == "_")
-			continue ;
-		if (currentName[0] == '.' || currentName[0] == '-' || 
-				currentName[currentName.length() - 1] == '.' ||
-				currentName[currentName.length() - 1] == '-')
+		char c = serverName[j];
+		if (!std::isalnum(c) && c != '.' && c != '-')
 			_ts.throwValidationError("invalid server name", "server_name");
-		for (size_t j = 0; j < currentName.length(); ++j)
-		{
-			char c = currentName[j];
-			if (!std::isalnum(c) && c != '.' && c != '-')
-				_ts.throwValidationError("invalid server name", "server_name");
-			if (c == '.' && currentName[j - 1] == '.')
-				_ts.throwValidationError("invalid server name", "server_name");
-		}
+		if (c == '.' && serverName[j - 1] == '.')
+			_ts.throwValidationError("invalid server name", "server_name");
 	}
 }
 //*	----------- *
@@ -576,15 +578,15 @@ void ConfigParser::_validate_ErrorPages(const std::map<t_status_code, std::strin
 
 ///* CGI
 /**
- * @brief Parse the `cgi` directive mapping a file extension to an executable.
+ * @brief Parse the server-level `cgi` directive mapping file extensions to executables.
  *
  * Expects two tokens: the extension (e.g. `.php`) and the executable path.
  * The extension is validated to begin with a dot and contain only
  * alphanumeric characters; the executable is validated as an existing
- * executable file. The mapping is stored in `location.cgi` and the
+ * executable file. The mapping is stored in `server.cgi_default` and the
  * terminating semicolon is consumed.
  *
- * @param location LocationConfig to populate (modified in-place).
+ * @param server ServerConfig to populate (modified in-place).
  */
 void ConfigParser::_serverCgi(ServerConfig &server)
 {
@@ -636,6 +638,7 @@ void ConfigParser::_serverLocation(ServerConfig &server, std::set<std::string> &
  * failure a validation error is thrown.
  *
  * @param path Path string to validate.
+ * @param cgiPass Boolean to confirm that is a dedicated CGI endpoint.
  * @param locationsPathRecord Set used to detect duplicate paths.
  */
 void ConfigParser::_validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord)
@@ -716,6 +719,8 @@ void ConfigParser::_locationRoot(LocationConfig &location)
  */
 void ConfigParser::_locationIndex(LocationConfig &location)
 {
+	if (!location.index.empty())
+		_ts.throwValidationError("Duplicated", "index");
 	_ts._extractKeywordVector(location.index);
 	_validate_Index(location.index);
 	_ts._expect(TOKEN_SEMICOLON);
@@ -872,6 +877,8 @@ void ConfigParser::_locationCgi(LocationConfig &location)
 	std::string exec;
 	if (_ts._previousToken().content == "cgi_pass")
 	{
+		if (!location.cgi.empty())
+			_ts.throwValidationError("Duplicated", "cgi_pass");
 		ext = location.getPath().substr(1);
 		location.CgiPass = true;
 	}
@@ -940,6 +947,15 @@ void ConfigParser::_validate_UploadStore(std::string &path)
 
 //*	----- Helpers ----- */
 
+/**
+ * @brief Validate a CGI file extension format.
+ *
+ * Ensures the extension begins with a dot `.` followed by one or more
+ * alphabetic characters. Throws an exception if the format is invalid.
+ *
+ * @param ext File extension string to validate (e.g. `.php`, `.py`).
+ * @throws std::runtime_error If the extension format is invalid.
+ */
 void ConfigParser::_isValidExtension(const std::string &ext) const
 {
 	if (ext.length() < 2 || ext[0] != '.')

@@ -1,6 +1,6 @@
 #include "../../inc/serverConfig/TokenStream.hpp"
-#include <sstream>
-#include <algorithm> // find
+#include <sstream> // std::stringstream
+#include <algorithm> // std::find
 
 /**
  * @brief Construct TokenStream from a token vector.
@@ -10,12 +10,6 @@
  * manages an internal cursor used by the parser to navigate tokens.
  */
 TokenStream::TokenStream(const std::vector<t_token> &tokens) : _cursor(0), _tokens(tokens) {}
-
-/**
- * @brief Copy constructor.
- * @param obj TokenStream to copy (cursor and token reference are copied).
- */
-TokenStream::TokenStream(const TokenStream &obj) : _cursor(obj._cursor), _tokens(obj._tokens) {}
 
 /**
  * @brief Destructor (trivial).
@@ -77,8 +71,8 @@ const t_token &TokenStream::_currentToken(void) const
 
 /**
  * @brief Get previous token without consuming it.
- * @return Reference to current token.
- * @throw std::runtime_error If cursor is out of range.
+ * @return Reference to the previous token.
+ * @throw std::runtime_error If cursor is at the beginning (no previous token).
  */
 const t_token &TokenStream::_previousToken(void) const
 {
@@ -107,8 +101,13 @@ void TokenStream::_extractSingleKeyword(std::string &destination)
 }
 
 /**
- * @brief Extract all consecutive keyword token contents.
- * @param destination Output vector to append keyword contents into.
+ * @brief Extract all consecutive keyword token contents, skipping duplicates.
+ * 
+ * Iterates through consecutive keyword tokens and appends their content to
+ * the destination vector. Duplicate keywords are skipped (only unique keywords
+ * are added).
+ * 
+ * @param destination Output vector to append unique keyword contents into.
  */
 void TokenStream::_extractKeywordVector(std::vector<std::string> &destination)
 {
@@ -154,11 +153,14 @@ void TokenStream::throwSyntaxError(const std::string &message, size_t customLine
  *
  * @param message Human-readable validation message.
  * @param directive Optional directive name to include in the message.
+ * @param customLine Optional explicit line number to use (0 = auto-select from previous token).
  * @throws std::runtime_error Always throws with the formatted message.
  */
-void TokenStream::throwValidationError(const std::string &message, const std::string &directive) const
+void TokenStream::throwValidationError(const std::string &message, const std::string &directive, size_t customLine) const
 {
-    size_t line = (_cursor > 0 && !_tokens.empty()) ? _tokens[_cursor - 1].line : 1;
+	size_t line = customLine;
+	if (line == 0)
+		line = (_cursor > 0 && !_tokens.empty()) ? _tokens[_cursor - 1].line : 1;
 
     std::stringstream ss;
     ss << "Config error {l." << line << "} ";

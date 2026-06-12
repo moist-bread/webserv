@@ -19,7 +19,7 @@ void Inspect::inspect_server_activity(const std::string &msg, const Server &sv)
 	for (std::map<int, const ServerConfig *>::const_iterator it = sv.get_fdToServerConfig().begin(); it != sv.get_fdToServerConfig().end(); it++)
 	{
 		std::cout << " http://";
-		std::cout << ((*it).second->serverNames.empty() ? "none" : (*it).second->serverNames[0]);
+		std::cout << ((*it).second->serverName.empty() ? "none" : (*it).second->serverName);
 		std::cout << ":" << (*it).second->getListenPort() << ";";
 	}
 	std::cout << DEF << std::endl;

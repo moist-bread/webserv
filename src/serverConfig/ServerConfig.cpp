@@ -1,6 +1,6 @@
 #include "../../inc/serverConfig/ServerConfig.hpp"
 
-#include <sstream>	// ostringstream
+#include <sstream> // std::ostringstream
 
 
 const int ServerConfig::DEFAULT_CLIENT_MAX_BODY_SIZE = 1048576;
@@ -37,7 +37,7 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &source)
 		this->listen.host = source.listen.host;
 		this->listen.port = source.listen.port;
 		this->listen.string = source.listen.string;
-		this->serverNames = source.serverNames;
+		this->serverName = source.serverName;
 		this->root_default = source.root_default;
 		this->clientMaxBodySize = source.clientMaxBodySize;
 		this->errorPages = source.errorPages;
@@ -60,9 +60,9 @@ std::string ServerConfig::getServerUrl(void) const
 	std::string baseUrl = "http://";
 	std::string domainOrIp;
 
-	if (!this->serverNames.empty())
-	    domainOrIp = this->serverNames[0];
-	else if (this->listen.host == "0.0.0.0")
+	if (!this->serverName.empty())
+	    domainOrIp = this->serverName;
+	else if (this->listen.host == "127.0.0.1")
 	    domainOrIp = "localhost";
 	else
 	    domainOrIp = this->listen.host;
@@ -98,10 +98,10 @@ const std::string &ServerConfig::getListenString(void) const { return (this->lis
 const ListenAddress &ServerConfig::getListenAddress(void) const { return (this->listen); }
 
 /**
- * @brief Get the configured `server_name` entries.
- * @return Reference to vector of server names.
+ * @brief Get the configured server name for this virtual server.
+ * @return Reference to the server name string.
  */
-const std::vector<std::string> &ServerConfig::getServerNames(void) const { return (this->serverNames); }
+const std::string &ServerConfig::getServerName(void) const { return (this->serverName); }
 
 /**
  * @brief Check whether `serverName` is present in this server's `server_name` list.
@@ -110,11 +110,8 @@ const std::vector<std::string> &ServerConfig::getServerNames(void) const { retur
  */
 bool ServerConfig::isServerName(const std::string &serverName) const
 {
-	for (size_t i = 0; i < this->serverNames.size(); ++i)
-	{
-		if (this->serverNames[i] == serverName)
-			return (true);
-	}
+	if (this->serverName == serverName)
+		return (true);
 	return (false);
 }
 
@@ -143,6 +140,14 @@ std::string ServerConfig::getErrorPage(t_status_code code) const
 	return ("");
 }
 
+/**
+ * @brief Get the server-level default CGI mappings.
+ * 
+ * Returns the map of file extensions to CGI executable paths that apply
+ * to all locations in this server (unless overridden at location level).
+ * 
+ * @return Reference to the CGI extension->executable map.
+ */
 const std::map<std::string, std::string> &ServerConfig::getCgi(void) const { return (this->cgi_default); }
 
 
@@ -155,13 +160,19 @@ static bool matchExtension(const std::string &uri, const std::string &ext)
 }
 
 /**
- * @brief Find the best matching `LocationConfig` for a request URI.
+ * @brief Find the best matching `LocationConfig` for a request URI and method.
  *
- * The function performs prefix matching against each location's `path` and
- * returns the location with the longest matching prefix. An exact match is
- * returned immediately.
+ * The function handles two types of location matching:
+ * 
+ * 1. **CGI Pass Locations** (isCgiPass() == true): Matches by file extension.
+ *    Extracts the extension from the location path and checks if the URI ends
+ *    with that extension. If found and the method is allowed, returns immediately.
+ * 
+ * 2. **Normal Locations**: Matches by URI prefix. Returns exact match immediately.
+ *    Otherwise tracks the location with the longest matching prefix.
  *
- * @param uri Request URI to match (e.g., "/images/logo.png").
+ * @param uri Request URI to match (e.g., "/images/logo.php").
+ * @param method HTTP method being used, checked against allowed methods in CGI pass locations.
  * @return Pointer to the matched `LocationConfig`, or nullptr if none match.
  */
 const LocationConfig* ServerConfig::matchLocation(const std::string& uri, const t_method &method) const
@@ -204,13 +215,7 @@ std::ostream &operator<<(std::ostream &out, ServerConfig const &source)
 	out << "    Host: " << source.getListenHost() << "\n";
 	out << "    Port: " << source.getListenPort() << "\n";
 	out << "    Listen adress: " << source.getListenString() << "\n";
-
-	out << "    Server Names: ";
-	for (size_t i = 0; i < source.serverNames.size(); ++i) {
-		out << source.serverNames[i] << " ";
-	}
-	out << "\n";
-
+	out << "    Server Name: " << source.serverName << "\n";
 	out << "    Client Max Body Size: " << source.getClientMaxBodySize() << "\n";
 
 	out << "    Error Pages:\n";

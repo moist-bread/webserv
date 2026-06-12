@@ -1,11 +1,15 @@
 #include "../../inc/serverConfig/LocationConfig.hpp"
-#include "../../inc/http/HTTP.hpp"
-#include <algorithm> // find
+#include "../../inc/http/HTTP.hpp" // t_method, t_status_code
+
+#include <algorithm> // std::find
 
 /**
  * @brief Default constructor.
  *
- * Initializes `autoindex` to -1 (unset) and `returnCode` to INVALID_CODE.
+ * Initializes configuration members to safe defaults:
+ * - `autoindex` to -1 (unset/undefined state)
+ * - `returnCode` to INVALID_CODE (no redirect)
+ * - `CgiPass` to false (not a CGI location by default)
  */
 LocationConfig::LocationConfig(void) : autoindex(-1), returnCode(INVALID_CODE), CgiPass(false) {}
 
@@ -62,8 +66,13 @@ const std::string &LocationConfig::getRoot(void) const { return (this->root); }
 const std::vector<std::string> &LocationConfig::getIndexes(void) const { return (this->index); }
 
 /**
- * @brief Whether directory autoindex is enabled for this location.
- * @return true if autoindex is on, false otherwise.
+ * @brief Whether directory autoindex is enabled for this location and path matches.
+ * 
+ * Checks if autoindex is enabled (set to 1) and if the requested URI path
+ * exactly matches this location's configured path.
+ * 
+ * @param path_uri The URI path to match against this location's path.
+ * @return true if autoindex is enabled AND the path matches this location, false otherwise.
  */
 bool LocationConfig::isAutoIndex(const std::string &path_uri) const { return (this->autoindex == 1 && getPath() == path_uri); }
 
@@ -114,6 +123,14 @@ std::string LocationConfig::getCgiExecutable(const std::string &extension) const
 	return ("");
 }
 
+/**
+ * @brief Check whether this location is configured with CGI pass.
+ * 
+ * CGI pass indicates that the location should forward requests to a CGI handler
+ * rather than serving files directly from the filesystem.
+ * 
+ * @return true if CGI pass is enabled, false otherwise.
+ */
 bool LocationConfig::isCgiPass() const { return (CgiPass); }
 
 /**

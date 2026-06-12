@@ -5,11 +5,9 @@
 #include <vector>
 #include <map>
 #include <set>
-#include <stdlib.h>
 
-#include "../ansi_color_codes.h"
-#include "token.h"
-#include "../http/HTTP.hpp"
+#include "token.h" // t_token
+#include "../http/HTTP.hpp" // t_status_code, t_method
 #include "../../inc/serverConfig/TokenStream.hpp"
 
 struct ServerConfig;
@@ -34,72 +32,67 @@ class TokenStream;
  */
 class ConfigParser
 {
-public:
-	ConfigParser(const std::vector<t_token> &tokens); // main constructor
-	~ConfigParser(void);							  // destructor
-
-	std::vector<ServerConfig> parse(void);
-
-private:
-	ConfigParser(void);									 // default constructor
-	ConfigParser(ConfigParser const &source);			 // copy constructor
-	ConfigParser &operator=(ConfigParser const &source); // copy assignment operator overload
-
-	void _parseServerBlock(ServerConfig &newServer);
-	void _parseLocationBlock(LocationConfig &newLocation);
-
-	typedef void (ConfigParser::*ServerHandler)(ServerConfig &);	 //	custom type called 'ServerHandler' -> pointer to a Parser method that takes a ServerConfig reference
-	typedef void (ConfigParser::*LocationHandler)(LocationConfig &); //	custom type called 'LocationHandler' -> pointer to a Parser method that takes a LocationConfig reference
-
-	std::map<std::string, ServerHandler> _serverHandlers;	  //	map links the string (e.g., "listen") to the function pointer
-	std::map<std::string, LocationHandler> _locationHandlers; //	map links the string (e.g., "root") to the function pointer
-
-	//	ServerHandler functions
-	void _serverListen(ServerConfig &server);
-	void _serverName(ServerConfig &server);
-	void _serverRoot(ServerConfig &server);
-	void _serverMaxBodySize(ServerConfig &server);
-	void _serverErrorPage(ServerConfig &server);
-	void _serverCgi(ServerConfig &server);
-	void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
-	void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
-	void _finalizeServer(ServerConfig &server);
-	void _finalizeLocation(ServerConfig &server);
-	void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server);
-	void _finalizeLocationReturn(LocationConfig &location);
-
-	//	LocationHandler functions
-	void _locationRoot(LocationConfig &location);
-	void _locationIndex(LocationConfig &location);
-	void _locationAutoIndex(LocationConfig &location);
-	void _locationAllowMethods(LocationConfig &location);
-	void _locationReturn(LocationConfig &location);
-	void _locationCgi(LocationConfig &location);
-	void _locationUploadStore(LocationConfig &location);
-
-	//	ServerHandler Validation functions
-	void _validate_Listen(const std::string &host, const int port);
-	void _validate_ServerNames(const std::vector<std::string> &serverNames);
-	void _validate_Root(std::string &root);
-	void _validate_MaxBodySize(const size_t clientMaxBodySize);
-	void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
-	void _validate_ServerNamesCollision(const ServerConfig &server_A, const ServerConfig &server_B);
-
-	//	LocationHandler Validation functions
-	void _validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord);
-	void _validate_Index(const std::vector<std::string> &index);
-	void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
-	void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
-	void _validate_Cgi(std::string &extension, const std::string &executer);
-	void _validate_UploadStore(std::string &path);
-
-	//	Validate Helpers
-	void _isValidURI(const std::string &uri) const;
-	void _isValidURL(const std::string &url) const;
-	void _isValidExtension(const std::string &ext) const;
-	void _isValidAccess(const std::string &path, const int flags) const;
-	void _isValidFile(const std::string &path, const int flags) const;
-	void _isValidDirectory(const std::string &path, const int flags) const;
-
-	TokenStream _ts;
+	public:
+		ConfigParser(const std::vector<t_token> &tokens); // main constructor
+		~ConfigParser(void);							  // destructor
+	
+		std::vector<ServerConfig> parse(void);
+	
+	private:
+		void _parseServerBlock(ServerConfig &newServer);
+		void _parseLocationBlock(LocationConfig &newLocation);
+	
+		typedef void (ConfigParser::*ServerHandler)(ServerConfig &);	 //	custom type called 'ServerHandler' -> pointer to a Parser method that takes a ServerConfig reference
+		typedef void (ConfigParser::*LocationHandler)(LocationConfig &); //	custom type called 'LocationHandler' -> pointer to a Parser method that takes a LocationConfig reference
+	
+		std::map<std::string, ServerHandler> _serverHandlers;	  //	map links the string (e.g., "listen") to the function pointer
+		std::map<std::string, LocationHandler> _locationHandlers; //	map links the string (e.g., "root") to the function pointer
+	
+		//	ServerHandler functions
+		void _serverListen(ServerConfig &server);
+		void _serverName(ServerConfig &server);
+		void _serverRoot(ServerConfig &server);
+		void _serverMaxBodySize(ServerConfig &server);
+		void _serverErrorPage(ServerConfig &server);
+		void _serverCgi(ServerConfig &server);
+		void _serverLocation(ServerConfig &server, std::set<std::string> &locationsPathRecord);
+		void _finalizeServer(ServerConfig &server, const t_token &serverToken);
+		void _finalizeLocation(ServerConfig &server, size_t serverLine);
+		void _finalizeLocationCgiPass(LocationConfig &location, ServerConfig &server, size_t serverLine);
+		void _finalizeLocationReturn(LocationConfig &location, size_t serverLine);
+		void _validate_ServerCollision(const std::vector<ServerConfig> &servers);
+	
+		//	LocationHandler functions
+		void _locationRoot(LocationConfig &location);
+		void _locationIndex(LocationConfig &location);
+		void _locationAutoIndex(LocationConfig &location);
+		void _locationAllowMethods(LocationConfig &location);
+		void _locationReturn(LocationConfig &location);
+		void _locationCgi(LocationConfig &location);
+		void _locationUploadStore(LocationConfig &location);
+	
+		//	ServerHandler Validation functions
+		void _validate_Listen(const std::string &host, const int port);
+		void _validate_ServerName(const std::string &serverName);
+		void _validate_Root(std::string &root);
+		void _validate_MaxBodySize(const size_t clientMaxBodySize);
+		void _validate_ErrorPages(const std::map<t_status_code, std::string> &errorPages);
+	
+		//	LocationHandler Validation functions
+		void _validate_Path(const std::string &path, bool &cgiPass, std::set<std::string> &locationsPathRecord);
+		void _validate_Index(const std::vector<std::string> &index);
+		void _validate_AllowedMethods(const std::vector<t_method> &allowedMethods);
+		void _validate_ReturnCode(const t_status_code returnCode, const std::string &returnURL);
+		void _validate_Cgi(std::string &extension, const std::string &executer);
+		void _validate_UploadStore(std::string &path);
+	
+		//	Validate Helpers
+		void _isValidURI(const std::string &uri) const;
+		void _isValidURL(const std::string &url) const;
+		void _isValidExtension(const std::string &ext) const;
+		void _isValidAccess(const std::string &path, const int flags) const;
+		void _isValidFile(const std::string &path, const int flags) const;
+		void _isValidDirectory(const std::string &path, const int flags) const;
+	
+		TokenStream _ts;
 };

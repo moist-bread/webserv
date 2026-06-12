@@ -1,36 +1,22 @@
 #include "../../inc/serverConfig/Config.hpp"
+#include "../../inc/serverConfig/Lexer.hpp" // Lexer::tokenizeFile
+#include "../../inc/serverConfig/ConfigParser.hpp"
 
-#include "../../inc/ansi_color_codes.h"
-
-#include <algorithm> // find
-
-/**
- * @brief Default constructor.
- */
-Config::Config(void) {}
+#include <algorithm> // std::find
 
 /**
- * @brief Copy constructor.
- * @param src Source Config to copy.
+ * @brief Constructor.
+ * 
+ * Loads the configuration from the specified file upon initialization.
+ * 
+ * @param filePath Path to configuration file to load.
  */
-Config::Config(Config const &src) { *this = src; }
+Config::Config(const std::string &filePath) { this->load(filePath); }
 
 /**
  * @brief Destructor.
  */
 Config::~Config(void) {}
-
-/**
- * @brief Copy assignment operator.
- * @param src Source Config to assign from.
- * @return Reference to this `Config`.
- */
-Config &Config::operator=(Config const &src)
-{
-	if (this != &src)
-		_servers = src._servers;
-	return (*this);
-}
 
 /**
  * @brief Load configuration from file.
@@ -43,7 +29,6 @@ Config &Config::operator=(Config const &src)
 void Config::load(const std::string &filePath)
 {
 	std::vector<t_token> tokenFile = Lexer::tokenizeFile(filePath);
-
 	_servers = ConfigParser(tokenFile).parse();
 }
 

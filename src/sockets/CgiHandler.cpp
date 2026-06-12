@@ -87,7 +87,7 @@ void CgiHandler::update_info(Request &req)
 	_compiler = req.loc->getCgiExecutable(req.file_extension);
 
 	_env.push_back("SERVER_SOFTWARE=" + to_str("server/1.0.0"));
-	_env.push_back("SERVER_NAME=" + req.conf->getServerNames()[0]); // -------------------------
+	_env.push_back("SERVER_NAME=" + req.conf->getServerName()); // -------------------------
 	_env.push_back("SERVER_PROTOCOL=" + HTTP::stringProtocol(req.protocol));
 	_env.push_back("SERVER_PORT=" + to_str(req.conf->getListenPort()));
 	_env.push_back("GATEWAY_INTERFACE=" + to_str("CGI/1.1"));
