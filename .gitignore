@@ -15,4 +15,5 @@ webserv
 www/uploads/*
 www/assets/test_video.mp4
 tester
-cgi_testerYoupiBanane/database
+cgi_tester
+YoupiBanane/database

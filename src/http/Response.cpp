@@ -378,7 +378,7 @@ std::string Response::assemble_content_path(void)
 			remaining_uri.erase(0, 1);
 		path.append(remaining_uri);
 
-		if (req->file_extension == "html")
+		if (req->file_extension == "html" && req->path_uri.rfind(".") == std::string::npos)
 		{
 			std::string index;
 
