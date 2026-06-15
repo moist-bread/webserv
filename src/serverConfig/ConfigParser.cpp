@@ -162,11 +162,7 @@ void ConfigParser::_finalizeLocation(ServerConfig &server, size_t serverline)
 		if (location.autoindex == -1)
 			location.autoindex = false;
 		if (location.allowedMethods.empty())
-		{
 			location.allowedMethods.push_back(GET);
-			location.allowedMethods.push_back(POST);
-			location.allowedMethods.push_back(DELETE);
-		}
 		if (location.isMethodAllowed(POST) && location.uploadStore.empty())
 			_ts.throwValidationError("Location '" + location.path + "' - no upload_store, won't be able to POST files", "server", serverline);
 		if (location.cgi.empty())
