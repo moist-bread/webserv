@@ -72,23 +72,15 @@
 	<div class="paper">
 		<h3><b><u>More about this page:</u></b></h3>
 		<p>
-			Common Gateway Interface, <b>CGI</b> for short, sample text.
-			<!-- For this Server we also <b>implemented Range request</b>, allowing for video streaming and more.<br>
+			In a traditional web server, the default behavior is static: the client requests a file (like a
+			.html or .jpeg), the server reads that file from the disk and sends it back. However, to build
+			dynamic applications (such as processing a login form or interacting with a database), the Server
+			must <b>delegate the workload to an external program</b> (like a Python, PHP, JavaScript or Ruby script).
 			<br>
-			The way it works is that when you try to play a video it will send a <b>GET request
-			that has a "Range" header.</b> The header will then specify what part of the content it wants to GET.
-			There are 4 ways that it can be formatted but let's go with the simplest example:<br>
-			<br>
-			<b>Range: bytes=0-</b><br>
-			<br>
-			What that means to the Server is that the Client wants all the bytes of the requested file
-			<b>from the byte 0 up until the end</b>. 
-			The Server can then respond with an amount of bytes but has to specify which bytes were they and how big is the whole content, for example:<br>
-			<br>
-			<b>Content-Range: bytes 0-100/5000</b><br>
-			<br>
-			Which means the request is sending all bytes from 0 until 100 and that the total is 5000.
-			Afterwards the Client can ask for the remaining bytes when it needs them. -->
+			Common Gateway Interface, <b>CGI</b> for short, is the exact bridge that enables this communication.
+			It is a standard protocol that defines how a web server should format and pass the HTTP
+			Request data (Headers, URI, Body) to an executable program, and how it should capture the
+			program's output to send back to the client.
 		</p>
 	</div>
 </body>
