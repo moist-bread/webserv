@@ -1064,18 +1064,3 @@ void ConfigParser::_isValidDirectory(const std::string &path, const int flags) c
 	if (!S_ISDIR(path_stat.st_mode))
 		throw std::runtime_error("Given path is not a Directory");
 }
-
-
-/*
-
-	! CHECK ERROR MESSAGES -> NOTE TO ADD LINE NUMBER / *COLLUMN?*
-
-	! CHECK FILE NAME EXTENSION -> LEXER
-
-	! CHECK what auotindex do, must have index filled if autoindex on?
-
-	! ERROR LINE SERVER COLLISION NAME AND LISTEN
-
-	! fix -> servername collision -> void ConfigParser::_validate_ServerCollision(const std::vector<ServerConfig> &servers)
-
-*/
