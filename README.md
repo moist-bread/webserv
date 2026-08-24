@@ -542,8 +542,11 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 #### Understanding Requests
 
-[HTTP headers - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers)[POST request method - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST)[HTTP.DEV](https://http.dev/)\
-[RFC 1945 - HTTP 1.0](https://datatracker.ietf.org/doc/html/rfc1945)[RFC 2616 - HTTP 1.1](https://datatracker.ietf.org/doc/html/rfc2616)\
+[HTTP headers - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers)\
+[POST request method - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST)\
+[HTTP.DEV](https://http.dev/)\
+[RFC 1945 - HTTP 1.0](https://datatracker.ietf.org/doc/html/rfc1945)\
+[RFC 2616 - HTTP 1.1](https://datatracker.ietf.org/doc/html/rfc2616)\
 [RFC 822 - Internet Standard (3.1) Lexical Tokens](https://datatracker.ietf.org/doc/html/rfc822#section-3.1)\
 [RFC 2616 - HTTP 1.1 (page 16) LWS](https://datatracker.ietf.org/doc/html/rfc2616#page-16)\
 [RFC 2616 - HTTP 1.1 (4.2) Message Headers](https://datatracker.ietf.org/doc/html/rfc2616#section-4.2)
@@ -552,7 +555,7 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 #### Basics os Responses
 
-[HTTP Responses Overview](https://www.tutorialspoint.com/http/http_responses.htm)
+[HTTP Responses Overview](https://www.tutorialspoint.com/http/http_responses.htm)\
 [Query Strings and Parameters explained (video)](https://www.youtube.com/watch?v=Z_o7iilNdLQ)
 
 ---
@@ -560,14 +563,16 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 #### CGI Environment
 
 [The CGI Process - IBM](https://www.ibm.com/docs/en/i/7.5.0?topic=programming-cgi-process)\
-[CGI Environment Variables - CGI101](https://www.cgi101.com/book/ch3/text.html)[CGI Environment Variables - dBASE](http://www.mnuwer.dbasedeveloper.co.uk/dlearn/web/session03.htm)\
+[CGI Environment Variables - CGI101](https://www.cgi101.com/book/ch3/text.html)\
+[CGI Environment Variables - dBASE](http://www.mnuwer.dbasedeveloper.co.uk/dlearn/web/session03.htm)\
 [Environment variables in CGI script - IBM](https://www.ibm.com/docs/en/netcoolomnibus/8.1.0?topic=scripts-environment-variables-in-cgi-script)
 
 ---
 
 #### Content Type / Content Length
 
-[HTTP Content-Type: What is It & How to Check](https://seomator.com/blog/http-content-type)[Content Types and MIME Types](https://status-code.medium.com/content-types-and-mime-types-how-browsers-interpret-data-4a238e55c54f)\
+[HTTP Content-Type: What is It & How to Check](https://seomator.com/blog/http-content-type)\
+[Content Types and MIME Types](https://status-code.medium.com/content-types-and-mime-types-how-browsers-interpret-data-4a238e55c54f)\
 [What makes an image download instead of opening in a new tab?](https://stackoverflow.com/questions/75506460/what-makes-an-image-download-instead-of-opening-in-a-new-tab)\
 [What to Do When HTTP Content-Length Doesn’t Match Actual Body Size?](https://www.codestudy.net/blog/what-to-do-if-http-content-length-differs-from-actual-body-size/)\
 [Understanding Content-Length: HTTP Message Handling](https://www.ids-sax2.com/understanding-content-length-avoiding-common-pitfalls-in-http-message-handling/)\
@@ -586,7 +591,8 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 #### Transfer Encoding
 
-[Transfer-Encoding - httpdev](https://http.dev/transfer-encoding)[Transfer-Encoding header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding)\
+[Transfer-Encoding - httpdev](https://http.dev/transfer-encoding)\
+[Transfer-Encoding header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding)\
 [Chunked Transfer Encoding Explained](https://requestly.com/blog/chunked-encoding/)\
 [Http Request Chunking (video)](https://www.youtube.com/watch?v=bsyWXrTP8tU)
 
@@ -594,14 +600,18 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 #### File Upload - multipart/form-data, Content-Range
 
-[Understanding multipart/form-data](https://medium.com/@muhebollah.diu/understanding-multipart-form-data-the-ultimate-guide-for-beginners-fd039c04553d)[How to Upload Files with HTML](https://www.freecodecamp.org/news/upload-files-with-html/)\
+[Understanding multipart/form-data](https://medium.com/@muhebollah.diu/understanding-multipart-form-data-the-ultimate-guide-for-beginners-fd039c04553d)\
+[How to Upload Files with HTML](https://www.freecodecamp.org/news/upload-files-with-html/)\
 [302 Found - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/302?utm_source=devtools&utm_medium=devtools-netmonitor&utm_campaign=default)\
-[Range header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Range)[Content-Range header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Range)\
-[HTTP range requests - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests)[416 Range Not Satisfiable - httpdev](https://http.dev/416)\
+[Range header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Range)\
+[Content-Range header - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Range)\
+[HTTP range requests - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests)\
+[416 Range Not Satisfiable - httpdev](https://http.dev/416)\
 [Simple Trick to Check Overlapping Intervals (video)](https://www.youtube.com/watch?v=daLeQLFtLLI)\
 [How to sort a map/unordered\_map in c++ based on keys or values (video)](https://www.youtube.com/watch?v=viOV5NMbLxE)\
 [The Multipart Content-Type (boundary rules)](https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html)\
-[How does HTTP Deliver a Large File?](https://cabulous.medium.com/how-http-delivers-a-large-file-78af8840aad5)[How to cancel an HTTP upload?](https://stackoverflow.com/questions/18367824/how-to-cancel-http-upload-from-data-events)\
+[How does HTTP Deliver a Large File?](https://cabulous.medium.com/how-http-delivers-a-large-file-78af8840aad5)\
+[How to cancel an HTTP upload?](https://stackoverflow.com/questions/18367824/how-to-cancel-http-upload-from-data-events)\
 [413 Content Too Large - mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413)\
 [What is the maximum length of a URL?](https://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers)
 
@@ -609,18 +619,25 @@ https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 #### HTML / CSS
 
-[Create a Sticky Note Effect in CSS/HTML](https://webdesign.tutsplus.com/create-a-sticky-note-effect-in-5-easy-steps-with-css3-and-html5--net-13934t)[Lifted Paper Strips (buttons) CSS/HTML](https://codepen.io/BastianAndre/pen/eBBvVz)\
+[Create a Sticky Note Effect in CSS/HTML](https://webdesign.tutsplus.com/create-a-sticky-note-effect-in-5-easy-steps-with-css3-and-html5--net-13934t)\
+[Lifted Paper Strips (buttons) CSS/HTML](https://codepen.io/BastianAndre/pen/eBBvVz)\
 [CSS/HTML postcard form example](https://mdn.github.io/learning-area/html/forms/postcard-example/)\
-[Three Column Layout CSS/HTML](https://www.w3schools.com/howto/howto_css_three_columns.asp)[textarea CSS/HTML](https://www.w3schools.com/tags/tryit.asp?filename=tryhtml_textarea2)\
-[pinned card CSS/HTML](https://codepen.io/aitchiss/pen/zYKaaJr)[noise grainy effect CSS](https://jsfiddle.net/jimmmy/2ytzh30w/)[Grainy Gradients CSS](https://css-tricks.com/grainy-gradients/)\
-[CSS Paper Effect examples (paper stack)](https://blog.stackfindover.com/css-paper-effect-examples/)[Icons Tutorial HTML](https://www.w3schools.com/icons/)\
-[Custom styled input type file CSS](https://nikitahl.com/custom-styled-input-type-file)[::file-selector-button CSS - mdn](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::file-selector-button)
+[Three Column Layout CSS/HTML](https://www.w3schools.com/howto/howto_css_three_columns.asp)\
+[textarea CSS/HTML](https://www.w3schools.com/tags/tryit.asp?filename=tryhtml_textarea2)\
+[pinned card CSS/HTML](https://codepen.io/aitchiss/pen/zYKaaJr)\
+[noise grainy effect CSS](https://jsfiddle.net/jimmmy/2ytzh30w/)\
+[Grainy Gradients CSS](https://css-tricks.com/grainy-gradients/)\
+[CSS Paper Effect examples (paper stack)](https://blog.stackfindover.com/css-paper-effect-examples/)\
+[Icons Tutorial HTML](https://www.w3schools.com/icons/)\
+[Custom styled input type file CSS](https://nikitahl.com/custom-styled-input-type-file)\
+[::file-selector-button CSS - mdn](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::file-selector-button)
 
 ---
 
 #### Python
 
-[Working With JSON Data in Python](https://realpython.com/python-json/)[Parsing a JSON file with multiple JSON objects](https://stackoverflow.com/questions/12451431/loading-and-parsing-a-json-file-with-multiple-json-objects)\
+[Working With JSON Data in Python](https://realpython.com/python-json/)\
+[Parsing a JSON file with multiple JSON objects](https://stackoverflow.com/questions/12451431/loading-and-parsing-a-json-file-with-multiple-json-objects)\
 [Working with Query Strings and Parameters in Requests](https://www.pythonlore.com/working-with-query-strings-and-parameters-in-requests/)\
 [Decoding query strings in Python](https://www.urldecoder.io/python/)\
 [cgi 101 - making a cgi that posts into a file and redirects to another cgi](https://www.cgi101.com/book/ch6/text.html)
